@@ -1,0 +1,9 @@
+/Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/CMakeFiles/MiniAccess.dir
+/Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/CMakeFiles/edit_cache.dir
+/Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/CMakeFiles/rebuild_cache.dir
+/Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/CMakeFiles/list_install_components.dir
+/Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/CMakeFiles/install.dir
+/Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/CMakeFiles/install/local.dir
+/Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/CMakeFiles/install/strip.dir
+/Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/CMakeFiles/MiniAccess_autogen_timestamp_deps.dir
+/Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/CMakeFiles/MiniAccess_autogen.dir
