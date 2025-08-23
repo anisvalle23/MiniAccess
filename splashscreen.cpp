@@ -5,6 +5,10 @@ SplashScreen::SplashScreen(QWidget *parent)
     : QWidget(parent), mainWindow(nullptr)
 {
     setupUI();
+    
+    // Procesar eventos para asegurar que la ventana se dibuje
+    QApplication::processEvents();
+    
     startAnimation();
     
     // Timer para mostrar la ventana principal después de 4 segundos
@@ -27,7 +31,9 @@ void SplashScreen::setupUI()
     // Configurar ventana con el mismo tamaño que MainWindow
     setWindowTitle("MiniAccess");
     setFixedSize(1200, 750);
-    setWindowFlags(Qt::SplashScreen | Qt::WindowStaysOnTopHint);
+    // Usar flags más seguras
+    setWindowFlags(Qt::Window | Qt::FramelessWindowHint);
+    setAttribute(Qt::WA_DeleteOnClose, false); // No eliminar automáticamente
     
     // Layout principal
     mainLayout = new QVBoxLayout(this);
@@ -55,14 +61,22 @@ void SplashScreen::setupUI()
 
 void SplashScreen::centerWindow()
 {
-    // Centrar la ventana en la pantalla usando el método más robusto
+    // Centrar la ventana usando un método más compatible con Qt Creator
     QScreen *screen = QApplication::primaryScreen();
     if (screen) {
         QRect screenGeometry = screen->availableGeometry();
         int x = screenGeometry.x() + (screenGeometry.width() - width()) / 2;
         int y = screenGeometry.y() + (screenGeometry.height() - height()) / 2;
         move(x, y);
+    } else {
+        // Fallback si no se puede obtener la pantalla
+        move(100, 100);
     }
+    
+    // Asegurar que la ventana esté visible y al frente
+    show();
+    raise();
+    activateWindow();
 }
 
 void SplashScreen::startAnimation()
@@ -96,7 +110,17 @@ void SplashScreen::showMainWindow()
     // Crear y mostrar la ventana principal
     mainWindow = new MainWindow();
     mainWindow->show();
+    mainWindow->raise();
+    mainWindow->activateWindow();
     
-    // Cerrar la pantalla de bienvenida
-    this->close();
+    // Ocultar el splash screen en lugar de cerrarlo inmediatamente
+    this->hide();
+    
+    // Cerrar la pantalla de bienvenida después de un delay más largo
+    QTimer::singleShot(500, [this]() {
+        this->deleteLater();
+    });
 }
+
+
+
