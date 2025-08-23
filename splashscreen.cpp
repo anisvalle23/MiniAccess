@@ -121,3 +121,6 @@ void SplashScreen::showMainWindow()
         this->deleteLater();
     });
 }
+
+
+
