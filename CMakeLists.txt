@@ -16,6 +16,8 @@ set(PROJECT_SOURCES
         main.cpp
         mainwindow.cpp
         mainwindow.h
+        splashscreen.cpp
+        splashscreen.h
         mainwindow.ui
 )
 
