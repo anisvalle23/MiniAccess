@@ -8,8 +8,8 @@ int main(int argc, char *argv[])
     QApplication a(argc, argv);
     
     // Mostrar pantalla de bienvenida
-    SplashScreen splash;
-    splash.show();
+    SplashScreen *splash = new SplashScreen();
+    splash->show();
     
     return a.exec();
 }
