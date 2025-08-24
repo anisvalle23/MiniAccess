@@ -1,6 +1,6 @@
 CMakeFiles/MiniAccess.dir/MiniAccess_autogen/mocs_compilation.cpp.o: \
   /Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/MiniAccess_autogen/mocs_compilation.cpp \
-  /Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/MiniAccess_autogen/EWIEGA46WW/moc_mainwindow.cpp \
+  /Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/MiniAccess_autogen/EWIEGA46WW/moc_homescreen.cpp \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/memory \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__config \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__config_site \
@@ -484,7 +484,7 @@ CMakeFiles/MiniAccess.dir/MiniAccess_autogen/mocs_compilation.cpp.o: \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__utility/forward_like.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/__variant/monostate.h \
   /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include/c++/v1/stdexcept \
-  /Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/MiniAccess_autogen/EWIEGA46WW/../../../../../mainwindow.h \
+  /Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/MiniAccess_autogen/EWIEGA46WW/../../../../../homescreen.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QMainWindow \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qmainwindow.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
@@ -908,8 +908,6 @@ CMakeFiles/MiniAccess.dir/MiniAccess_autogen/mocs_compilation.cpp.o: \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qframe.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QFrame \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/QFont \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/QPixmap \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/QIcon \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QApplication \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qapplication.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/qcoreapplication.h \
@@ -928,6 +926,10 @@ CMakeFiles/MiniAccess.dir/MiniAccess_autogen/mocs_compilation.cpp.o: \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/QSize \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/QSizeF \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/QTransform \
+  /Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/MiniAccess_autogen/EWIEGA46WW/moc_mainwindow.cpp \
+  /Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/MiniAccess_autogen/EWIEGA46WW/../../../../../mainwindow.h \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/QPixmap \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/QIcon \
   /Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/MiniAccess_autogen/EWIEGA46WW/moc_splashscreen.cpp \
   /Volumes/anis/MiniAccess/MiniAccess/build/Qt_5_15_16_5_15_16_2_f5bfb7-Debug/MiniAccess_autogen/EWIEGA46WW/../../../../../splashscreen.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/QTimer \

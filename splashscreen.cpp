@@ -1,8 +1,9 @@
 #include "splashscreen.h"
 #include "mainwindow.h"
+#include "homescreen.h"
 
 SplashScreen::SplashScreen(QWidget *parent)
-    : QWidget(parent), mainWindow(nullptr)
+    : QWidget(parent), mainWindow(nullptr), homeScreen(nullptr)
 {
     setupUI();
     
@@ -107,11 +108,11 @@ void SplashScreen::startAnimation()
 
 void SplashScreen::showMainWindow()
 {
-    // Crear y mostrar la ventana principal
-    mainWindow = new MainWindow();
-    mainWindow->show();
-    mainWindow->raise();
-    mainWindow->activateWindow();
+    // Crear y mostrar la pantalla de inicio
+    homeScreen = new HomeScreen();
+    homeScreen->show();
+    homeScreen->raise();
+    homeScreen->activateWindow();
     
     // Ocultar el splash screen en lugar de cerrarlo inmediatamente
     this->hide();
