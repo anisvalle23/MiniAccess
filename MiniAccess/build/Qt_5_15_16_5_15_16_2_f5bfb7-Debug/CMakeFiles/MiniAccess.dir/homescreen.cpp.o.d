@@ -1,8 +1,8 @@
-CMakeFiles/MiniAccess.dir/splashscreen.cpp.o: \
-  /Volumes/anis/MiniAccess/splashscreen.cpp \
-  /Volumes/anis/MiniAccess/splashscreen.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QWidget \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qwidget.h \
+CMakeFiles/MiniAccess.dir/homescreen.cpp.o: \
+  /Volumes/anis/MiniAccess/homescreen.cpp \
+  /Volumes/anis/MiniAccess/homescreen.h \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QMainWindow \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qmainwindow.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qtwidgetsglobal.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/qtguiglobal.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/qglobal.h \
@@ -811,6 +811,7 @@ CMakeFiles/MiniAccess.dir/splashscreen.cpp.o: \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/qversiontagging.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/qtgui-config.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qtwidgets-config.h \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qwidget.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/qwindowdefs.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/qobjectdefs.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/qnamespace.h \
@@ -889,17 +890,22 @@ CMakeFiles/MiniAccess.dir/splashscreen.cpp.o: \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qsizepolicy.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/qcursor.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/qkeysequence.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QLabel \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qlabel.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qframe.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QVBoxLayout \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qtabwidget.h \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/qicon.h \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QWidget \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QHBoxLayout \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qboxlayout.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qlayout.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qlayoutitem.h \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qgridlayout.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/QTimer \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/qtimer.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/qbasictimer.h \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QVBoxLayout \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QPushButton \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qpushbutton.h \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qabstractbutton.h \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QLabel \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qlabel.h \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qframe.h \
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QFrame \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/QFont \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QApplication \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qapplication.h \
@@ -918,24 +924,4 @@ CMakeFiles/MiniAccess.dir/splashscreen.cpp.o: \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/QRect \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/QSize \
   /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/QSizeF \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/QTransform \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/QPropertyAnimation \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/qpropertyanimation.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/qvariantanimation.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/qeasingcurve.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtCore.framework/Headers/qabstractanimation.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QGraphicsOpacityEffect \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qgraphicseffect.h \
-  /Volumes/anis/MiniAccess/mainwindow.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QMainWindow \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qmainwindow.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qtabwidget.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/qicon.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QHBoxLayout \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QPushButton \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qpushbutton.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/qabstractbutton.h \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtWidgets.framework/Headers/QFrame \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/QPixmap \
-  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/QIcon \
-  /Volumes/anis/MiniAccess/homescreen.h
+  /opt/homebrew/Cellar/qt@5/5.15.16_2/lib/QtGui.framework/Headers/QTransform
