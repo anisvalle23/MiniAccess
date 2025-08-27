@@ -20,6 +20,14 @@ set(PROJECT_SOURCES
         splashscreen.h
         homescreen.cpp
         homescreen.h
+        CreateProject.cpp
+        CreateProject.h
+        ThemeManager.cpp
+        ThemeManager.h
+        ThemeTokens.cpp
+        ThemeTokens.h
+        ThemePopover.cpp
+        ThemePopover.h
         mainwindow.ui
 )
 
