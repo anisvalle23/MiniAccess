@@ -4,6 +4,8 @@ file(REMOVE_RECURSE
   "MiniAccess_autogen"
   "CMakeFiles/MiniAccess.dir/MiniAccess_autogen/mocs_compilation.cpp.o"
   "CMakeFiles/MiniAccess.dir/MiniAccess_autogen/mocs_compilation.cpp.o.d"
+  "CMakeFiles/MiniAccess.dir/homescreen.cpp.o"
+  "CMakeFiles/MiniAccess.dir/homescreen.cpp.o.d"
   "CMakeFiles/MiniAccess.dir/main.cpp.o"
   "CMakeFiles/MiniAccess.dir/main.cpp.o.d"
   "CMakeFiles/MiniAccess.dir/mainwindow.cpp.o"

@@ -13,6 +13,7 @@
 #include <QGraphicsOpacityEffect>
 
 class MainWindow;
+class HomeScreen;
 
 class SplashScreen : public QWidget
 {
@@ -43,6 +44,7 @@ private:
     
     // Main window reference
     MainWindow *mainWindow;
+    HomeScreen *homeScreen;
 };
 
 #endif // SPLASHSCREEN_H
