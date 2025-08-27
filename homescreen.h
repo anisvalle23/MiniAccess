@@ -3,15 +3,55 @@
 
 #include <QMainWindow>
 #include <QWidget>
-#include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <QHBoxLayout>
 #include <QPushButton>
 #include <QLabel>
-#include <QFrame>
 #include <QFont>
 #include <QApplication>
 #include <QScreen>
 #include <QRect>
+#include <QTimer>
+#include <QPropertyAnimation>
+#include <QSequentialAnimationGroup>
+#include <QParallelAnimationGroup>
+#include <QGraphicsOpacityEffect>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QEasingCurve>
+#include <QGraphicsDropShadowEffect>
+#include <QPaintEvent>
+#include <QBrush>
+#include <QPen>
+#include <QRadialGradient>
+#include <QtMath>
+#include <QFrame>
+#include <QToolTip>
+#include <QGraphicsRotation>
+
+// Widget personalizado para el fondo animado
+class AnimatedBackground : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit AnimatedBackground(QWidget *parent = nullptr);
+
+protected:
+    void paintEvent(QPaintEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+
+private slots:
+    void updateAnimation();
+
+private:
+    QTimer *animationTimer;
+    QPointF mousePos;
+    float blob1X, blob1Y, blob2X, blob2Y;
+    float animationTime;
+    QList<QPointF> particles;
+    QList<float> particleOpacity;
+};
 
 class HomeScreen : public QMainWindow
 {
@@ -21,32 +61,60 @@ public:
     explicit HomeScreen(QWidget *parent = nullptr);
     ~HomeScreen();
 
+private slots:
+    void onStartProjectClicked();
+    void startEntranceAnimations();
+    void onSettingsClicked();
+
 private:
     void setupUI();
-    void createSidebar();
-    void createCentralArea();
+    void createHeader();
+    void createHeroSection();
+    void setupAnimations();
     void styleComponents();
     void centerWindow();
     
-    // UI Components
+    // UI Components principales
     QWidget *centralWidget;
-    QHBoxLayout *mainLayout;
+    QVBoxLayout *mainLayout;
+    AnimatedBackground *backgroundWidget;
     
-    // Sidebar
-    QFrame *sidebar;
-    QVBoxLayout *sidebarLayout;
-    QPushButton *btnInicio;
-    QPushButton *btnAbrir;
-    QLabel *opcionesLabel;
+    // Hero Section
+    QWidget *heroContainer;
+    QVBoxLayout *heroLayout;
+    QLabel *badgeLabel;
+    QWidget *titleCard;
+    QLabel *titleLine1;
+    QLabel *titleLine2;
+    QLabel *descriptionLabel;
+    QPushButton *ctaButton;
     
-    // Central Area
-    QWidget *centralArea;
-    QVBoxLayout *centralLayout;
-    QLabel *greetingLabel;
-    QWidget *databaseSection;
-    QVBoxLayout *databaseLayout;
-    QLabel *databaseIcon;
-    QLabel *databaseLabel;
+    // Header ultrafino
+    QWidget *headerWidget;
+    QFrame *headerLine;
+    QPushButton *settingsButton;
+    
+    // Efectos gráficos
+    QGraphicsDropShadowEffect *cardShadow;
+    QGraphicsDropShadowEffect *buttonShadow;
+    
+    // Animaciones
+    QPropertyAnimation *badgeAnimation;
+    QPropertyAnimation *titleLine1Animation;
+    QPropertyAnimation *titleLine2Animation;
+    QPropertyAnimation *descriptionAnimation;
+    QPropertyAnimation *ctaAnimation;
+    QSequentialAnimationGroup *entranceAnimationGroup;
+    
+    // Efectos de opacidad para animaciones
+    QGraphicsOpacityEffect *badgeOpacity;
+    QGraphicsOpacityEffect *titleLine1Opacity;
+    QGraphicsOpacityEffect *titleLine2Opacity;
+    QGraphicsOpacityEffect *descriptionOpacity;
+    QGraphicsOpacityEffect *ctaOpacity;
+    
+    // Flag para controlar animaciones
+    bool animationsStarted;
 };
 
 #endif // HOMESCREEN_H
