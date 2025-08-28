@@ -28,6 +28,8 @@ set(PROJECT_SOURCES
         ThemeTokens.h
         ThemePopover.cpp
         ThemePopover.h
+        TableEditor.cpp
+        TableEditor.h
         mainwindow.ui
 )
 

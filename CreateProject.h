@@ -10,8 +10,10 @@
 #include <QLineEdit>
 #include <QFrame>
 #include <QWidget>
+#include <QDialog>
 #include <QGraphicsDropShadowEffect>
 #include <QGraphicsOpacityEffect>
+#include <QGraphicsBlurEffect>
 #include <QPropertyAnimation>
 #include <QSequentialAnimationGroup>
 #include <QParallelAnimationGroup>
@@ -34,6 +36,8 @@ private slots:
     void onNewProjectClicked();
     void onGridViewClicked();
     void onListViewClicked();
+    void onCreateProjectConfirmed();
+    void onCreateProjectCancelled();
 
 private:
     void setupUI();
@@ -41,6 +45,12 @@ private:
     void createMainContent();
     void styleComponents();
     void centerWindow();
+    void showNewProjectModal();
+    void hideNewProjectModal();
+    void styleModalComponents();
+    void navigateToProjectView(const QString &projectName);
+    void createMainContentArea(const QString &projectName, QHBoxLayout *parentLayout);
+    void createDemoTable(QVBoxLayout *parentLayout);
 
     // Widgets principales
     QWidget *centralWidget;
@@ -67,8 +77,22 @@ private:
     // Theme popover
     ThemePopover *themePopover;
     
-    // Estado de vista
+    // Modal para crear proyecto
+    QWidget *modalOverlay;
+    QWidget *modalDialog;
+    QLabel *modalTitleLabel;
+    QLabel *hintLabel;
+    QLabel *inputLabel;
+    QLineEdit *projectNameInput;
+    QPushButton *createButton;
+    QPushButton *cancelButton;
+    QGraphicsBlurEffect *backgroundBlur;
+    QGraphicsDropShadowEffect *cardShadow;
+    
+    // Estado de vista y modal
     bool isGridView;
+    bool isModalVisible;
+    bool isAnimating;
 };
 
 #endif // CREATEPROJECT_H
