@@ -1,5 +1,7 @@
 #include "TableEditor.h"
 #include <QDebug>
+#include <QTimer>
+#include <QMessageBox>
 
 TableEditor::TableEditor(QWidget *parent)
     : QWidget(parent), isDarkTheme(false)
@@ -27,6 +29,7 @@ void TableEditor::setupUI()
     
     createLeftPanel();
     createRightPanel();
+    createTableCreationPanel();
     
     // Add panels to splitter
     mainSplitter->addWidget(leftPanel);
@@ -55,47 +58,8 @@ void TableEditor::createLeftPanel()
     leftPanelLayout->setContentsMargins(16, 16, 16, 16);
     leftPanelLayout->setSpacing(16);
     
-    // Schema section
-    schemaSection = new QWidget();
-    QVBoxLayout *schemaSectionLayout = new QVBoxLayout(schemaSection);
-    schemaSectionLayout->setContentsMargins(0, 0, 0, 0);
-    schemaSectionLayout->setSpacing(8);
-    
-    schemaLabel = new QLabel("schema");
-    schemaLabel->setFont(QFont("Inter", 12, QFont::Medium));
-    schemaLabel->setStyleSheet("QLabel { color: #6B7280; }");
-    
-    schemaComboBox = new QComboBox();
-    schemaComboBox->addItem("public");
-    schemaComboBox->setFont(QFont("Inter", 14));
-    schemaComboBox->setStyleSheet(
-        "QComboBox {"
-            "background-color: #FFFFFF;"
-            "border: 1px solid #D1D5DB;"
-            "border-radius: 8px;"
-            "padding: 8px 12px;"
-            "font-size: 14px;"
-            "color: #111827;"
-        "}"
-        "QComboBox::drop-down {"
-            "border: none;"
-            "width: 20px;"
-        "}"
-        "QComboBox::down-arrow {"
-            "image: none;"
-            "border-left: 4px solid transparent;"
-            "border-right: 4px solid transparent;"
-            "border-top: 4px solid #6B7280;"
-            "margin-right: 8px;"
-        "}"
-    );
-    
-    schemaSectionLayout->addWidget(schemaLabel);
-    schemaSectionLayout->addWidget(schemaComboBox);
-    leftPanelLayout->addWidget(schemaSection);
-    
     // New table button
-    newTableBtn = new QPushButton("New table");
+    newTableBtn = new QPushButton("Nueva Tabla");
     newTableBtn->setFont(QFont("Inter", 14, QFont::Medium));
     newTableBtn->setStyleSheet(
         "QPushButton {"
@@ -123,8 +87,6 @@ void TableEditor::createLeftPanel()
     
     // Connect signals
     connect(newTableBtn, &QPushButton::clicked, this, &TableEditor::onNewTableClicked);
-    connect(schemaComboBox, QOverload<const QString &>::of(&QComboBox::currentTextChanged),
-            this, &TableEditor::onSchemaChanged);
 }
 
 void TableEditor::createTableList()
@@ -140,9 +102,9 @@ void TableEditor::createTableList()
     searchLayout->setContentsMargins(0, 0, 0, 0);
     searchLayout->setSpacing(8);
     
-    QLineEdit *searchBox = new QLineEdit();
-    searchBox->setPlaceholderText("Search tables...");
-    searchBox->setFont(QFont("Inter", 13));
+    searchBox = new QLineEdit();
+    searchBox->setPlaceholderText("Buscar tablas");
+    searchBox->setFont(QFont("Inter", 12));
     searchBox->setStyleSheet(
         "QLineEdit {"
             "background-color: #FFFFFF;"
@@ -157,23 +119,7 @@ void TableEditor::createTableList()
         "}"
     );
     
-    QPushButton *filterBtn = new QPushButton("⚙");
-    filterBtn->setFixedSize(32, 32);
-    filterBtn->setStyleSheet(
-        "QPushButton {"
-            "background-color: #F9FAFB;"
-            "border: 1px solid #D1D5DB;"
-            "border-radius: 6px;"
-            "color: #6B7280;"
-            "font-size: 14px;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: #F3F4F6;"
-        "}"
-    );
-    
     searchLayout->addWidget(searchBox);
-    searchLayout->addWidget(filterBtn);
     tableListLayout->addWidget(searchHeader);
     
     // Tables tree
@@ -204,12 +150,12 @@ void TableEditor::createTableList()
     );
     
     // Add empty state
-    QLabel *noTablesLabel = new QLabel("No tables or views");
+    QLabel *noTablesLabel = new QLabel("Sin tablas o vistas");
     noTablesLabel->setFont(QFont("Inter", 13, QFont::Medium));
     noTablesLabel->setStyleSheet("QLabel { color: #6B7280; }");
     noTablesLabel->setAlignment(Qt::AlignCenter);
     
-    QLabel *noTablesDesc = new QLabel("Any tables or views you create\nwill be listed here.");
+    QLabel *noTablesDesc = new QLabel("Cualquier tabla o vista que crees\nse listará aquí.");
     noTablesDesc->setFont(QFont("Inter", 12));
     noTablesDesc->setStyleSheet("QLabel { color: #9CA3AF; line-height: 1.5; }");
     noTablesDesc->setAlignment(Qt::AlignCenter);
@@ -261,37 +207,14 @@ void TableEditor::createToolbar()
     toolbarLayout->setSpacing(16);
     
     // Title
-    toolbarTitle = new QLabel("Table Editor");
+    toolbarTitle = new QLabel("Editor de Tabla");
     toolbarTitle->setFont(QFont("Inter", 20, QFont::Bold));
     toolbarTitle->setStyleSheet("QLabel { color: #111827; }");
     
     toolbarLayout->addWidget(toolbarTitle);
     toolbarLayout->addStretch();
     
-    // Create table button
-    createTableBtn = new QPushButton("Create a table");
-    createTableBtn->setFont(QFont("Inter", 14, QFont::Medium));
-    createTableBtn->setStyleSheet(
-        "QPushButton {"
-            "background-color: #A4373A;"
-            "color: #FFFFFF;"
-            "border: none;"
-            "border-radius: 8px;"
-            "padding: 10px 20px;"
-            "font-weight: 500;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: #8B2635;"
-        "}"
-        "QPushButton:pressed {"
-            "background-color: #6D1D29;"
-        "}"
-    );
-    
-    toolbarLayout->addWidget(createTableBtn);
     rightPanelLayout->addWidget(toolbar);
-    
-    connect(createTableBtn, &QPushButton::clicked, this, &TableEditor::onNewTableClicked);
 }
 
 void TableEditor::createMainTableArea()
@@ -301,58 +224,288 @@ void TableEditor::createMainTableArea()
     
     mainContentLayout = new QVBoxLayout(mainContentArea);
     mainContentLayout->setContentsMargins(40, 40, 40, 40);
-    mainContentLayout->setSpacing(16);
+    mainContentLayout->setSpacing(32);
     
-    // Empty state content (like in the image)
-    QWidget *emptyStateWidget = new QWidget();
-    QVBoxLayout *emptyStateLayout = new QVBoxLayout(emptyStateWidget);
-    emptyStateLayout->setAlignment(Qt::AlignCenter);
-    emptyStateLayout->setSpacing(16);
+    // Create central card similar to the second image
+    createTableCard = new ClickableWidget();
+    createTableCard->setFixedSize(450, 100);
+    createTableCard->setStyleSheet(
+        "ClickableWidget {"
+            "background-color: #1F2937;"
+            "border-radius: 8px;"
+            "border: 1px solid #374151;"
+        "}"
+        "ClickableWidget:hover {"
+            "background-color: #374151;"
+            "border-color: #4B5563;"
+        "}"
+    );
+    createTableCard->setCursor(Qt::PointingHandCursor);
     
-    // Icon
-    QLabel *iconLabel = new QLabel("📊");
-    iconLabel->setFont(QFont("Inter", 48));
+    QHBoxLayout *cardLayout = new QHBoxLayout(createTableCard);
+    cardLayout->setContentsMargins(16, 16, 16, 16);
+    cardLayout->setSpacing(12);
+    cardLayout->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    
+    // Icon (similar to the database icon in the image)
+    QLabel *iconLabel = new QLabel("�");
+    iconLabel->setFont(QFont("Inter", 32));
     iconLabel->setAlignment(Qt::AlignCenter);
-    iconLabel->setStyleSheet("QLabel { color: #A4373A; }");
+    iconLabel->setStyleSheet("QLabel { color: #60A5FA; }");
+    // Text content
+    QWidget *textWidget = new QWidget();
+    QVBoxLayout *textLayout = new QVBoxLayout(textWidget);
+    textLayout->setContentsMargins(0, 0, 0, 0);
+    textLayout->setSpacing(4);
     
-    // Title
-    emptyStateTitle = new QLabel("Create a table");
-    emptyStateTitle->setFont(QFont("Inter", 24, QFont::Bold));
-    emptyStateTitle->setStyleSheet("QLabel { color: #111827; }");
-    emptyStateTitle->setAlignment(Qt::AlignCenter);
+    QLabel *cardTitle = new QLabel("Crear una tabla");
+    cardTitle->setFont(QFont("Inter", 16, QFont::Bold));
+    cardTitle->setStyleSheet("QLabel { color: #FFFFFF; }");
     
-    // Description
-    emptyStateDesc = new QLabel("Design and create a new database table");
-    emptyStateDesc->setFont(QFont("Inter", 16));
-    emptyStateDesc->setStyleSheet("QLabel { color: #6B7280; }");
-    emptyStateDesc->setAlignment(Qt::AlignCenter);
+    QLabel *cardDesc = new QLabel("Diseña y crea una nueva tabla de base de datos");
+    cardDesc->setFont(QFont("Inter", 12));
+    cardDesc->setStyleSheet("QLabel { color: #9CA3AF; }");
+    cardDesc->setWordWrap(true);
+    
+    textLayout->addWidget(cardTitle);
+    textLayout->addWidget(cardDesc);
+    
+    cardLayout->addWidget(iconLabel);
+    cardLayout->addWidget(textWidget);
+    cardLayout->addStretch();
+    
+    // Center the card horizontally
+    QHBoxLayout *centerLayout = new QHBoxLayout();
+    centerLayout->addStretch();
+    centerLayout->addWidget(createTableCard);
+    centerLayout->addStretch();
+    
+    mainContentLayout->addLayout(centerLayout);
     
     // Recent items section
-    QLabel *recentTitle = new QLabel("Recent items");
+    QLabel *recentTitle = new QLabel("Elementos recientes");
     recentTitle->setFont(QFont("Inter", 18, QFont::Medium));
     recentTitle->setStyleSheet("QLabel { color: #111827; margin-top: 32px; }");
     
-    QLabel *recentEmpty = new QLabel("No recent items yet");
+    QLabel *recentEmpty = new QLabel("Aún no hay elementos recientes");
     recentEmpty->setFont(QFont("Inter", 14));
     recentEmpty->setStyleSheet("QLabel { color: #9CA3AF; }");
     recentEmpty->setAlignment(Qt::AlignCenter);
     
-    QLabel *recentDesc = new QLabel("Items will appear here as you browse through your project");
+    QLabel *recentDesc = new QLabel("Los elementos aparecerán aquí mientras navegas por tu proyecto");
     recentDesc->setFont(QFont("Inter", 13));
     recentDesc->setStyleSheet("QLabel { color: #9CA3AF; }");
     recentDesc->setAlignment(Qt::AlignCenter);
     
-    emptyStateLayout->addWidget(iconLabel);
-    emptyStateLayout->addWidget(emptyStateTitle);
-    emptyStateLayout->addWidget(emptyStateDesc);
-    emptyStateLayout->addStretch();
-    emptyStateLayout->addWidget(recentTitle);
-    emptyStateLayout->addWidget(recentEmpty);
-    emptyStateLayout->addWidget(recentDesc);
-    emptyStateLayout->addStretch();
+    mainContentLayout->addWidget(recentTitle);
+    mainContentLayout->addWidget(recentEmpty);
+    mainContentLayout->addWidget(recentDesc);
+    mainContentLayout->addStretch();
     
-    mainContentLayout->addWidget(emptyStateWidget);
+    // Connect card click event
+    connect(createTableCard, &ClickableWidget::clicked, this, &TableEditor::onNewTableClicked);
+    
     rightPanelLayout->addWidget(mainContentArea);
+}
+
+void TableEditor::createTableCreationPanel()
+{
+    createTablePanel = new QWidget(this);
+    createTablePanel->setFixedWidth(400);
+    createTablePanel->setStyleSheet(
+        "QWidget {"
+            "background-color: #FFFFFF;"
+            "border-left: 1px solid #E5E7EB;"
+        "}"
+    );
+    
+    createTablePanelLayout = new QVBoxLayout(createTablePanel);
+    createTablePanelLayout->setContentsMargins(24, 24, 24, 24);
+    createTablePanelLayout->setSpacing(24);
+    
+    // Header section
+    QWidget *headerWidget = new QWidget();
+    QVBoxLayout *headerLayout = new QVBoxLayout(headerWidget);
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setSpacing(8);
+    
+    QLabel *titleLabel = new QLabel("Columnas");
+    titleLabel->setFont(QFont("Inter", 20, QFont::Bold));
+    titleLabel->setStyleSheet("QLabel { color: #111827; }");
+    
+    // Buttons section (top right)
+    QWidget *buttonsWidget = new QWidget();
+    QHBoxLayout *buttonsLayout = new QHBoxLayout(buttonsWidget);
+    buttonsLayout->setContentsMargins(0, 0, 0, 0);
+    buttonsLayout->setSpacing(12);
+    
+    QPushButton *aboutBtn = new QPushButton("📝 Acerca de tipos de datos");
+    aboutBtn->setFont(QFont("Inter", 12));
+    aboutBtn->setStyleSheet(
+        "QPushButton {"
+            "background-color: #F3F4F6;"
+            "color: #374151;"
+            "border: 1px solid #D1D5DB;"
+            "border-radius: 6px;"
+            "padding: 8px 12px;"
+        "}"
+        "QPushButton:hover {"
+            "background-color: #E5E7EB;"
+        "}"
+    );
+    
+    QPushButton *importBtn = new QPushButton("Importar datos desde CSV");
+    importBtn->setFont(QFont("Inter", 12));
+    importBtn->setStyleSheet(
+        "QPushButton {"
+            "background-color: #F3F4F6;"
+            "color: #374151;"
+            "border: 1px solid #D1D5DB;"
+            "border-radius: 6px;"
+            "padding: 8px 12px;"
+        "}"
+        "QPushButton:hover {"
+            "background-color: #E5E7EB;"
+        "}"
+    );
+    
+    buttonsLayout->addWidget(aboutBtn);
+    buttonsLayout->addWidget(importBtn);
+    buttonsLayout->addStretch();
+    
+    headerLayout->addWidget(titleLabel);
+    headerLayout->addWidget(buttonsWidget);
+    createTablePanelLayout->addWidget(headerWidget);
+    
+    // Table name input
+    QWidget *nameWidget = new QWidget();
+    QVBoxLayout *nameLayout = new QVBoxLayout(nameWidget);
+    nameLayout->setContentsMargins(0, 0, 0, 0);
+    nameLayout->setSpacing(8);
+    
+    QLabel *nameLabel = new QLabel("Nombre de la tabla");
+    nameLabel->setFont(QFont("Inter", 14, QFont::Medium));
+    nameLabel->setStyleSheet("QLabel { color: #374151; }");
+    
+    tableNameInput = new QLineEdit();
+    tableNameInput->setPlaceholderText("Ingresa el nombre de la tabla");
+    tableNameInput->setFont(QFont("Inter", 14));
+    tableNameInput->setStyleSheet(
+        "QLineEdit {"
+            "background-color: #FFFFFF;"
+            "border: 1px solid #D1D5DB;"
+            "border-radius: 6px;"
+            "padding: 12px;"
+            "font-size: 14px;"
+            "color: #111827;"
+        "}"
+        "QLineEdit::placeholder {"
+            "color: #9CA3AF;"
+        "}"
+        "QLineEdit:focus {"
+            "border-color: #A4373A;"
+            "outline: none;"
+        "}"
+    );
+    
+    nameLayout->addWidget(nameLabel);
+    nameLayout->addWidget(tableNameInput);
+    createTablePanelLayout->addWidget(nameWidget);
+    
+    // Columns section
+    QScrollArea *scrollArea = new QScrollArea();
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setStyleSheet("QScrollArea { border: none; background-color: transparent; }");
+    
+    columnsArea = new QWidget();
+    columnsLayout = new QVBoxLayout(columnsArea);
+    columnsLayout->setContentsMargins(0, 0, 0, 0);
+    columnsLayout->setSpacing(12);
+    
+    // Add default ID column
+    QWidget *idColumn = createColumnRow("id", "int", true);
+    columnsLayout->addWidget(idColumn);
+    
+    // Add default created_at column
+    QWidget *createdAtColumn = createColumnRow("created_at", "timestamp", false);
+    columnsLayout->addWidget(createdAtColumn);
+    
+    columnsLayout->addStretch();
+    scrollArea->setWidget(columnsArea);
+    createTablePanelLayout->addWidget(scrollArea);
+    
+    // Add column button
+    addColumnBtn = new QPushButton("Agregar columna");
+    addColumnBtn->setFont(QFont("Inter", 14, QFont::Medium));
+    addColumnBtn->setStyleSheet(
+        "QPushButton {"
+            "background-color: #F3F4F6;"
+            "color: #374151;"
+            "border: 1px dashed #D1D5DB;"
+            "border-radius: 8px;"
+            "padding: 12px;"
+            "text-align: center;"
+        "}"
+        "QPushButton:hover {"
+            "background-color: #E5E7EB;"
+        "}"
+    );
+    createTablePanelLayout->addWidget(addColumnBtn);
+    
+    // Bottom buttons
+    QWidget *bottomButtons = new QWidget();
+    QHBoxLayout *bottomLayout = new QHBoxLayout(bottomButtons);
+    bottomLayout->setContentsMargins(0, 0, 0, 0);
+    bottomLayout->setSpacing(12);
+    
+    cancelBtn = new QPushButton("Cancelar");
+    cancelBtn->setFont(QFont("Inter", 14, QFont::Medium));
+    cancelBtn->setStyleSheet(
+        "QPushButton {"
+            "background-color: #F3F4F6;"
+            "color: #374151;"
+            "border: 1px solid #D1D5DB;"
+            "border-radius: 6px;"
+            "padding: 12px 24px;"
+        "}"
+        "QPushButton:hover {"
+            "background-color: #E5E7EB;"
+        "}"
+    );
+    
+    saveBtn = new QPushButton("Guardar");
+    saveBtn->setFont(QFont("Inter", 14, QFont::Medium));
+    saveBtn->setStyleSheet(
+        "QPushButton {"
+            "background-color: #059669;"
+            "color: #FFFFFF;"
+            "border: none;"
+            "border-radius: 6px;"
+            "padding: 12px 24px;"
+        "}"
+        "QPushButton:hover {"
+            "background-color: #047857;"
+        "}"
+    );
+    
+    bottomLayout->addWidget(cancelBtn);
+    bottomLayout->addWidget(saveBtn);
+    createTablePanelLayout->addWidget(bottomButtons);
+    
+    // Initially hide the panel
+    createTablePanel->setGeometry(width(), 0, 400, height());
+    createTablePanel->hide();
+    
+    // Connect signals
+    connect(addColumnBtn, &QPushButton::clicked, this, &TableEditor::onAddColumnClicked);
+    connect(cancelBtn, &QPushButton::clicked, this, &TableEditor::onCancelClicked);
+    connect(saveBtn, &QPushButton::clicked, this, &TableEditor::onSaveClicked);
+    
+    // Setup animation
+    panelAnimation = new QPropertyAnimation(createTablePanel, "geometry");
+    panelAnimation->setDuration(300);
+    panelAnimation->setEasingCurve(QEasingCurve::OutCubic);
 }
 
 void TableEditor::styleComponents()
@@ -380,43 +533,6 @@ void TableEditor::updateLeftPanelTheme(bool isDark)
             "border-right: 1px solid %2;"
         "}"
     ).arg(bgColor, borderColor));
-    
-    // Update schema label color
-    QString labelColor = isDark ? "#9CA3AF" : "#6B7280";
-    schemaLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(labelColor));
-    
-    // Update combo box theme
-    QString comboBg = isDark ? "#374151" : "#FFFFFF";
-    QString comboBorder = isDark ? "#4B5563" : "#D1D5DB";
-    QString comboText = isDark ? "#F9FAFB" : "#111827";
-    
-    schemaComboBox->setStyleSheet(QString(
-        "QComboBox {"
-            "background-color: %1;"
-            "border: 1px solid %2;"
-            "border-radius: 8px;"
-            "padding: 8px 12px;"
-            "font-size: 14px;"
-            "color: %3;"
-        "}"
-        "QComboBox::drop-down {"
-            "border: none;"
-            "width: 20px;"
-        "}"
-        "QComboBox::down-arrow {"
-            "image: none;"
-            "border-left: 4px solid transparent;"
-            "border-right: 4px solid transparent;"
-            "border-top: 4px solid %4;"
-            "margin-right: 8px;"
-        "}"
-        "QComboBox QAbstractItemView {"
-            "background-color: %1;"
-            "border: 1px solid %2;"
-            "color: %3;"
-            "selection-background-color: #A4373A;"
-        "}"
-    ).arg(comboBg, comboBorder, comboText, labelColor));
     
     // Update New Table button theme
     QString newTableBtnStyle = QString(
@@ -463,9 +579,6 @@ void TableEditor::updateRightPanelTheme(bool isDark)
     // Update text colors
     QString titleColor = isDark ? "#F9FAFB" : "#111827";
     QString descColor = isDark ? "#9CA3AF" : "#6B7280";
-    
-    emptyStateTitle->setStyleSheet(QString("QLabel { color: %1; }").arg(titleColor));
-    emptyStateDesc->setStyleSheet(QString("QLabel { color: %1; }").arg(descColor));
     
     // Update all labels in the main content area
     QList<QLabel*> allLabels = mainContentArea->findChildren<QLabel*>();
@@ -657,7 +770,7 @@ void TableEditor::updateEmptyStateTheme(bool isDark)
     // Find and update empty state labels in the left panel
     QList<QLabel*> emptyLabels = leftPanel->findChildren<QLabel*>();
     for (QLabel* label : emptyLabels) {
-        if (label->text().contains("No tables") || label->text().contains("will be listed")) {
+        if (label->text().contains("Sin tablas") || label->text().contains("se listará aquí")) {
             label->setStyleSheet(QString("QLabel { color: %1; }").arg(textColor));
         }
     }
@@ -665,12 +778,412 @@ void TableEditor::updateEmptyStateTheme(bool isDark)
 
 void TableEditor::onNewTableClicked()
 {
-    // TODO: Handle new table creation
-    qDebug() << "New table button clicked";
+    showCreateTablePanel();
 }
 
-void TableEditor::onSchemaChanged(const QString &schema)
+void TableEditor::onAddColumnClicked()
 {
-    // TODO: Handle schema change
-    qDebug() << "Schema changed to:" << schema;
+    QScrollArea *scrollArea = createTablePanel->findChild<QScrollArea*>("columnsScrollArea");
+    if (!scrollArea) return;
+    
+    QWidget *scrollContent = scrollArea->widget();
+    QVBoxLayout *columnsLayout = qobject_cast<QVBoxLayout*>(scrollContent->layout());
+    
+    if (columnsLayout) {
+        // Remove the stretch spacer temporarily
+        QLayoutItem *lastItem = columnsLayout->itemAt(columnsLayout->count() - 1);
+        if (lastItem && lastItem->spacerItem()) {
+            columnsLayout->removeItem(lastItem);
+            delete lastItem;
+        }
+        
+        // Create new column row
+        QWidget *newColumn = createColumnRow("nueva_columna", "string", false);
+        columnsLayout->addWidget(newColumn);
+        
+        // Add stretch spacer back
+        columnsLayout->addStretch();
+        
+        // Animate the appearance of the new column
+        newColumn->setMaximumHeight(0);
+        QPropertyAnimation *animation = new QPropertyAnimation(newColumn, "maximumHeight");
+        animation->setDuration(300);
+        animation->setStartValue(0);
+        animation->setEndValue(150);
+        animation->setEasingCurve(QEasingCurve::OutCubic);
+        animation->start(QAbstractAnimation::DeleteWhenStopped);
+        
+        // Focus on the name input of the new column
+        QTimer::singleShot(300, [newColumn]() {
+            QLineEdit *nameInput = newColumn->findChild<QLineEdit*>();
+            if (nameInput) {
+                nameInput->selectAll();
+                nameInput->setFocus();
+            }
+        });
+    }
+}
+
+void TableEditor::onCancelClicked()
+{
+    hideCreateTablePanel();
+}
+
+void TableEditor::onSaveClicked()
+{
+    QLineEdit *tableNameInput = createTablePanel->findChild<QLineEdit*>("tableNameInput");
+    if (!tableNameInput || tableNameInput->text().trimmed().isEmpty()) {
+        // Show error message
+        QMessageBox::warning(this, "Error", "Por favor ingresa un nombre para la tabla.");
+        return;
+    }
+    
+    QString tableName = tableNameInput->text().trimmed();
+    
+    // Collect column information
+    QScrollArea *scrollArea = createTablePanel->findChild<QScrollArea*>("columnsScrollArea");
+    if (!scrollArea) return;
+    
+    QWidget *scrollContent = scrollArea->widget();
+    QVBoxLayout *columnsLayout = qobject_cast<QVBoxLayout*>(scrollContent->layout());
+    
+    QStringList columns;
+    bool hasPrimaryKey = false;
+    
+    if (columnsLayout) {
+        for (int i = 0; i < columnsLayout->count(); i++) {
+            QLayoutItem *item = columnsLayout->itemAt(i);
+            if (!item || !item->widget()) continue;
+            
+            QWidget *columnRow = item->widget();
+            QLineEdit *nameInput = columnRow->findChild<QLineEdit*>();
+            QComboBox *typeCombo = columnRow->findChild<QComboBox*>();
+            QLineEdit *defaultInput = columnRow->findChild<QLineEdit*>("defaultInput");
+            QPushButton *primaryBtn = columnRow->findChild<QPushButton*>();
+            
+            if (nameInput && typeCombo) {
+                QString columnName = nameInput->text().trimmed();
+                if (columnName.isEmpty()) continue;
+                
+                QString fullType = typeCombo->currentText();
+                QString dataType = fullType.split(" - ").first();
+                QString defaultValue = defaultInput ? defaultInput->text().trimmed() : "";
+                bool isPrimary = primaryBtn ? primaryBtn->isChecked() : false;
+                
+                if (isPrimary) hasPrimaryKey = true;
+                
+                QString columnDef = columnName + " " + dataType;
+                if (isPrimary) columnDef += " PRIMARY KEY";
+                if (!defaultValue.isEmpty()) columnDef += " DEFAULT " + defaultValue;
+                
+                columns.append(columnDef);
+            }
+        }
+    }
+    
+    if (columns.isEmpty()) {
+        QMessageBox::warning(this, "Error", "La tabla debe tener al menos una columna.");
+        return;
+    }
+    
+    if (!hasPrimaryKey) {
+        QMessageBox::warning(this, "Error", "La tabla debe tener al menos una clave primaria.");
+        return;
+    }
+    
+    // Create SQL statement
+    QString sql = QString("CREATE TABLE %1 (\n    %2\n);")
+                      .arg(tableName)
+                      .arg(columns.join(",\n    "));
+    
+    // Show confirmation dialog
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Confirmar creación de tabla");
+    msgBox.setText(QString("¿Crear la tabla '%1'?").arg(tableName));
+    msgBox.setDetailedText(sql);
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setDefaultButton(QMessageBox::Yes);
+    
+    if (msgBox.exec() == QMessageBox::Yes) {
+        // TODO: Execute SQL and create table in database
+        qDebug() << "Creating table with SQL:" << sql;
+        
+        // Hide panel and show success message
+        hideCreateTablePanel();
+        
+        QMessageBox::information(this, "Éxito", 
+                                QString("Tabla '%1' creada exitosamente.").arg(tableName));
+        
+        // Clear form for next use
+        tableNameInput->clear();
+    }
+}
+
+QWidget* TableEditor::createColumnRow(const QString &name, const QString &type, bool isPrimary)
+{
+    QWidget *columnRow = new QWidget();
+    columnRow->setStyleSheet(
+        "QWidget {"
+            "background-color: #F9FAFB;"
+            "border: 1px solid #E5E7EB;"
+            "border-radius: 8px;"
+            "padding: 16px;"
+        "}"
+    );
+    
+    QVBoxLayout *mainLayout = new QVBoxLayout(columnRow);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(12);
+    
+    // Header row with drag handle and delete button
+    QWidget *headerWidget = new QWidget();
+    QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setSpacing(8);
+    
+    QLabel *dragHandle = new QLabel("⋮⋮");
+    dragHandle->setFont(QFont("Inter", 16));
+    dragHandle->setStyleSheet("QLabel { color: #9CA3AF; }");
+    dragHandle->setFixedWidth(24);
+    
+    headerLayout->addWidget(dragHandle);
+    headerLayout->addStretch();
+    
+    // Primary key indicator
+    if (isPrimary) {
+        QLabel *primaryLabel = new QLabel("1️⃣");
+        primaryLabel->setFont(QFont("Inter", 16));
+        primaryLabel->setToolTip("Clave primaria");
+        headerLayout->addWidget(primaryLabel);
+    }
+    
+    // Settings button
+    QPushButton *settingsBtn = new QPushButton("⚙");
+    settingsBtn->setFont(QFont("Inter", 14));
+    settingsBtn->setFixedSize(24, 24);
+    settingsBtn->setStyleSheet(
+        "QPushButton {"
+            "background-color: transparent;"
+            "border: none;"
+            "color: #9CA3AF;"
+        "}"
+        "QPushButton:hover {"
+            "color: #6B7280;"
+        "}"
+    );
+    headerLayout->addWidget(settingsBtn);
+    
+    // Delete button (only for non-primary columns)
+    if (!isPrimary) {
+        QPushButton *deleteBtn = new QPushButton("✕");
+        deleteBtn->setFont(QFont("Inter", 14));
+        deleteBtn->setFixedSize(24, 24);
+        deleteBtn->setStyleSheet(
+            "QPushButton {"
+                "background-color: transparent;"
+                "border: none;"
+                "color: #9CA3AF;"
+            "}"
+            "QPushButton:hover {"
+                "color: #EF4444;"
+            "}"
+        );
+        connect(deleteBtn, &QPushButton::clicked, [columnRow, this]() {
+            columnRow->deleteLater();
+        });
+        headerLayout->addWidget(deleteBtn);
+    }
+    
+    mainLayout->addWidget(headerWidget);
+    
+    // Column configuration row
+    QWidget *configWidget = new QWidget();
+    QHBoxLayout *configLayout = new QHBoxLayout(configWidget);
+    configLayout->setContentsMargins(0, 0, 0, 0);
+    configLayout->setSpacing(12);
+    
+    // Name input
+    QLineEdit *nameInput = new QLineEdit();
+    nameInput->setText(name);
+    nameInput->setPlaceholderText("Nombre");
+    nameInput->setFont(QFont("Inter", 14));
+    nameInput->setStyleSheet(
+        "QLineEdit {"
+            "background-color: #FFFFFF;"
+            "border: 1px solid #D1D5DB;"
+            "border-radius: 6px;"
+            "padding: 8px 12px;"
+            "font-size: 14px;"
+            "color: #111827;"
+        "}"
+        "QLineEdit::placeholder {"
+            "color: #9CA3AF;"
+        "}"
+    );
+    
+    // Type selector
+    QComboBox *typeCombo = new QComboBox();
+    typeCombo->addItems({
+        "int - Claves primarias, edades, IDs",
+        "float - Promedios, notas, precios", 
+        "bool - Estados activos/inactivos",
+        "char[N] - Nombres, descripciones cortas",
+        "string - Direcciones, observaciones",
+        "timestamp - Fechas y horas"
+    });
+    
+    // Set current type
+    QString typeText = type + " - ";
+    for (int i = 0; i < typeCombo->count(); i++) {
+        if (typeCombo->itemText(i).startsWith(typeText)) {
+            typeCombo->setCurrentIndex(i);
+            break;
+        }
+    }
+    
+    typeCombo->setFont(QFont("Inter", 14));
+    typeCombo->setStyleSheet(
+        "QComboBox {"
+            "background-color: #FFFFFF;"
+            "border: 1px solid #D1D5DB;"
+            "border-radius: 6px;"
+            "padding: 8px 12px;"
+            "font-size: 14px;"
+            "color: #111827;"
+        "}"
+        "QComboBox::drop-down {"
+            "border: none;"
+            "width: 20px;"
+        "}"
+        "QComboBox::down-arrow {"
+            "image: none;"
+            "border-left: 4px solid transparent;"
+            "border-right: 4px solid transparent;"
+            "border-top: 4px solid #6B7280;"
+            "margin-right: 8px;"
+        "}"
+        "QComboBox QAbstractItemView {"
+            "background-color: #FFFFFF;"
+            "border: 1px solid #D1D5DB;"
+            "color: #111827;"
+            "selection-background-color: #EFF6FF;"
+        "}"
+    );
+    
+    // Default value input
+    QLineEdit *defaultInput = new QLineEdit();
+    if (name == "created_at") {
+        defaultInput->setText("now()");
+    }
+    defaultInput->setPlaceholderText("Valor por defecto");
+    defaultInput->setFont(QFont("Inter", 14));
+    defaultInput->setStyleSheet(
+        "QLineEdit {"
+            "background-color: #FFFFFF;"
+            "border: 1px solid #D1D5DB;"
+            "border-radius: 6px;"
+            "padding: 8px 12px;"
+            "font-size: 14px;"
+            "color: #111827;"
+        "}"
+        "QLineEdit::placeholder {"
+            "color: #9CA3AF;"
+        "}"
+    );
+    
+    // Primary checkbox (checked for ID)
+    QPushButton *primaryBtn = new QPushButton();
+    primaryBtn->setFixedSize(24, 24);
+    primaryBtn->setCheckable(true);
+    primaryBtn->setChecked(isPrimary);
+    
+    QString bgColor = isPrimary ? "#10B981" : "#FFFFFF";
+    QString borderColor = isPrimary ? "#10B981" : "#D1D5DB";
+    
+    primaryBtn->setStyleSheet(
+        "QPushButton {"
+            "background-color: " + bgColor + ";"
+            "border: 2px solid " + borderColor + ";"
+            "border-radius: 4px;"
+        "}"
+        "QPushButton:checked {"
+            "background-color: #10B981;"
+            "border-color: #10B981;"
+        "}"
+        "QPushButton:checked::after {"
+            "content: '✓';"
+            "color: white;"
+            "font-weight: bold;"
+        "}"
+    );
+    
+    configLayout->addWidget(nameInput, 2);
+    configLayout->addWidget(typeCombo, 3);
+    configLayout->addWidget(defaultInput, 2);
+    configLayout->addWidget(primaryBtn, 0);
+    
+    mainLayout->addWidget(configWidget);
+    
+    return columnRow;
+}
+
+void TableEditor::showCreateTablePanel()
+{
+    if (!createTablePanel) return;
+    
+    createTablePanel->setVisible(true);
+    createTablePanel->raise();
+    
+    // Animation to slide in from right
+    QPropertyAnimation *animation = new QPropertyAnimation(createTablePanel, "geometry");
+    animation->setDuration(400);
+    animation->setEasingCurve(QEasingCurve::OutCubic);
+    
+    QRect startRect = createTablePanel->geometry();
+    startRect.moveLeft(this->width());
+    createTablePanel->setGeometry(startRect);
+    
+    QRect endRect(this->width() - 450, 0, 450, this->height());
+    animation->setStartValue(startRect);
+    animation->setEndValue(endRect);
+    
+    connect(animation, &QPropertyAnimation::finished, [this]() {
+        // Focus on table name input after animation
+        QLineEdit *tableNameInput = createTablePanel->findChild<QLineEdit*>("tableNameInput");
+        if (tableNameInput) {
+            tableNameInput->setFocus();
+        }
+    });
+    
+    animation->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void TableEditor::hideCreateTablePanel()
+{
+    if (!createTablePanel) return;
+    
+    // Animation to slide out to right
+    QPropertyAnimation *animation = new QPropertyAnimation(createTablePanel, "geometry");
+    animation->setDuration(400);
+    animation->setEasingCurve(QEasingCurve::OutCubic);
+    
+    QRect startRect = createTablePanel->geometry();
+    QRect endRect = startRect;
+    endRect.moveLeft(this->width());
+    
+    animation->setStartValue(startRect);
+    animation->setEndValue(endRect);
+    
+    connect(animation, &QPropertyAnimation::finished, [this]() {
+        createTablePanel->setVisible(false);
+    });
+    
+    animation->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void TableEditor::onDeleteColumnClicked()
+{
+    // This function is called from the delete button in createColumnRow
+    // The actual deletion is handled in the lambda in createColumnRow
+    qDebug() << "Column delete requested";
 }

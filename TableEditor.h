@@ -17,6 +17,28 @@
 #include <QHeaderView>
 #include <QFont>
 #include <QGraphicsDropShadowEffect>
+#include <QMouseEvent>
+#include <QPropertyAnimation>
+#include <QParallelAnimationGroup>
+
+// Clickable widget class
+class ClickableWidget : public QWidget
+{
+    Q_OBJECT
+public:
+    explicit ClickableWidget(QWidget *parent = nullptr) : QWidget(parent) {}
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override {
+        if (event->button() == Qt::LeftButton) {
+            emit clicked();
+        }
+        QWidget::mousePressEvent(event);
+    }
+
+signals:
+    void clicked();
+};
 
 class TableEditor : public QWidget
 {
@@ -28,7 +50,10 @@ public:
 
 private slots:
     void onNewTableClicked();
-    void onSchemaChanged(const QString &schema);
+    void onAddColumnClicked();
+    void onCancelClicked();
+    void onSaveClicked();
+    void onDeleteColumnClicked();
 
 private:
     void setupUI();
@@ -37,6 +62,10 @@ private:
     void createToolbar();
     void createTableList();
     void createMainTableArea();
+    void createTableCreationPanel();
+    void showCreateTablePanel();
+    void hideCreateTablePanel();
+    QWidget* createColumnRow(const QString &name = "", const QString &type = "int", bool isPrimary = false);
     void styleComponents();
     void updateLeftPanelTheme(bool isDark);
     void updateRightPanelTheme(bool isDark);
@@ -53,9 +82,6 @@ private:
     // Left Panel
     QWidget *leftPanel;
     QVBoxLayout *leftPanelLayout;
-    QWidget *schemaSection;
-    QLabel *schemaLabel;
-    QComboBox *schemaComboBox;
     QPushButton *newTableBtn;
     QWidget *tableListSection;
     QLabel *tableListLabel;
@@ -73,13 +99,22 @@ private:
     QWidget *toolbar;
     QHBoxLayout *toolbarLayout;
     QLabel *toolbarTitle;
-    QPushButton *createTableBtn;
     
     // Main content area
     QWidget *mainContentArea;
     QVBoxLayout *mainContentLayout;
-    QLabel *emptyStateTitle;
-    QLabel *emptyStateDesc;
+    ClickableWidget *createTableCard;
+    
+    // Create table panel
+    QWidget *createTablePanel;
+    QVBoxLayout *createTablePanelLayout;
+    QLineEdit *tableNameInput;
+    QWidget *columnsArea;
+    QVBoxLayout *columnsLayout;
+    QPushButton *addColumnBtn;
+    QPushButton *cancelBtn;
+    QPushButton *saveBtn;
+    QPropertyAnimation *panelAnimation;
     
     // Theme variables
     bool isDarkTheme;
