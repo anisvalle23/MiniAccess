@@ -30,6 +30,8 @@ set(PROJECT_SOURCES
         ThemePopover.h
         TableEditor.cpp
         TableEditor.h
+        TableView.cpp
+        TableView.h
         mainwindow.ui
 )
 

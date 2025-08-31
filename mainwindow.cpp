@@ -65,105 +65,67 @@ void MainWindow::setupUI()
 void MainWindow::createHeader()
 {
     headerWidget = new QWidget();
-    headerWidget->setFixedHeight(68);
+    headerWidget->setFixedHeight(40); // Mucho más pequeño (era 68)
     headerWidget->setStyleSheet(
         "QWidget {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-                "stop:0 #FFFFFF, stop:1 #FEFEFE);"
+            "background-color: #FFFFFF;"
             "border-bottom: 1px solid #E5E7EB;"
-            "border-bottom-color: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
-                "stop:0 #E5E7EB, stop:0.5 #D1D5DB, stop:1 #E5E7EB);"
         "}"
     );
     
     headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(32, 0, 32, 0);
-    headerLayout->setSpacing(20);
+    headerLayout->setContentsMargins(16, 8, 16, 8); // Márgenes más pequeños
+    headerLayout->setSpacing(12); // Espaciado más pequeño
     
-    // Logo de base de datos (izquierda)
-    QLabel *dbLogoLabel = new QLabel("🗄");
-    dbLogoLabel->setFont(QFont("Inter", 20, QFont::Medium));
-    dbLogoLabel->setStyleSheet("QLabel { color: #A4373A; }");
-    headerLayout->addWidget(dbLogoLabel);
+    // "MiniAccess" en la esquina izquierda
+    QLabel *appNameLabel = new QLabel("MiniAccess");
+    appNameLabel->setFont(QFont("Inter", 14, QFont::Bold)); // Fuente más pequeña
+    appNameLabel->setStyleSheet("QLabel { color: #A4373A; }");
+    headerLayout->addWidget(appNameLabel);
     
-    // Línea diagonal separadora
-    QLabel *separatorLabel = new QLabel("/");
-    separatorLabel->setFont(QFont("Inter", 18, QFont::Light));
-    separatorLabel->setStyleSheet("QLabel { color: #D1D5DB; margin: 0 4px; }");
-    headerLayout->addWidget(separatorLabel);
-    
-    // Icono de proyecto
-    QLabel *projectIconLabel = new QLabel("📁");
-    projectIconLabel->setFont(QFont("Inter", 18));
-    projectIconLabel->setStyleSheet("QLabel { color: #6B7280; }");
-    headerLayout->addWidget(projectIconLabel);
-    
-    // Nombre del proyecto con dropdown
-    QWidget *projectWidget = new QWidget();
-    QHBoxLayout *projectLayout = new QHBoxLayout(projectWidget);
-    projectLayout->setContentsMargins(0, 0, 0, 0);
-    projectLayout->setSpacing(8);
-    
-    projectNameLabel = new QLabel("proyecto1");
-    projectNameLabel->setFont(QFont("Inter", 17, QFont::DemiBold));
-    projectNameLabel->setStyleSheet("QLabel { color: #1F2937; letter-spacing: -0.5px; }");
-    
-    projectDropdownBtn = new QPushButton("⌄");
-    projectDropdownBtn->setFixedSize(24, 24);
-    projectDropdownBtn->setStyleSheet(
-        "QPushButton {"
-            "background-color: transparent;"
+    // Separador línea vertical sutil
+    QFrame *separator = new QFrame();
+    separator->setFrameShape(QFrame::VLine);
+    separator->setFrameShadow(QFrame::Sunken);
+    separator->setStyleSheet(
+        "QFrame {"
+            "color: #E5E7EB;"
             "border: none;"
-            "color: #9CA3AF;"
-            "font-size: 16px;"
-            "border-radius: 6px;"
-            "font-weight: normal;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: rgba(164, 55, 58, 0.1);"
-            "color: #A4373A;"
-            "transform: scale(1.1);"
-        "}"
-        "QPushButton:pressed {"
-            "background-color: rgba(164, 55, 58, 0.15);"
-            "transform: scale(0.95);"
+            "background-color: #E5E7EB;"
+            "max-width: 1px;"
         "}"
     );
+    headerLayout->addWidget(separator);
     
-    projectLayout->addWidget(projectNameLabel);
-    projectLayout->addWidget(projectDropdownBtn);
-    headerLayout->addWidget(projectWidget);
+    // Nombre del proyecto
+    projectNameLabel = new QLabel("proyecto1");
+    projectNameLabel->setFont(QFont("Inter", 13, QFont::Medium)); // Más pequeño
+    projectNameLabel->setStyleSheet("QLabel { color: #374151; }");
+    headerLayout->addWidget(projectNameLabel);
     
-    // Espaciador flexible
+    // Espaciador flexible para empujar todo a la izquierda
     headerLayout->addStretch();
     
-    // Botón de configuraciones (copiado de CreateProject)
+    // Botón de configuraciones más pequeño
     settingsBtn = new QPushButton();
-    settingsBtn->setFixedSize(40, 40);
+    settingsBtn->setFixedSize(28, 28); // Más pequeño (era 40x40)
     settingsBtn->setText("⚙");
     settingsBtn->setStyleSheet(
         "QPushButton {"
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-                "stop:0 #FFFFFF, stop:1 #F9FAFB);"
-        "    border: 1px solid #E5E7EB;"
-        "    color: #A4373A;"
-        "    font-size: 18px;"
-        "    font-weight: 500;"
-        "    border-radius: 20px;"
-        "    padding: 0;"
+            "background-color: #F9FAFB;"
+            "border: 1px solid #E5E7EB;"
+            "color: #6B7280;"
+            "font-size: 14px;" // Icono más pequeño
+            "border-radius: 14px;" // Radio ajustado al nuevo tamaño
+            "padding: 0;"
         "}"
         "QPushButton:hover {"
-        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-                "stop:0 #FEFEFE, stop:1 rgba(164, 55, 58, 0.05));"
-        "    border: 1px solid #A4373A;"
-        "    transform: translateY(-1px);"
-        "    box-shadow: 0 4px 12px rgba(164, 55, 58, 0.15);"
+            "background-color: #F3F4F6;"
+            "border: 1px solid #D1D5DB;"
+            "color: #A4373A;"
         "}"
         "QPushButton:pressed {"
-        "    background: rgba(164, 55, 58, 0.1);"
-        "    border: 1px solid #A4373A;"
-        "    transform: translateY(0px);"
-        "    box-shadow: 0 2px 4px rgba(164, 55, 58, 0.2);"
+            "background-color: #E5E7EB;"
         "}"
     );
     
@@ -179,13 +141,13 @@ void MainWindow::createSidebar()
 {
     // Sidebar overlay container (positioned absolutely)
     sidebarOverlay = new QWidget(centralWidget);
-    sidebarOverlay->setGeometry(0, 68, 72, 750 - 68); // Start collapsed
+    sidebarOverlay->setGeometry(0, 40, 72, 750 - 40); // Iniciar después del header
     sidebarOverlay->setStyleSheet("background-color: transparent;");
     sidebarOverlay->raise(); // Ensure it's above main content
     
     // Actual sidebar widget
     sidebarWidget = new QWidget(sidebarOverlay);
-    sidebarWidget->setFixedSize(72, 750 - 68);
+    sidebarWidget->setFixedSize(72, 750 - 40); // Tamaño sin cubrir header inicialmente
     sidebarWidget->setStyleSheet(
         "QWidget {"
             "background: #A4373A;"  // Burgundy background
@@ -206,7 +168,7 @@ void MainWindow::createSidebar()
     sidebarWidget->installEventFilter(this);
     
     sidebarLayout = new QVBoxLayout(sidebarWidget);
-    sidebarLayout->setContentsMargins(12, 16, 12, 16);
+    sidebarLayout->setContentsMargins(12, 0, 12, 16); // Sin margen superior ya que el widget está posicionado correctamente
     sidebarLayout->setSpacing(8);
     
     // Sidebar items
@@ -311,7 +273,7 @@ void MainWindow::createMainContent()
     );
     
     mainContainerLayout = new QVBoxLayout(mainContainer);
-    mainContainerLayout->setContentsMargins(120, 0, 0, 0); // Left margin for sidebar, no top margin
+    mainContainerLayout->setContentsMargins(72, 0, 0, 0); // Left margin ajustado al ancho del sidebar (72px)
     mainContainerLayout->setSpacing(0);
     
     // Create stacked widget for different views
@@ -571,7 +533,7 @@ void MainWindow::onSidebarEnter()
     if (sidebarExpanded) return;
     
     // Expand sidebar width
-    sidebarOverlay->setGeometry(0, 68, 240, 750 - 68);
+    sidebarOverlay->setGeometry(0, 40, 240, 750 - 40); // Ajustado para header de 40px
     sidebarWidget->setFixedWidth(240);
     sidebarShadowEffect->setEnabled(true);
     
@@ -588,7 +550,7 @@ void MainWindow::onSidebarLeave()
     if (!sidebarExpanded) return;
     
     // Collapse sidebar width
-    sidebarOverlay->setGeometry(0, 68, 72, 750 - 68);
+    sidebarOverlay->setGeometry(0, 40, 72, 750 - 40); // Ajustado para header de 40px
     sidebarWidget->setFixedWidth(72);
     sidebarShadowEffect->setEnabled(false);
     

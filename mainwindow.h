@@ -67,11 +67,10 @@ private:
     QWidget *centralWidget;
     QVBoxLayout *mainLayout;
     
-    // Header (fixed)
+        // Header components
     QWidget *headerWidget;
     QHBoxLayout *headerLayout;
     QLabel *projectNameLabel;
-    QPushButton *projectDropdownBtn;
     QPushButton *settingsBtn;
     QPropertyAnimation *settingsRotationAnimation;
     

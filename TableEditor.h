@@ -20,6 +20,7 @@
 #include <QMouseEvent>
 #include <QPropertyAnimation>
 #include <QParallelAnimationGroup>
+#include "TableView.h"
 
 // Clickable widget class
 class ClickableWidget : public QWidget
@@ -50,7 +51,6 @@ public:
 
 private slots:
     void onNewTableClicked();
-    void onAddColumnClicked();
     void onCancelClicked();
     void onSaveClicked();
     void onDeleteColumnClicked();
@@ -65,7 +65,8 @@ private:
     void createTableCreationPanel();
     void showCreateTablePanel();
     void hideCreateTablePanel();
-    QWidget* createColumnRow(const QString &name = "", const QString &type = "int", bool isPrimary = false);
+    void showTableView(const QString &tableName);
+    void addTableToSidebar(const QString &tableName);
     void styleComponents();
     void updateLeftPanelTheme(bool isDark);
     void updateRightPanelTheme(bool isDark);
@@ -89,7 +90,6 @@ private:
     QTreeWidget *tableList;
     QLineEdit *searchBox;
     QPushButton *filterBtn;
-    QTableWidget *tableView;
     
     // Right Panel  
     QWidget *rightPanel;
@@ -109,9 +109,6 @@ private:
     QWidget *createTablePanel;
     QVBoxLayout *createTablePanelLayout;
     QLineEdit *tableNameInput;
-    QWidget *columnsArea;
-    QVBoxLayout *columnsLayout;
-    QPushButton *addColumnBtn;
     QPushButton *cancelBtn;
     QPushButton *saveBtn;
     QPropertyAnimation *panelAnimation;
