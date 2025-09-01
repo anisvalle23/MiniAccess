@@ -2,6 +2,7 @@
 #include "ThemeManager.h"
 #include "ThemeTokens.h"
 #include "mainwindow.h"
+#include "projectpathsqt.h"
 #include <QDebug>
 
 CreateProject::CreateProject(QWidget *parent)
@@ -230,7 +231,7 @@ void CreateProject::createMainContent()
     // Agregar título y toolbar al contenido principal
     contentLayout->addWidget(titleLabel);
     contentLayout->addWidget(toolbarWidget);
-    
+
     // Espaciador para el resto del contenido (donde irán los proyectos)
     contentLayout->addStretch();
     
@@ -942,7 +943,15 @@ void CreateProject::onCreateProjectConfirmed()
     
     // Crear el proyecto
     qDebug() << "Creando proyecto:" << projectName;
-    
+    ProjectStorageQt storage(projectName);
+    auto pathsOpt = storage.create();
+    if (!pathsOpt.has_value()) {
+        QMessageBox::critical(this, "MiniAccess",
+                              "No se encontró la raíz del repositorio.\n"
+                              "Asegúrate de tener un CMakeLists.txt o .miniaccess_root en la raíz.");
+        return;
+    }
+
     // Cerrar el modal primero
     hideNewProjectModal();
     
