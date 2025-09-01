@@ -91,6 +91,11 @@ void CreateProject::setupUI()
         styleComponents();
         qDebug() << "DEBUG: styleComponents() completado";
         
+        qDebug() << "DEBUG: Cargando y mostrando proyectos...";
+        // Cargar y mostrar proyectos existentes
+        loadAndDisplayProjects();
+        qDebug() << "DEBUG: Proyectos cargados y mostrados";
+        
     } catch (const std::exception& e) {
         qDebug() << "DEBUG: Excepción en setupUI():" << e.what();
     } catch (...) {
@@ -232,13 +237,17 @@ void CreateProject::createMainContent()
     contentLayout->addWidget(titleLabel);
     contentLayout->addWidget(toolbarWidget);
 
-    // Espaciador para el resto del contenido (donde irán los proyectos)
-    contentLayout->addStretch();
+    // Crear y agregar área de proyectos
+    createProjectsArea();
+    contentLayout->addWidget(projectsAreaWidget);
     
     // Conectar señales
     connect(newProjectButton, &QPushButton::clicked, this, &CreateProject::onNewProjectClicked);
     connect(gridViewButton, &QPushButton::clicked, this, &CreateProject::onGridViewClicked);
     connect(listViewButton, &QPushButton::clicked, this, &CreateProject::onListViewClicked);
+    connect(searchBar, &QLineEdit::textChanged, this, [this]() {
+        loadAndDisplayProjects(); // Recargar proyectos con filtro de búsqueda
+    });
 }
 
 void CreateProject::styleComponents()
@@ -505,6 +514,7 @@ void CreateProject::onGridViewClicked()
     if (!isGridView) {
         isGridView = true;
         styleComponents(); // Actualizar estilos para resaltar el botón activo
+        loadAndDisplayProjects(); // Recargar proyectos en vista de cuadrícula
         qDebug() << "Vista en cuadrícula activada";
     }
 }
@@ -514,6 +524,7 @@ void CreateProject::onListViewClicked()
     if (isGridView) {
         isGridView = false;
         styleComponents(); // Actualizar estilos para resaltar el botón activo
+        loadAndDisplayProjects(); // Recargar proyectos en vista de lista
         qDebug() << "Vista en lista activada";
     }
 }
@@ -955,6 +966,9 @@ void CreateProject::onCreateProjectConfirmed()
     // Cerrar el modal primero
     hideNewProjectModal();
     
+    // Recargar la lista de proyectos para mostrar el nuevo
+    loadAndDisplayProjects();
+    
     // Navegar a la vista del proyecto (MainWindow)
     navigateToProjectView(projectName);
     
@@ -1096,4 +1110,405 @@ void CreateProject::styleModalComponents()
             "}"
         ).arg(accentColor, hoverColor, pressedColor));
     }
+}
+
+void CreateProject::createProjectsArea()
+{
+    qDebug() << "DEBUG: Creando área de proyectos";
+    
+    // Widget contenedor principal del área de proyectos
+    projectsAreaWidget = new QWidget();
+    projectsAreaWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    
+    projectsAreaLayout = new QVBoxLayout(projectsAreaWidget);
+    projectsAreaLayout->setContentsMargins(0, 20, 0, 0);
+    projectsAreaLayout->setSpacing(0);
+    
+    // Scroll area para manejar muchos proyectos
+    projectsScrollArea = new QScrollArea();
+    projectsScrollArea->setWidgetResizable(true);
+    projectsScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    projectsScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    projectsScrollArea->setFrameShape(QFrame::NoFrame);
+    
+    // Contenedor para los proyectos
+    projectsContainer = new QWidget();
+    projectsContainer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::MinimumExpanding);
+    
+    // Los layouts se crearán dinámicamente según la vista seleccionada
+    projectsGridLayout = nullptr;
+    projectsListLayout = nullptr;
+    
+    projectsScrollArea->setWidget(projectsContainer);
+    projectsAreaLayout->addWidget(projectsScrollArea);
+    
+    qDebug() << "DEBUG: Área de proyectos creada correctamente";
+}
+
+void CreateProject::loadAndDisplayProjects()
+{
+    qDebug() << "DEBUG: Cargando y mostrando proyectos...";
+    
+    try {
+        // Limpiar visualización anterior
+        clearProjectsDisplay();
+        
+        // Obtener filtro de búsqueda
+        QString searchFilter = searchBar ? searchBar->text().trimmed().toLower() : QString();
+        qDebug() << "DEBUG: Filtro de búsqueda:" << searchFilter;
+        
+        // Usar ProjectStorageQt para obtener proyectos
+        ProjectStorageQt storage("");
+        auto projects = storage.listExistingProjects();
+        
+        qDebug() << "DEBUG: Proyectos encontrados:" << projects.size();
+        
+        if (projects.isEmpty()) {
+            // Mostrar mensaje de "No hay proyectos"
+            QLabel *emptyLabel = new QLabel();
+            emptyLabel->setText("📁\n\nNo hay proyectos aún\n\nCrea tu primer proyecto haciendo clic en \"Nuevo Proyecto\"");
+            emptyLabel->setAlignment(Qt::AlignCenter);
+            emptyLabel->setStyleSheet(
+                "QLabel {"
+                "    color: #6B7280;"
+                "    font-size: 16px;"
+                "    line-height: 1.5;"
+                "    margin: 60px;"
+                "}"
+            );
+            
+            if (isGridView) {
+                if (!projectsGridLayout) {
+                    projectsGridLayout = new QGridLayout(projectsContainer);
+                    projectsGridLayout->setContentsMargins(0, 0, 0, 0);
+                    projectsGridLayout->setSpacing(24);
+                }
+                projectsGridLayout->addWidget(emptyLabel, 0, 0, Qt::AlignCenter);
+            } else {
+                if (!projectsListLayout) {
+                    projectsListLayout = new QVBoxLayout(projectsContainer);
+                    projectsListLayout->setContentsMargins(0, 0, 0, 0);
+                    projectsListLayout->setSpacing(16);
+                }
+                projectsListLayout->addWidget(emptyLabel);
+            }
+            return;
+        }
+        
+        // Filtrar proyectos si hay búsqueda
+        QList<ProjectInfoQt> filteredProjects;
+        for (const auto &project : projects) {
+            if (searchFilter.isEmpty() || 
+                project.name.toLower().contains(searchFilter)) {
+                filteredProjects.append(project);
+            }
+        }
+        
+        qDebug() << "DEBUG: Proyectos después del filtro:" << filteredProjects.size();
+        
+        if (filteredProjects.isEmpty()) {
+            // Mostrar mensaje de "No se encontraron proyectos"
+            QLabel *noResultsLabel = new QLabel();
+            noResultsLabel->setText("🔍\n\nNo se encontraron proyectos\n\nTrata con otros términos de búsqueda");
+            noResultsLabel->setAlignment(Qt::AlignCenter);
+            noResultsLabel->setStyleSheet(
+                "QLabel {"
+                "    color: #6B7280;"
+                "    font-size: 16px;"
+                "    line-height: 1.5;"
+                "    margin: 60px;"
+                "}"
+            );
+            
+            if (isGridView) {
+                if (!projectsGridLayout) {
+                    projectsGridLayout = new QGridLayout(projectsContainer);
+                    projectsGridLayout->setContentsMargins(0, 0, 0, 0);
+                    projectsGridLayout->setSpacing(24);
+                }
+                projectsGridLayout->addWidget(noResultsLabel, 0, 0, Qt::AlignCenter);
+            } else {
+                if (!projectsListLayout) {
+                    projectsListLayout = new QVBoxLayout(projectsContainer);
+                    projectsListLayout->setContentsMargins(0, 0, 0, 0);
+                    projectsListLayout->setSpacing(16);
+                }
+                projectsListLayout->addWidget(noResultsLabel);
+            }
+            return;
+        }
+        
+        // Mostrar proyectos según la vista seleccionada
+        if (isGridView) {
+            // Vista en cuadrícula
+            if (!projectsGridLayout) {
+                projectsGridLayout = new QGridLayout(projectsContainer);
+                projectsGridLayout->setContentsMargins(0, 0, 0, 0);
+                projectsGridLayout->setSpacing(24);
+            }
+            
+            int row = 0, col = 0;
+            const int maxColumns = 3; // 3 proyectos por fila
+            
+            for (const auto &project : filteredProjects) {
+                QString lastModified = project.modified.toString("dd/MM/yyyy");
+                createGridProjectCard(project.name, lastModified, project.tableCount);
+                
+                col++;
+                if (col >= maxColumns) {
+                    col = 0;
+                    row++;
+                }
+            }
+            
+            // Agregar espaciador al final
+            projectsGridLayout->setRowStretch(row + 1, 1);
+            
+        } else {
+            // Vista en lista
+            if (!projectsListLayout) {
+                projectsListLayout = new QVBoxLayout(projectsContainer);
+                projectsListLayout->setContentsMargins(0, 0, 0, 0);
+                projectsListLayout->setSpacing(16);
+            }
+            
+            for (const auto &project : filteredProjects) {
+                QString lastModified = project.modified.toString("dd/MM/yyyy");
+                createListProjectItem(project.name, lastModified, project.tableCount);
+            }
+            
+            // Agregar espaciador al final
+            projectsListLayout->addStretch();
+        }
+        
+        qDebug() << "DEBUG: Proyectos mostrados correctamente";
+        
+    } catch (const std::exception& e) {
+        qDebug() << "ERROR: Excepción en loadAndDisplayProjects:" << e.what();
+    } catch (...) {
+        qDebug() << "ERROR: Excepción desconocida en loadAndDisplayProjects";
+    }
+}
+
+void CreateProject::createGridProjectCard(const QString &projectName, const QString &lastModified, int tableCount)
+{
+    if (!projectsGridLayout) return;
+    
+    // Card contenedor
+    QWidget *projectCard = new QWidget();
+    projectCard->setFixedSize(320, 200);
+    projectCard->setCursor(Qt::PointingHandCursor);
+    
+    // Layout del card
+    QVBoxLayout *cardLayout = new QVBoxLayout(projectCard);
+    cardLayout->setContentsMargins(24, 24, 24, 24);
+    cardLayout->setSpacing(16);
+    
+    // Header del card con ícono
+    QHBoxLayout *headerLayout = new QHBoxLayout();
+    headerLayout->setSpacing(12);
+    
+    QLabel *iconLabel = new QLabel("🗂️");
+    iconLabel->setFont(QFont("System", 32));
+    iconLabel->setFixedSize(48, 48);
+    iconLabel->setAlignment(Qt::AlignCenter);
+    
+    QVBoxLayout *infoLayout = new QVBoxLayout();
+    infoLayout->setSpacing(4);
+    
+    QLabel *nameLabel = new QLabel(projectName);
+    nameLabel->setFont(QFont("Inter", 16, QFont::Bold));
+    nameLabel->setWordWrap(true);
+    
+    QString tableText = tableCount == 1 ? "1 tabla" : QString("%1 tablas").arg(tableCount);
+    QLabel *tableLabel = new QLabel(tableText);
+    tableLabel->setFont(QFont("Inter", 13));
+    
+    infoLayout->addWidget(nameLabel);
+    infoLayout->addWidget(tableLabel);
+    
+    headerLayout->addWidget(iconLabel);
+    headerLayout->addLayout(infoLayout);
+    headerLayout->addStretch();
+    
+    // Fecha de modificación
+    QLabel *dateLabel = new QLabel(QString("Actualizado %1").arg(lastModified));
+    dateLabel->setFont(QFont("Inter", 12));
+    
+    cardLayout->addLayout(headerLayout);
+    cardLayout->addStretch();
+    cardLayout->addWidget(dateLabel);
+    
+    // Aplicar estilos del card
+    bool isDark = ThemeManager::instance().isDark();
+    QString cardBackground = isDark ? "#2A2A2A" : "#FFFFFF";
+    QString borderColor = isDark ? "#404040" : "#E5E7EB";
+    QString textPrimary = isDark ? "#FFFFFF" : "#111827";
+    QString textSecondary = isDark ? "#A0A0A0" : "#6B7280";
+    
+    projectCard->setStyleSheet(QString(
+        "QWidget {"
+        "    background-color: %1;"
+        "    border: 1px solid %2;"
+        "    border-radius: 16px;"
+        "}"
+        "QWidget:hover {"
+        "    border-color: #A4373A;"
+        "    background-color: %3;"
+        "}"
+    ).arg(cardBackground, borderColor, isDark ? "#333333" : "#F9FAFB"));
+    
+    nameLabel->setStyleSheet(QString("color: %1;").arg(textPrimary));
+    tableLabel->setStyleSheet(QString("color: %1;").arg(textSecondary));
+    dateLabel->setStyleSheet(QString("color: %1;").arg(textSecondary));
+    
+    // Configurar propiedad del proyecto para eventFilter
+    projectCard->setProperty("projectName", projectName);
+    
+    // Conectar clic del card usando eventFilter
+    projectCard->installEventFilter(this);
+    
+    // Agregar sombra
+    QGraphicsDropShadowEffect *shadow = new QGraphicsDropShadowEffect();
+    shadow->setBlurRadius(12);
+    shadow->setXOffset(0);
+    shadow->setYOffset(4);
+    shadow->setColor(QColor(0, 0, 0, isDark ? 80 : 25));
+    projectCard->setGraphicsEffect(shadow);
+    
+    // Calcular posición en la grilla
+    int currentItems = projectsGridLayout->count();
+    int row = currentItems / 3;
+    int col = currentItems % 3;
+    
+    projectsGridLayout->addWidget(projectCard, row, col);
+}
+
+void CreateProject::createListProjectItem(const QString &projectName, const QString &lastModified, int tableCount)
+{
+    if (!projectsListLayout) return;
+    
+    // Item contenedor
+    QWidget *projectItem = new QWidget();
+    projectItem->setFixedHeight(80);
+    projectItem->setCursor(Qt::PointingHandCursor);
+    
+    // Layout horizontal del item
+    QHBoxLayout *itemLayout = new QHBoxLayout(projectItem);
+    itemLayout->setContentsMargins(20, 16, 20, 16);
+    itemLayout->setSpacing(16);
+    
+    // Ícono del proyecto
+    QLabel *iconLabel = new QLabel("🗂️");
+    iconLabel->setFont(QFont("System", 24));
+    iconLabel->setFixedSize(40, 40);
+    iconLabel->setAlignment(Qt::AlignCenter);
+    
+    // Información del proyecto
+    QVBoxLayout *infoLayout = new QVBoxLayout();
+    infoLayout->setSpacing(4);
+    
+    QLabel *nameLabel = new QLabel(projectName);
+    nameLabel->setFont(QFont("Inter", 15, QFont::Medium));
+    
+    QString tableText = tableCount == 1 ? "1 tabla" : QString("%1 tablas").arg(tableCount);
+    QLabel *detailsLabel = new QLabel(QString("%1 • Actualizado %2").arg(tableText, lastModified));
+    detailsLabel->setFont(QFont("Inter", 13));
+    
+    infoLayout->addWidget(nameLabel);
+    infoLayout->addWidget(detailsLabel);
+    
+    // Espaciador
+    QWidget *spacer = new QWidget();
+    spacer->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    
+    // Ícono de flecha
+    QLabel *arrowLabel = new QLabel("→");
+    arrowLabel->setFont(QFont("Inter", 16));
+    arrowLabel->setFixedSize(24, 24);
+    arrowLabel->setAlignment(Qt::AlignCenter);
+    
+    itemLayout->addWidget(iconLabel);
+    itemLayout->addLayout(infoLayout);
+    itemLayout->addWidget(spacer);
+    itemLayout->addWidget(arrowLabel);
+    
+    // Aplicar estilos del item
+    bool isDark = ThemeManager::instance().isDark();
+    QString itemBackground = isDark ? "#2A2A2A" : "#FFFFFF";
+    QString borderColor = isDark ? "#404040" : "#E5E7EB";
+    QString textPrimary = isDark ? "#FFFFFF" : "#111827";
+    QString textSecondary = isDark ? "#A0A0A0" : "#6B7280";
+    
+    projectItem->setStyleSheet(QString(
+        "QWidget {"
+        "    background-color: %1;"
+        "    border: 1px solid %2;"
+        "    border-radius: 12px;"
+        "}"
+        "QWidget:hover {"
+        "    border-color: #A4373A;"
+        "    background-color: %3;"
+        "}"
+    ).arg(itemBackground, borderColor, isDark ? "#333333" : "#F9FAFB"));
+    
+    nameLabel->setStyleSheet(QString("color: %1;").arg(textPrimary));
+    detailsLabel->setStyleSheet(QString("color: %1;").arg(textSecondary));
+    arrowLabel->setStyleSheet(QString("color: %1;").arg(textSecondary));
+    
+    // Configurar propiedad del proyecto para eventFilter
+    projectItem->setProperty("projectName", projectName);
+    
+    // Conectar clic del item usando eventFilter
+    projectItem->installEventFilter(this);
+    
+    projectsListLayout->addWidget(projectItem);
+}
+
+void CreateProject::clearProjectsDisplay()
+{
+    if (projectsContainer && projectsContainer->layout()) {
+        QLayoutItem *item;
+        while ((item = projectsContainer->layout()->takeAt(0)) != nullptr) {
+            if (item->widget()) {
+                item->widget()->deleteLater();
+            }
+            delete item;
+        }
+        delete projectsContainer->layout();
+        
+        // Resetear layouts
+        projectsGridLayout = nullptr;
+        projectsListLayout = nullptr;
+    }
+}
+
+void CreateProject::onProjectCardClicked(const QString &projectName)
+{
+    qDebug() << "Proyecto seleccionado:" << projectName;
+    
+    // Navegar a la vista del proyecto
+    navigateToProjectView(projectName);
+}
+
+bool CreateProject::eventFilter(QObject *obj, QEvent *event)
+{
+    if (event->type() == QEvent::MouseButtonPress) {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+        if (mouseEvent->button() == Qt::LeftButton) {
+            // Buscar el project name en las propiedades del widget
+            QWidget *widget = qobject_cast<QWidget*>(obj);
+            if (widget) {
+                QString projectName = widget->property("projectName").toString();
+                if (!projectName.isEmpty()) {
+                    qDebug() << "Clic en proyecto:" << projectName;
+                    onProjectCardClicked(projectName);
+                    return true; // Evento manejado
+                }
+            }
+        }
+    }
+    
+    // Llamar al eventFilter padre para otros eventos
+    return QMainWindow::eventFilter(obj, event);
 }

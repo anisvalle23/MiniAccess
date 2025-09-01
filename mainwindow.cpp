@@ -171,9 +171,9 @@ void MainWindow::createSidebar()
     sidebarLayout->setContentsMargins(12, 0, 12, 16); // Sin margen superior ya que el widget está posicionado correctamente
     sidebarLayout->setSpacing(8);
     
-    // Sidebar items
-    QStringList sidebarIcons = {"🏠", "📊", "�", "�", "🔐", "📁", "⚡", "📡", "�", "📋", "📚", "🔌", "⚙"};
-    QStringList sidebarLabels = {"Project overview", "Table Editor", "SQL Editor", "Database", "Authentication", "Storage", "Edge Functions", "Realtime", "Advisors", "Reports", "Logs", "API Docs", "Integrations"};
+    // Sidebar items - MiniAccess Database Manager
+    QStringList sidebarIcons = {"🏠", "📋", "🗄️", "🔗", "📝", "🔍", "📊", "⚙️"};
+    QStringList sidebarLabels = {"Vista General", "Editor de Tablas", "Base de Datos", "Relaciones", "Registros", "Consultas", "Reportes", "Configuración"};
     
     for (int i = 0; i < sidebarIcons.size(); ++i) {
         // Create container for each sidebar item
@@ -310,7 +310,7 @@ void MainWindow::createHomeView()
 void MainWindow::createWelcomeSection()
 {
     // Welcome message
-    welcomeLabel = new QLabel("Bienvenido a tu nuevo proyecto");
+    welcomeLabel = new QLabel("Bienvenido a MiniAccess");
     welcomeLabel->setFont(QFont("Inter", 32, QFont::Bold));
     welcomeLabel->setStyleSheet(
         "QLabel { "
@@ -322,7 +322,7 @@ void MainWindow::createWelcomeSection()
     homeViewLayout->addWidget(welcomeLabel);
     
     // Description
-    descriptionLabel = new QLabel("Tu proyecto has been deployed on its own instance, with its own API all set up and ready to use.");
+    descriptionLabel = new QLabel("Tu gestor de base de datos está listo. Comienza creando tablas, estableciendo relaciones y gestionando tus datos con índices B+, B* y gestión eficiente de espacio.");
     descriptionLabel->setFont(QFont("Inter", 18, QFont::Normal));
     descriptionLabel->setStyleSheet(
         "QLabel { "
@@ -338,7 +338,7 @@ void MainWindow::createWelcomeSection()
 void MainWindow::createDatabaseSection()
 {
     // Database section title
-    QLabel *dbTitle = new QLabel("Empieza construyendo tu base de datos");
+    QLabel *dbTitle = new QLabel("Gestión de Tablas y Datos");
     dbTitle->setFont(QFont("Inter", 24, QFont::Bold));
     dbTitle->setStyleSheet(
         "QLabel { "
@@ -351,7 +351,7 @@ void MainWindow::createDatabaseSection()
     homeViewLayout->addWidget(dbTitle);
     
     // Database description
-    QLabel *dbDesc = new QLabel("Comienza construyendo tu aplicación creando tablas e insertando datos. Nuestro Editor de Tablas hace que Postgres sea tan fácil de usar como una hoja de cálculo, pero también está nuestro Editor SQL si necesitas algo más avanzado.");
+    QLabel *dbDesc = new QLabel("Crea y administra tablas con diferentes tipos de datos (int, float, bool, char[N], string). Define relaciones entre tablas y utiliza índices B+, B* para optimizar las consultas. El sistema incluye gestión de espacio con Avail List para reutilizar registros eliminados.");
     dbDesc->setFont(QFont("Inter", 16));
     dbDesc->setStyleSheet(
         "QLabel { "
@@ -367,7 +367,7 @@ void MainWindow::createDatabaseSection()
 void MainWindow::createExploreSection()
 {
     // Explore section title
-    QLabel *exploreTitle = new QLabel("Explora nuestros otros productos");
+    QLabel *exploreTitle = new QLabel("Características del Sistema");
     exploreTitle->setFont(QFont("Inter", 24, QFont::Bold));
     exploreTitle->setStyleSheet(
         "QLabel { "
@@ -380,7 +380,7 @@ void MainWindow::createExploreSection()
     homeViewLayout->addWidget(exploreTitle);
     
     // Explore description
-    QLabel *exploreDesc = new QLabel("MiniAccess proporciona todas las características de backend que necesitas para construir un producto. Puedes usarlo completamente, o solo las características que necesites.");
+    QLabel *exploreDesc = new QLabel("• Tipos de datos: int, float, bool, char[N], string\n• Relaciones: uno a uno, uno a muchos, muchos a muchos\n• Índices eficientes: árboles B, B+, B*\n• Gestión de espacio: Avail List para reutilización\n• Consultas avanzadas con filtros y ordenamiento\n• Integridad referencial y claves foráneas");
     exploreDesc->setFont(QFont("Inter", 16));
     exploreDesc->setStyleSheet(
         "QLabel { "

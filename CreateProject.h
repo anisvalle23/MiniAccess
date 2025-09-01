@@ -21,6 +21,11 @@
 #include <QScreen>
 #include <QApplication>
 #include <QTimer>
+#include <QScrollArea>
+#include <QGridLayout>
+#include <QFileInfo>
+#include <QDateTime>
+#include <QMessageBox>
 #include "ThemePopover.h"
 
 class CreateProject : public QMainWindow
@@ -49,8 +54,15 @@ private:
     void hideNewProjectModal();
     void styleModalComponents();
     void navigateToProjectView(const QString &projectName);
-    void createMainContentArea(const QString &projectName, QHBoxLayout *parentLayout);
-    void createDemoTable(QVBoxLayout *parentLayout);
+    
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
+    void createProjectsArea();
+    void loadAndDisplayProjects();
+    void createGridProjectCard(const QString &projectName, const QString &lastModified, int tableCount);
+    void createListProjectItem(const QString &projectName, const QString &lastModified, int tableCount);
+    void clearProjectsDisplay();
+    void onProjectCardClicked(const QString &projectName);
 
     // Widgets principales
     QWidget *centralWidget;
@@ -73,6 +85,14 @@ private:
     QLineEdit *searchBar;
     QPushButton *gridViewButton;
     QPushButton *listViewButton;
+    
+    // Área de proyectos
+    QWidget *projectsAreaWidget;
+    QVBoxLayout *projectsAreaLayout;
+    QScrollArea *projectsScrollArea;
+    QWidget *projectsContainer;
+    QGridLayout *projectsGridLayout;
+    QVBoxLayout *projectsListLayout;
     
     // Theme popover
     ThemePopover *themePopover;

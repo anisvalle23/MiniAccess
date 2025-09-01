@@ -69,9 +69,9 @@ private slots:
     void onCellSelectionChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
     void onCellDoubleClicked(int row, int column);
     void onDesignViewClicked();
-    void onEditorViewClicked();
     void onDataViewClicked();
     void onTableItemChanged(QTableWidgetItem *item);
+    void onCurrentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
 
 private:
     void setupUI();
@@ -80,6 +80,8 @@ private:
     void createPropertiesArea();
     void addToolbarButton(QHBoxLayout *layout, const QString &icon, const QString &tooltip);
     void styleTable();
+    void setupDesignView();
+    void setupDataView();
     void updateFieldProperties(int row, const QString &fieldName);
     void updatePropertyLabels(const QString &dataType);
     QLabel* createPropertyLabel(const QString &text);
@@ -90,6 +92,8 @@ private:
     QString getEnhancedInputStyle();
     QString getEnhancedComboStyle();
     QString getEnhancedTextEditStyle();
+    QString getModernInputStyle();
+    QString getModernComboStyle();
     
     // UI Components
     QVBoxLayout *mainLayout;
@@ -101,13 +105,13 @@ private:
     QWidget *tableArea;
     QTableWidget *tableWidget;
     QPushButton *designViewBtn;
-    QPushButton *editorViewBtn;
     QPushButton *dataViewBtn;
     
     // Properties area
     QWidget *propertiesArea;
     QLineEdit *fieldNameEdit;
     QComboBox *dataTypeCombo;
+    QLabel *dataTypeLabel; // Replace dropdown with simple label
     QLineEdit *fieldSizeEdit;
     QComboBox *fieldSizeCombo; // Para opciones específicas de formato
     QCheckBox *requiredCheck;
@@ -116,6 +120,11 @@ private:
     
     QString currentTableName;
     bool isDarkTheme;
+    
+    // Variables para preservar datos entre cambios de vista
+    QStringList savedFieldNames;
+    QStringList savedFieldTypes;
+    QStringList savedFieldDescriptions;
 };
 
 #endif // TABLEVIEW_H
