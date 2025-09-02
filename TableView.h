@@ -18,6 +18,7 @@
 #include <QTextEdit>
 #include <QScrollArea>
 #include <QFrame>
+#include <QTimer>
 #include <QStyledItemDelegate>
 #include <QPainter>
 
@@ -72,6 +73,9 @@ private slots:
     void onDataViewClicked();
     void onTableItemChanged(QTableWidgetItem *item);
     void onCurrentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn);
+    void onFieldNameChanged(const QString &text);
+    void onDescriptionChanged(const QString &text);
+    void onRequiredChanged(bool checked);
 
 private:
     void setupUI();

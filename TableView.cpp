@@ -66,6 +66,11 @@ void TableView::setupUI()
     
     // Apply initial theme
     updateTheme(false);
+    
+    // Configurar la tabla inicial como Vista de Diseño con campo predeterminado
+    QTimer::singleShot(50, this, [this]() {
+        setupDesignView();
+    });
 }
 
 void TableView::setTableName(const QString &tableName)
@@ -756,6 +761,11 @@ void TableView::createPropertiesArea()
     // Set the form widget to the scroll area
     scrollArea->setWidget(propertiesForm);
     propertiesLayout->addWidget(scrollArea);
+    
+    // Conectar señales para sincronizar cambios del área de propiedades con la tabla
+    connect(fieldNameEdit, &QLineEdit::textChanged, this, &TableView::onFieldNameChanged);
+    connect(descriptionEdit, &QLineEdit::textChanged, this, &TableView::onDescriptionChanged);
+    connect(requiredCheck, &QCheckBox::toggled, this, &TableView::onRequiredChanged);
 }
 
 QLabel* TableView::createPropertyLabel(const QString &text)
@@ -1017,6 +1027,14 @@ void TableView::onCellSelectionChanged(int currentRow, int currentColumn, int pr
     Q_UNUSED(previousRow)
     Q_UNUSED(previousColumn)
     
+    qDebug() << "DEBUG: onCellSelectionChanged llamado - fila:" << currentRow << "columna:" << currentColumn;
+    
+    // Verificar que los widgets del área de propiedades existen
+    if (!fieldNameEdit || !dataTypeLabel || !descriptionEdit) {
+        qDebug() << "WARNING: Widgets del área de propiedades no están inicializados";
+        return;
+    }
+    
     // Always update properties when a cell is selected
     if (currentRow >= 0 && currentColumn >= 0) {
         // Update properties based on selected field
@@ -1025,31 +1043,44 @@ void TableView::onCellSelectionChanged(int currentRow, int currentColumn, int pr
             QTableWidgetItem *dataTypeItem = tableWidget->item(currentRow, 1);
             QTableWidgetItem *descriptionItem = tableWidget->item(currentRow, 2);
             
-            if (fieldNameItem) {
-                fieldNameEdit->setText(fieldNameItem->text());
-            } else {
-                fieldNameEdit->clear();
+            try {
+                if (fieldNameItem) {
+                    fieldNameEdit->setText(fieldNameItem->text());
+                } else {
+                    fieldNameEdit->clear();
+                }
+                
+                if (dataTypeItem) {
+                    QString dataType = dataTypeItem->text();
+                    // Update the label instead of combo
+                    dataTypeLabel->setText(dataType);
+                } else {
+                    // Set default type
+                    dataTypeLabel->setText("Texto");
+                }
+                
+                if (descriptionItem) {
+                    descriptionEdit->setText(descriptionItem->text());
+                } else {
+                    descriptionEdit->clear();
+                }
+                
+                // Set sample properties based on data type and field
+                try {
+                    qDebug() << "DEBUG: Llamando updateFieldProperties para fila" << currentRow;
+                    updateFieldProperties(currentRow, fieldNameItem ? fieldNameItem->text() : "");
+                    qDebug() << "DEBUG: updateFieldProperties completado exitosamente";
+                } catch (...) {
+                    qDebug() << "ERROR: Excepción en updateFieldProperties - CONTINUANDO";
+                }
+                
+            } catch (...) {
+                qDebug() << "ERROR: Excepción en onCellSelectionChanged al actualizar widgets";
             }
-            
-            if (dataTypeItem) {
-                QString dataType = dataTypeItem->text();
-                // Update the label instead of combo
-                dataTypeLabel->setText(dataType);
-            } else {
-                // Set default type
-                dataTypeLabel->setText("Texto");
-            }
-            
-            if (descriptionItem) {
-                descriptionEdit->setText(descriptionItem->text());
-            } else {
-                descriptionEdit->clear();
-            }
-            
-            // Set sample properties based on data type and field
-            updateFieldProperties(currentRow, fieldNameItem ? fieldNameItem->text() : "");
         }
     }
+    
+    qDebug() << "DEBUG: onCellSelectionChanged completado exitosamente";
 }
 
 void TableView::onCellDoubleClicked(int row, int column)
@@ -1077,15 +1108,64 @@ void TableView::onCellDoubleClicked(int row, int column)
 
 void TableView::updateFieldProperties(int row, const QString &fieldName)
 {
+    qDebug() << "DEBUG: updateFieldProperties iniciado para fila" << row << "campo" << fieldName;
+    
+    // Verificar que todos los widgets necesarios existen
+    if (!fieldSizeEdit || !fieldSizeCombo || !requiredCheck || !defaultValueEdit) {
+        qDebug() << "ERROR: Algunos widgets de propiedades no están inicializados";
+        qDebug() << "fieldSizeEdit:" << (fieldSizeEdit ? "OK" : "NULL");
+        qDebug() << "fieldSizeCombo:" << (fieldSizeCombo ? "OK" : "NULL");
+        qDebug() << "requiredCheck:" << (requiredCheck ? "OK" : "NULL");
+        qDebug() << "defaultValueEdit:" << (defaultValueEdit ? "OK" : "NULL");
+        return;
+    }
+    
     // Get the data type for this field
     QTableWidgetItem *dataTypeItem = tableWidget->item(row, 1);
     QString dataType = dataTypeItem ? dataTypeItem->text() : "";
+    qDebug() << "DEBUG: Tipo de dato encontrado:" << dataType;
     
-    // Clear current properties
-    fieldSizeEdit->clear();
-    fieldSizeCombo->clear();
-    requiredCheck->setChecked(false);
-    defaultValueEdit->clear();
+    try {
+        // Clear current properties - uno por uno con validación
+        qDebug() << "DEBUG: Limpiando widgets de propiedades uno por uno...";
+        
+        try {
+            qDebug() << "DEBUG: Limpiando fieldSizeEdit...";
+            if (fieldSizeEdit) fieldSizeEdit->clear();
+            qDebug() << "DEBUG: fieldSizeEdit limpiado OK";
+        } catch (...) {
+            qDebug() << "ERROR: Crash al limpiar fieldSizeEdit";
+        }
+        
+        try {
+            qDebug() << "DEBUG: Limpiando fieldSizeCombo...";
+            if (fieldSizeCombo) fieldSizeCombo->clear();
+            qDebug() << "DEBUG: fieldSizeCombo limpiado OK";
+        } catch (...) {
+            qDebug() << "ERROR: Crash al limpiar fieldSizeCombo";
+        }
+        
+        try {
+            qDebug() << "DEBUG: Configurando requiredCheck...";
+            if (requiredCheck) requiredCheck->setChecked(false);
+            qDebug() << "DEBUG: requiredCheck configurado OK";
+        } catch (...) {
+            qDebug() << "ERROR: Crash al configurar requiredCheck";
+        }
+        
+        try {
+            qDebug() << "DEBUG: Limpiando defaultValueEdit...";
+            if (defaultValueEdit) defaultValueEdit->clear();
+            qDebug() << "DEBUG: defaultValueEdit limpiado OK";
+        } catch (...) {
+            qDebug() << "ERROR: Crash al limpiar defaultValueEdit";
+        }
+        
+        qDebug() << "DEBUG: Todos los widgets limpiados exitosamente";
+    } catch (...) {
+        qDebug() << "ERROR: Excepción al limpiar widgets";
+        return;
+    }
     
     // Keep all controls in their default state - no show/hide to prevent floating elements
     // Always keep fieldSizeCombo hidden to prevent floating "Entero" popup
@@ -1274,48 +1354,118 @@ void TableView::onTableItemChanged(QTableWidgetItem *item)
     int row = item->row();
     int column = item->column();
     
-    // Si el usuario está escribiendo en cualquier fila
-    if (!item->text().trimmed().isEmpty()) {
-        
-        // Si está escribiendo en la última fila, agregar una nueva fila inmediatamente
-        if (row == tableWidget->rowCount() - 1) {
-            tableWidget->setRowCount(tableWidget->rowCount() + 1);
+    // Manejar tanto Vista de Diseño (3 columnas) como Vista de Datos (múltiples columnas)
+    bool isDesignView = (tableWidget->columnCount() == 3);
+    bool isDataView = (tableWidget->columnCount() > 3);
+    
+    if (isDesignView) {
+        // VISTA DE DISEÑO: Solo agregar fila cuando se escribe en la primera columna (nombre del campo)
+        if (column == 0 && !item->text().trimmed().isEmpty()) {
             
-            int newRow = tableWidget->rowCount() - 1;
-            int columnCount = tableWidget->columnCount();
-            
-            // Configurar la nueva fila con items vacíos según el número de columnas
-            for (int col = 0; col < columnCount; col++) {
-                QTableWidgetItem *newItem = new QTableWidgetItem("");
-                newItem->setToolTip(""); // Disable tooltip
-                tableWidget->setItem(newRow, col, newItem);
-            }
-            
-            // Actualizar las etiquetas del header vertical
-            QStringList verticalHeaders;
-            
-            // Detectar si estamos en vista de diseño o datos por el header de la primera columna
-            QTableWidgetItem *firstHeader = tableWidget->horizontalHeaderItem(0);
-            bool isDesignView = (firstHeader && firstHeader->text() == "Nombre del Campo");
-            
-            if (isDesignView) {
-                // Vista de diseño: primera fila con 🔑, resto con números
-                verticalHeaders << "🔑"; // Primary key icon for first row
-                for (int i = 1; i < tableWidget->rowCount(); i++) {
-                    verticalHeaders << QString::number(i + 1);
+            // Si está escribiendo en la última fila, agregar una nueva fila
+            if (row == tableWidget->rowCount() - 1) {
+                qDebug() << "DEBUG: [Diseño] Agregando nueva fila porque usuario escribió en la última fila";
+                
+                tableWidget->setRowCount(tableWidget->rowCount() + 1);
+                int newRow = tableWidget->rowCount() - 1;
+                
+                // Crear items vacíos para la nueva fila
+                for (int col = 0; col < 3; col++) {
+                    QTableWidgetItem *newItem = new QTableWidgetItem("");
+                    newItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+                    tableWidget->setItem(newRow, col, newItem);
                 }
-            } else {
-                // Vista de datos: todas las filas con números
+                
+                qDebug() << "DEBUG: [Diseño] Nueva fila agregada. Total filas:" << tableWidget->rowCount();
+            }
+        }
+        
+        // Si el usuario borró el contenido de la primera columna, limpiar filas vacías del final
+        if (column == 0 && item->text().trimmed().isEmpty()) {
+            while (tableWidget->rowCount() > 2) {
+                int lastRow = tableWidget->rowCount() - 1;
+                QTableWidgetItem *lastNameItem = tableWidget->item(lastRow, 0);
+                QTableWidgetItem *secondLastNameItem = tableWidget->item(lastRow - 1, 0);
+                
+                if ((!lastNameItem || lastNameItem->text().trimmed().isEmpty()) &&
+                    (!secondLastNameItem || secondLastNameItem->text().trimmed().isEmpty())) {
+                    tableWidget->setRowCount(tableWidget->rowCount() - 1);
+                    qDebug() << "DEBUG: [Diseño] Fila vacía eliminada. Total filas:" << tableWidget->rowCount();
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+    else if (isDataView) {
+        // VISTA DE DATOS: Agregar fila cuando se escribe en cualquier columna de la última fila
+        if (!item->text().trimmed().isEmpty()) {
+            
+            // Si está escribiendo en la última fila, agregar una nueva fila
+            if (row == tableWidget->rowCount() - 1) {
+                qDebug() << "DEBUG: [Datos] Agregando nueva fila porque usuario escribió en la última fila";
+                
+                tableWidget->setRowCount(tableWidget->rowCount() + 1);
+                int newRow = tableWidget->rowCount() - 1;
+                
+                // Crear items vacíos para la nueva fila (todas las columnas)
+                for (int col = 0; col < tableWidget->columnCount(); col++) {
+                    QTableWidgetItem *newItem = new QTableWidgetItem("");
+                    newItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+                    tableWidget->setItem(newRow, col, newItem);
+                }
+                
+                // Actualizar headers verticales numerados
+                QStringList verticalHeaders;
                 for (int i = 0; i < tableWidget->rowCount(); i++) {
                     verticalHeaders << QString::number(i + 1);
                 }
+                tableWidget->setVerticalHeaderLabels(verticalHeaders);
+                
+                qDebug() << "DEBUG: [Datos] Nueva fila agregada. Total filas:" << tableWidget->rowCount();
             }
-            tableWidget->setVerticalHeaderLabels(verticalHeaders);
+        }
+        
+        // Si el usuario borró contenido, considerar eliminar filas vacías del final
+        if (item->text().trimmed().isEmpty()) {
+            // Verificar si toda la fila está vacía para posible eliminación
+            while (tableWidget->rowCount() > 2) {
+                int lastRow = tableWidget->rowCount() - 1;
+                int secondLastRow = lastRow - 1;
+                
+                // Verificar si las dos últimas filas están completamente vacías
+                bool lastRowEmpty = true;
+                bool secondLastRowEmpty = true;
+                
+                for (int col = 0; col < tableWidget->columnCount(); col++) {
+                    QTableWidgetItem *lastItem = tableWidget->item(lastRow, col);
+                    QTableWidgetItem *secondLastItem = tableWidget->item(secondLastRow, col);
+                    
+                    if (lastItem && !lastItem->text().trimmed().isEmpty()) {
+                        lastRowEmpty = false;
+                    }
+                    if (secondLastItem && !secondLastItem->text().trimmed().isEmpty()) {
+                        secondLastRowEmpty = false;
+                    }
+                }
+                
+                if (lastRowEmpty && secondLastRowEmpty) {
+                    tableWidget->setRowCount(tableWidget->rowCount() - 1);
+                    
+                    // Actualizar headers verticales
+                    QStringList verticalHeaders;
+                    for (int i = 0; i < tableWidget->rowCount(); i++) {
+                        verticalHeaders << QString::number(i + 1);
+                    }
+                    tableWidget->setVerticalHeaderLabels(verticalHeaders);
+                    
+                    qDebug() << "DEBUG: [Datos] Fila vacía eliminada. Total filas:" << tableWidget->rowCount();
+                } else {
+                    break;
+                }
+            }
         }
     }
-    
-    // Force update of row heights when content changes
-    tableWidget->resizeRowsToContents();
 }
 
 // DataTypeDelegate Implementation
@@ -1583,321 +1733,254 @@ QString TableView::getModernComboStyle()
 
 void TableView::setupDesignView()
 {
-    qDebug() << "=== DEBUG: setupDesignView() INICIADO ===";
+    qDebug() << "=== DEBUG: setupDesignView() INICIADO - RESTAURAR VISTA DISEÑO ===";
     
     try {
-        qDebug() << "DEBUG: Estado inicial - rows:" << tableWidget->rowCount() << "cols:" << tableWidget->columnCount();
-        qDebug() << "DEBUG: savedFieldNames.size():" << savedFieldNames.size();
-        qDebug() << "DEBUG: savedFieldTypes.size():" << savedFieldTypes.size();
-        qDebug() << "DEBUG: savedFieldDescriptions.size():" << savedFieldDescriptions.size();
-        
-        // NUEVO ENFOQUE: NO limpiar la tabla, solo reconfigurarla
-        qDebug() << "DEBUG: PASO 1 - Reconfigurando tabla SIN limpiar...";
-        
-        // Disconnect any signals temporarily to avoid issues during reconfiguration
-        qDebug() << "DEBUG: PASO 1.1 - Bloqueando señales...";
+        // Bloquear señales temporalmente
         tableWidget->blockSignals(true);
-        qDebug() << "DEBUG: PASO 1.1 - Señales bloqueadas exitosamente";
         
-        // Remover delegates de manera segura
-        qDebug() << "DEBUG: PASO 1.2 - Removiendo delegates...";
-        try {
-            for (int i = 0; i < tableWidget->columnCount(); i++) {
-                qDebug() << "DEBUG: PASO 1.2." << i << " - Revisando delegate para columna" << i;
-                QStyledItemDelegate* delegate = qobject_cast<QStyledItemDelegate*>(tableWidget->itemDelegateForColumn(i));
-                if (delegate) {
-                    qDebug() << "DEBUG: PASO 1.2." << i << " - Delegate encontrado, removiendo...";
-                    tableWidget->setItemDelegateForColumn(i, nullptr);
-                    qDebug() << "DEBUG: PASO 1.2." << i << " - Delegate removido";
+        // PASO 1: GUARDAR CAMPOS EXISTENTES SOLO SI VENIMOS DE VISTA DE DATOS
+        QStringList existingFields;
+        QStringList existingTypes;
+        QStringList existingDescriptions;
+        
+        // Si tenemos más de 3 columnas, significa que venimos de Vista de Datos
+        if (tableWidget->columnCount() > 3) {
+            qDebug() << "DEBUG: Venimos de Vista de Datos, guardando campos definidos";
+            
+            // Los headers de Vista de Datos contienen los nombres de campos
+            for (int col = 0; col < tableWidget->columnCount(); col++) {
+                QTableWidgetItem *header = tableWidget->horizontalHeaderItem(col);
+                if (header && !header->text().trimmed().isEmpty()) {
+                    existingFields << header->text().trimmed();
+                    existingTypes << "text"; // Tipo por defecto
+                    existingDescriptions << ""; // Descripción vacía por defecto
                 }
             }
-            qDebug() << "DEBUG: PASO 1.2 - Delegates removidos exitosamente";
-        } catch (...) {
-            qDebug() << "ERROR: PASO 1.2 - Error al remover delegates en setupDesignView";
-        }
-        
-        qDebug() << "DEBUG: PASO 2 - Verificando si necesitamos reconfigurar estructura...";
-        
-        // Solo reconfigurar si no estamos ya en vista de diseño
-        bool needsReconfiguration = (tableWidget->columnCount() != 3);
-        
-        if (needsReconfiguration) {
-            qDebug() << "DEBUG: PASO 2.1 - Necesita reconfiguración, limpiando solo contenido...";
-            try {
-                tableWidget->clearContents(); // Solo limpiar contenido, mantener estructura
-            } catch (...) {
-                qDebug() << "WARNING: Error al limpiar contenido";
-            }
-            
-            qDebug() << "DEBUG: PASO 2.2 - Estableciendo columnCount(3)...";
-            tableWidget->setColumnCount(3);
-            
-            qDebug() << "DEBUG: PASO 2.3 - Configurando headers...";
-            QStringList headers;
-            headers << "Nombre del Campo" << "Tipo de Datos" << "Descripción (Opcional)";
-            tableWidget->setHorizontalHeaderLabels(headers);
-            
-            qDebug() << "DEBUG: PASO 2.4 - Configurando anchos de columna...";
-            tableWidget->setColumnWidth(0, 250);
-            tableWidget->setColumnWidth(1, 180);
-            tableWidget->setColumnWidth(2, 400);
-            
-            qDebug() << "DEBUG: PASO 2.5 - Configurando resize behavior...";
-            tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
-            tableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
-            tableWidget->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
-        } else {
-            qDebug() << "DEBUG: PASO 2 - Ya está en estructura de vista de diseño, solo actualizando contenido";
-        }
-        
-        qDebug() << "DEBUG: PASO 3 - Verificando datos guardados...";
-        
-        // Si no hay datos guardados, usar valores por defecto
-        if (savedFieldNames.isEmpty()) {
-            qDebug() << "DEBUG: PASO 3.1 - No hay datos guardados, usando valores por defecto...";
-            savedFieldNames << "Id";
-            savedFieldTypes << "int";
-            savedFieldDescriptions << "Identificador único";
-            qDebug() << "DEBUG: PASO 3.1 - Valores por defecto establecidos";
-        }
-        
-        qDebug() << "DEBUG: PASO 4 - Configurando número de filas...";
-        int targetRows = savedFieldNames.size();
-        qDebug() << "DEBUG: Filas necesarias:" << targetRows << "Filas actuales:" << tableWidget->rowCount();
-        
-        if (tableWidget->rowCount() != targetRows) {
-            qDebug() << "DEBUG: PASO 4.1 - Ajustando rowCount de" << tableWidget->rowCount() << "a" << targetRows;
-            tableWidget->setRowCount(targetRows);
-        }
-        
-        // Re-enable signals
-        qDebug() << "DEBUG: PASO 4.2 - Reactivando señales...";
-        tableWidget->blockSignals(false);
-        
-        qDebug() << "DEBUG: PASO 5 - ACTUALIZANDO/CREANDO ITEMS DE MANERA SEGURA...";
-        
-        // En lugar de crear nuevos items, actualizar los existentes o crear solo si no existen
-        for (int row = 0; row < savedFieldNames.size(); row++) {
-            qDebug() << "DEBUG: PASO 5." << row << " - Procesando fila" << row;
-            
-            try {
-                // Nombre del campo (columna 0)
+        } else if (tableWidget->columnCount() == 3) {
+            // Ya estamos en Vista de Diseño, leer campos existentes
+            qDebug() << "DEBUG: Ya en Vista de Diseño, leyendo campos existentes";
+            for (int row = 0; row < tableWidget->rowCount(); row++) {
                 QTableWidgetItem *nameItem = tableWidget->item(row, 0);
-                if (!nameItem) {
-                    qDebug() << "DEBUG: PASO 5." << row << ".1 - Creando nuevo nameItem";
-                    nameItem = new QTableWidgetItem();
-                    tableWidget->setItem(row, 0, nameItem);
-                } else {
-                    qDebug() << "DEBUG: PASO 5." << row << ".1 - Reutilizando nameItem existente";
-                }
-                nameItem->setText(savedFieldNames[row]);
-                nameItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-                
-                // Tipo de datos (columna 1)
                 QTableWidgetItem *typeItem = tableWidget->item(row, 1);
-                if (!typeItem) {
-                    qDebug() << "DEBUG: PASO 5." << row << ".2 - Creando nuevo typeItem";
-                    typeItem = new QTableWidgetItem();
-                    tableWidget->setItem(row, 1, typeItem);
-                } else {
-                    qDebug() << "DEBUG: PASO 5." << row << ".2 - Reutilizando typeItem existente";
-                }
-                typeItem->setText(savedFieldTypes[row]);
-                typeItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-                
-                // Descripción (columna 2)
-                QString desc = (row < savedFieldDescriptions.size()) ? savedFieldDescriptions[row] : "";
                 QTableWidgetItem *descItem = tableWidget->item(row, 2);
-                if (!descItem) {
-                    qDebug() << "DEBUG: PASO 5." << row << ".3 - Creando nuevo descItem";
-                    descItem = new QTableWidgetItem();
-                    tableWidget->setItem(row, 2, descItem);
-                } else {
-                    qDebug() << "DEBUG: PASO 5." << row << ".3 - Reutilizando descItem existente";
+                
+                if (nameItem && !nameItem->text().trimmed().isEmpty()) {
+                    existingFields << nameItem->text().trimmed();
+                    existingTypes << (typeItem ? typeItem->text().trimmed() : "text");
+                    existingDescriptions << (descItem ? descItem->text().trimmed() : "");
                 }
-                descItem->setText(desc);
-                descItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-                
-                qDebug() << "DEBUG: PASO 5." << row << " - Fila completada:" << savedFieldNames[row] << savedFieldTypes[row] << desc;
-                
-            } catch (...) {
-                qDebug() << "CRITICAL ERROR: PASO 5." << row << " - Excepción al procesar fila" << row;
-                return;
             }
         }
         
-        qDebug() << "DEBUG: PASO 6 - Configurando DataTypeDelegate...";
-        // Enable data type delegate for dropdown selection
-        try {
-            qDebug() << "DEBUG: PASO 6.1 - Creando DataTypeDelegate...";
-            DataTypeDelegate *dataTypeDelegate = new DataTypeDelegate(this);
-            qDebug() << "DEBUG: PASO 6.2 - DataTypeDelegate creado, asignando a columna 1...";
-            tableWidget->setItemDelegateForColumn(1, dataTypeDelegate);
-            qDebug() << "DEBUG: PASO 6.3 - DataTypeDelegate configurado exitosamente";
-        } catch (...) {
-            qDebug() << "ERROR: PASO 6 - Error al configurar DataTypeDelegate";
+        // Si no hay campos, usar campo por defecto
+        if (existingFields.isEmpty()) {
+            existingFields << "Id";
+            existingTypes << "int";
+            existingDescriptions << "Identificador único";
         }
         
-        qDebug() << "DEBUG: PASO 7 - Configurando propiedades de tabla...";
-        // Configure table properties for design view
-        tableWidget->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
+        qDebug() << "DEBUG: Campos a restaurar:" << existingFields.size();
         
-        // Desconectar señal de currentCellChanged que solo debe funcionar en vista de datos
-        qDebug() << "DEBUG: PASO 7.1 - Desconectando currentCellChanged...";
-        disconnect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCurrentCellChanged);
-        qDebug() << "DEBUG: PASO 7.1 - currentCellChanged desconectado";
+        // PASO 2: RECONFIGURAR TABLA PARA VISTA DE DISEÑO
+        tableWidget->setColumnCount(3);
         
-        qDebug() << "DEBUG: PASO 8 - Configurando headers verticales...";
-        // Custom header for showing primary key icon y números
-        QStringList verticalHeaders;
-        for (int i = 0; i < savedFieldNames.size(); i++) {
-            if (i == 0) {
-                verticalHeaders << "🔑"; // Primary key icon for first row
-            } else {
-                verticalHeaders << QString::number(i + 1);
+        QStringList headers;
+        headers << "Nombre del Campo" << "Tipo de Datos" << "Descripción (Opcional)";
+        tableWidget->setHorizontalHeaderLabels(headers);
+        
+        // Configurar anchos de columna
+        tableWidget->setColumnWidth(0, 250);
+        tableWidget->setColumnWidth(1, 180);
+        tableWidget->setColumnWidth(2, 400);
+        
+        tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
+        tableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
+        tableWidget->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
+        
+        // PASO 3: RESTAURAR CAMPOS EN VISTA DE DISEÑO
+        tableWidget->setRowCount(qMax(existingFields.size(), 1)); // Solo las filas necesarias
+        
+        for (int row = 0; row < existingFields.size(); row++) {
+            // Nombre del Campo
+            QTableWidgetItem *nameItem = new QTableWidgetItem(existingFields[row]);
+            nameItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+            tableWidget->setItem(row, 0, nameItem);
+            
+            // Tipo de Datos
+            QTableWidgetItem *typeItem = new QTableWidgetItem(existingTypes[row]);
+            typeItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+            tableWidget->setItem(row, 1, typeItem);
+            
+            // Descripción
+            QTableWidgetItem *descItem = new QTableWidgetItem(existingDescriptions[row]);
+            descItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+            tableWidget->setItem(row, 2, descItem);
+        }
+        
+        // Solo agregar UNA fila vacía adicional si la última fila tiene contenido
+        bool lastRowHasContent = false;
+        int lastRow = tableWidget->rowCount() - 1;
+        if (lastRow >= 0) {
+            QTableWidgetItem *lastNameItem = tableWidget->item(lastRow, 0);
+            if (lastNameItem && !lastNameItem->text().trimmed().isEmpty()) {
+                lastRowHasContent = true;
             }
         }
-        qDebug() << "DEBUG: PASO 8.1 - Headers verticales creados:" << verticalHeaders;
-        tableWidget->setVerticalHeaderLabels(verticalHeaders);
-        qDebug() << "DEBUG: PASO 8.2 - Headers verticales establecidos exitosamente";
         
-        qDebug() << "DEBUG: PASO 9 - Mostrando área de propiedades...";
-        // Show properties area for design view
+        if (lastRowHasContent) {
+            // Agregar solo UNA fila vacía para el siguiente campo
+            tableWidget->setRowCount(tableWidget->rowCount() + 1);
+            int newRow = tableWidget->rowCount() - 1;
+            
+            for (int col = 0; col < 3; col++) {
+                QTableWidgetItem *item = new QTableWidgetItem("");
+                item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+                tableWidget->setItem(newRow, col, item);
+            }
+        }
+        
+        // Mostrar área de propiedades
         if (propertiesArea) {
-            qDebug() << "DEBUG: PASO 9.1 - propertiesArea existe, mostrando...";
             propertiesArea->show();
-            qDebug() << "DEBUG: PASO 9.2 - propertiesArea mostrada exitosamente";
-        } else {
-            qDebug() << "ERROR: PASO 9 - propertiesArea es null!";
         }
         
-        qDebug() << "=== DEBUG: setupDesignView() COMPLETADO EXITOSAMENTE ===";
+        // Reactivar señales con timer
+        QTimer::singleShot(100, this, [this]() {
+            tableWidget->blockSignals(false);
+            
+            // Reconectar señales específicas para vista de diseño
+            disconnect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCurrentCellChanged);
+            connect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCellSelectionChanged);
+            
+            qDebug() << "=== DEBUG: setupDesignView() COMPLETADO - VISTA DISEÑO RESTAURADA ===";
+        });
         
     } catch (...) {
-        qDebug() << "CRITICAL ERROR: Excepción general en setupDesignView()";
-        qDebug() << "CRITICAL ERROR: Esta es probablemente la causa principal del crash!";
+        qDebug() << "CRITICAL ERROR: Excepción en setupDesignView()";
     }
 }
 
 void TableView::setupDataView()
 {
-    qDebug() << "DEBUG: setupDataView() iniciado - basado en vista de diseño";
+    qDebug() << "DEBUG: setupDataView() iniciado - CONFIGURAR VISTA DE DATOS CON CAMPOS";
     
     try {
-        // GUARDAR los campos definidos en la vista de diseño antes de limpiar
-        savedFieldNames.clear();
-        savedFieldTypes.clear();
-        savedFieldDescriptions.clear();
-        
-        qDebug() << "DEBUG: Guardando campos de vista de diseño...";
-        qDebug() << "DEBUG: Número de filas en tabla:" << tableWidget->rowCount();
-        qDebug() << "DEBUG: Número de columnas en tabla:" << tableWidget->columnCount();
-        
-        // Verificar si estamos en vista de diseño (3 columnas: Nombre, Tipo, Descripción)
-        bool isCurrentlyDesignView = (tableWidget->columnCount() == 3);
-        
-        if (isCurrentlyDesignView) {
-            // Guardar campos de la vista de diseño actual
-            for (int row = 0; row < tableWidget->rowCount(); row++) {
-                QTableWidgetItem *nameItem = tableWidget->item(row, 0); // Nombre del campo
-                QTableWidgetItem *typeItem = tableWidget->item(row, 1); // Tipo de datos
-                QTableWidgetItem *descItem = tableWidget->item(row, 2); // Descripción
-                
-                if (nameItem && typeItem && !nameItem->text().trimmed().isEmpty()) {
-                    QString fieldName = nameItem->text().trimmed();
-                    QString fieldType = typeItem->text().trimmed();
-                    QString fieldDesc = descItem ? descItem->text().trimmed() : "";
-                    
-                    savedFieldNames << fieldName;
-                    savedFieldTypes << fieldType;
-                    savedFieldDescriptions << fieldDesc;
-                    qDebug() << "DEBUG: Campo guardado:" << fieldName << "(" << fieldType << ")" << fieldDesc;
-                }
-            }
-        }
-        
-        // Si no hay campos guardados, usar campo por defecto
-        if (savedFieldNames.isEmpty()) {
-            savedFieldNames << "Id";
-            savedFieldTypes << "int";
-            savedFieldDescriptions << "Identificador único";
-            qDebug() << "DEBUG: Usando campo por defecto: Id (int)";
-        }
-        
-        qDebug() << "DEBUG: Total campos guardados:" << savedFieldNames.size();
-        
-        // Limpiar y reconfigurar la tabla para vista de datos de manera más segura
-        qDebug() << "DEBUG: Limpiando tabla de manera segura...";
-        
-        // Disconnect any signals temporarily to avoid issues during cleanup
+        // Bloquear señales temporalmente
         tableWidget->blockSignals(true);
         
-        // Remover delegates de manera segura
-        try {
-            for (int i = 0; i < tableWidget->columnCount(); i++) {
-                QStyledItemDelegate* delegate = qobject_cast<QStyledItemDelegate*>(tableWidget->itemDelegateForColumn(i));
-                if (delegate) {
-                    tableWidget->setItemDelegateForColumn(i, nullptr);
+        // PASO 1: LEER CAMPOS DEFINIDOS EN VISTA DE DISEÑO
+        QStringList fieldNames;
+        qDebug() << "DEBUG: Leyendo campos definidos en la tabla";
+        
+        // Si la tabla tiene 3 columnas, estamos en modo diseño - leer campos
+        if (tableWidget->columnCount() == 3) {
+            // Leer campos fila por fila
+            for (int row = 0; row < tableWidget->rowCount(); row++) {
+                QTableWidgetItem *nameItem = tableWidget->item(row, 0);
+                if (nameItem && !nameItem->text().trimmed().isEmpty()) {
+                    fieldNames << nameItem->text().trimmed();
+                    qDebug() << "DEBUG: Campo encontrado:" << nameItem->text().trimmed();
                 }
             }
-            
-            QStyledItemDelegate* mainDelegate = qobject_cast<QStyledItemDelegate*>(tableWidget->itemDelegate());
-            if (mainDelegate) {
-                tableWidget->setItemDelegate(nullptr);
+        } else {
+            // Ya estamos en vista de datos, usar headers existentes
+            for (int col = 0; col < tableWidget->columnCount(); col++) {
+                QString header = tableWidget->horizontalHeaderItem(col) ? 
+                                tableWidget->horizontalHeaderItem(col)->text() : 
+                                QString("Campo_%1").arg(col + 1);
+                fieldNames << header;
+                qDebug() << "DEBUG: Header existente:" << header;
             }
-        } catch (...) {
-            qDebug() << "WARNING: Error al remover delegates";
         }
         
-        // Limpiar contenido de manera segura
-        try {
-            tableWidget->clearContents();
-            tableWidget->clear(); // Clear both contents and headers
-        } catch (...) {
-            qDebug() << "WARNING: Error al limpiar contenido";
+        // Si no hay campos, usar campo por defecto
+        if (fieldNames.isEmpty()) {
+            fieldNames << "Id";
+            qDebug() << "DEBUG: Usando campo por defecto: Id";
         }
         
-        // Reset dimensions
-        tableWidget->setRowCount(0);
-        tableWidget->setColumnCount(0);
+        qDebug() << "DEBUG: Total campos para vista de datos:" << fieldNames.size();
         
-        // Re-enable signals
-        tableWidget->blockSignals(false);
-        
-        // Configurar nueva estructura basada en los campos GUARDADOS
-        qDebug() << "DEBUG: Configurando nueva estructura...";
-        tableWidget->setColumnCount(savedFieldNames.size());
-        tableWidget->setRowCount(0); // Empezar con 0 filas - se agregarán dinámicamente
-        
-        // Establecer headers con los nombres de los campos guardados
-        tableWidget->setHorizontalHeaderLabels(savedFieldNames);
-        qDebug() << "DEBUG: Headers establecidos:" << savedFieldNames;
-        
-        // Configurar anchos de columna dinámicamente
-        for (int i = 0; i < savedFieldNames.size(); i++) {
-            int width = qMax(120, savedFieldNames[i].length() * 10 + 40); // Ancho mínimo basado en el nombre
-            tableWidget->setColumnWidth(i, width);
+        // PASO 2: GUARDAR DATOS EXISTENTES (si hay filas de datos)
+        QList<QStringList> existingData;
+        if (tableWidget->columnCount() > 3) { // Solo si ya estamos en vista datos
+            for (int row = 0; row < tableWidget->rowCount(); row++) {
+                QStringList rowData;
+                for (int col = 0; col < qMin(tableWidget->columnCount(), fieldNames.size()); col++) {
+                    QTableWidgetItem *item = tableWidget->item(row, col);
+                    rowData << (item ? item->text() : "");
+                }
+                existingData << rowData;
+            }
+            qDebug() << "DEBUG: Guardados" << existingData.size() << "filas de datos existentes";
         }
         
-        qDebug() << "DEBUG: Tabla configurada sin items iniciales - se crearán dinámicamente";
+        // PASO 3: RECONFIGURAR TABLA PARA VISTA DE DATOS
+        qDebug() << "DEBUG: Reconfigurando tabla para vista de datos";
         
-        // Configurar propiedades de la tabla para vista de datos
-        tableWidget->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed | QAbstractItemView::AnyKeyPressed);
+        // Establecer número de columnas basado en los campos
+        tableWidget->setColumnCount(fieldNames.size());
         
-        // Desconectar conexiones previas y conectar señal para agregar filas automáticamente
-        disconnect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCurrentCellChanged);
-        connect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCurrentCellChanged);
+        // Establecer headers con nombres de campos
+        tableWidget->setHorizontalHeaderLabels(fieldNames);
         
-        // Configurar headers verticales (se actualizarán dinámicamente)
-        tableWidget->verticalHeader()->setVisible(true);
+        // PASO 4: RESTAURAR DATOS EXISTENTES DE MANERA DINÁMICA
+        int existingRows = existingData.size();
+        
+        // Solo configurar las filas que realmente tienen datos + UNA fila vacía
+        int initialRows = qMax(1, existingRows + 1); // Al menos 1 fila para empezar a escribir
+        
+        tableWidget->setRowCount(initialRows);
+        qDebug() << "DEBUG: Configuradas" << initialRows << "filas (" << existingRows << "con datos existentes)";
+        
+        // Restaurar datos existentes
+        for (int row = 0; row < existingRows && row < existingData.size(); row++) {
+            const QStringList &rowData = existingData[row];
+            for (int col = 0; col < qMin(rowData.size(), fieldNames.size()); col++) {
+                QTableWidgetItem *item = new QTableWidgetItem(rowData[col]);
+                item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+                tableWidget->setItem(row, col, item);
+            }
+        }
+        
+        // Crear solo UNA fila vacía para nuevos datos
+        for (int row = existingRows; row < initialRows; row++) {
+            for (int col = 0; col < fieldNames.size(); col++) {
+                QTableWidgetItem *item = new QTableWidgetItem("");
+                item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+                tableWidget->setItem(row, col, item);
+            }
+        }
+        
+        // Configurar headers verticales numerados
+        QStringList verticalHeaders;
+        for (int i = 0; i < initialRows; i++) {
+            verticalHeaders << QString::number(i + 1);
+        }
+        tableWidget->setVerticalHeaderLabels(verticalHeaders);
         
         // Ocultar área de propiedades en vista de datos
         if (propertiesArea) {
             propertiesArea->hide();
         }
         
-        qDebug() << "DEBUG: setupDataView() completado exitosamente";
-        qDebug() << "DEBUG: Vista de datos configurada con" << savedFieldNames.size() << "campos guardados";
+        // Configurar anchos de columna
+        for (int i = 0; i < fieldNames.size(); i++) {
+            int width = qMax(100, fieldNames[i].length() * 8 + 30);
+            tableWidget->setColumnWidth(i, width);
+        }
+        
+        // Reactivar señales con timer
+        QTimer::singleShot(100, this, [this]() {
+            tableWidget->blockSignals(false);
+            
+            // Reconectar señales específicas para vista de datos
+            disconnect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCellSelectionChanged);
+            connect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCurrentCellChanged);
+            
+            qDebug() << "DEBUG: setupDataView() completado - VISTA DE DATOS CONFIGURADA";
+        });
         
     } catch (...) {
         qDebug() << "ERROR en setupDataView()";
@@ -1950,6 +2033,53 @@ void TableView::onCurrentCellChanged(int currentRow, int currentColumn, int prev
             tableWidget->blockSignals(false);
             
             qDebug() << "DEBUG: Filas creadas exitosamente, total:" << tableWidget->rowCount();
+        }
+    }
+}
+
+void TableView::onFieldNameChanged(const QString &text)
+{
+    int currentRow = tableWidget->currentRow();
+    if (currentRow >= 0 && currentRow < tableWidget->rowCount()) {
+        QTableWidgetItem *nameItem = tableWidget->item(currentRow, 0);
+        if (!nameItem) {
+            nameItem = new QTableWidgetItem();
+            tableWidget->setItem(currentRow, 0, nameItem);
+        }
+        nameItem->setText(text);
+    }
+}
+
+void TableView::onDescriptionChanged(const QString &text)
+{
+    int currentRow = tableWidget->currentRow();
+    if (currentRow >= 0 && currentRow < tableWidget->rowCount()) {
+        QTableWidgetItem *descItem = tableWidget->item(currentRow, 2);
+        if (!descItem) {
+            descItem = new QTableWidgetItem();
+            tableWidget->setItem(currentRow, 2, descItem);
+        }
+        descItem->setText(text);
+    }
+}
+
+void TableView::onRequiredChanged(bool checked)
+{
+    int currentRow = tableWidget->currentRow();
+    if (currentRow >= 0 && currentRow < tableWidget->rowCount()) {
+        // Para el campo "Requerido", podríamos almacenar esta información
+        // en una propiedad personalizada del item o en una estructura de datos separada
+        QTableWidgetItem *nameItem = tableWidget->item(currentRow, 0);
+        if (nameItem) {
+            // Almacenar el estado de "requerido" como propiedad del item
+            nameItem->setData(Qt::UserRole, checked);
+            
+            // Opcional: cambiar el estilo visual para indicar que es requerido
+            if (checked) {
+                nameItem->setFont(QFont(nameItem->font().family(), nameItem->font().pointSize(), QFont::Bold));
+            } else {
+                nameItem->setFont(QFont(nameItem->font().family(), nameItem->font().pointSize(), QFont::Normal));
+            }
         }
     }
 }
