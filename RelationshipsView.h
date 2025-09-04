@@ -48,6 +48,7 @@ private slots:
     void onTableSelectionChanged();
     void onRelationshipSelectionChanged();
     void showTableDetails(const QString &tableName);
+    void addTableToDesigner(const QString &tableName, const QPoint &position);
 
 private:
     void setupUI();
@@ -147,6 +148,7 @@ class TableGraphicsItem : public QGraphicsRectItem
 {
 public:
     TableGraphicsItem(const QString &tableName, const QRectF &rect, QGraphicsItem *parent = nullptr);
+    TableGraphicsItem(const QString &tableName, QGraphicsItem *parent = nullptr);
     void setTableName(const QString &name);
     QString getTableName() const;
     void setFields(const QStringList &fields);

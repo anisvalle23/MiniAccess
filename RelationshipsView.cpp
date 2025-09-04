@@ -9,6 +9,7 @@
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
 #include <QStyleOptionGraphicsItem>
+#include <QGraphicsProxyWidget>
 #include <cmath>
 
 RelationshipsView::RelationshipsView(QWidget *parent)
@@ -145,76 +146,71 @@ void RelationshipsView::createRelationshipsList()
     leftPanelLayout = new QVBoxLayout(leftPanel);
     leftPanelLayout->setContentsMargins(10, 10, 10, 10);
     
-    // Tables section
-    tablesGroup = new QGroupBox("📋 Tablas Disponibles");
+    // Tables section - SIMPLIFICADO
+    tablesGroup = new QGroupBox("📋 Tablas");
     tablesGroup->setFont(QFont("Inter", 12, QFont::Bold));
     tablesLayout = new QVBoxLayout(tablesGroup);
-    tablesLayout->setSpacing(8);
-    
-    QLabel *tablesHelp = new QLabel("Selecciona una tabla para ver sus campos");
-    tablesHelp->setStyleSheet("color: #7F8C8D; font-size: 11px; margin-bottom: 5px;");
-    tablesLayout->addWidget(tablesHelp);
+    tablesLayout->setSpacing(5);
     
     tablesListWidget = new QListWidget();
-    tablesListWidget->setMaximumHeight(180);
+    tablesListWidget->setDragDropMode(QAbstractItemView::DragOnly);
+    tablesListWidget->setDefaultDropAction(Qt::CopyAction);
+    tablesListWidget->setMaximumHeight(120);
     tablesListWidget->setStyleSheet(
         "QListWidget {"
-            "border: 2px solid #E8F4FD;"
-            "border-radius: 8px;"
+            "border: 1px solid #E8F4FD;"
+            "border-radius: 6px;"
             "background: #F8FCFF;"
-            "padding: 5px;"
+            "padding: 3px;"
         "}"
         "QListWidget::item {"
-            "padding: 8px 12px;"
-            "margin: 2px 0;"
-            "border-radius: 6px;"
+            "padding: 6px 10px;"
+            "margin: 1px 0;"
+            "border-radius: 4px;"
             "background: transparent;"
+            "font-size: 12px;"
         "}"
         "QListWidget::item:hover {"
             "background: #E3F2FD;"
             "color: #1976D2;"
         "}"
         "QListWidget::item:selected {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2196F3, stop:1 #1976D2);"
+            "background: #2196F3;"
             "color: white;"
-            "font-weight: 600;"
+            "font-weight: 500;"
         "}"
     );
     tablesLayout->addWidget(tablesListWidget);
     
-    // Relationships section
-    relationshipsGroup = new QGroupBox("🔄 Relaciones Existentes");
+    // Relationships section - SIMPLIFICADO
+    relationshipsGroup = new QGroupBox("� Relaciones");
     relationshipsGroup->setFont(QFont("Inter", 12, QFont::Bold));
     relationshipsLayout = new QVBoxLayout(relationshipsGroup);
-    relationshipsLayout->setSpacing(8);
-    
-    QLabel *relHelp = new QLabel("Relaciones creadas en el proyecto");
-    relHelp->setStyleSheet("color: #7F8C8D; font-size: 11px; margin-bottom: 5px;");
-    relationshipsLayout->addWidget(relHelp);
+    relationshipsLayout->setSpacing(5);
     
     relationshipsListWidget = new QListWidget();
     relationshipsListWidget->setStyleSheet(
         "QListWidget {"
-            "border: 2px solid #FFF3E0;"
-            "border-radius: 8px;"
+            "border: 1px solid #FFF3E0;"
+            "border-radius: 6px;"
             "background: #FFFBF5;"
-            "padding: 5px;"
+            "padding: 3px;"
         "}"
         "QListWidget::item {"
-            "padding: 8px 12px;"
-            "margin: 2px 0;"
-            "border-radius: 6px;"
+            "padding: 6px 10px;"
+            "margin: 1px 0;"
+            "border-radius: 4px;"
             "background: transparent;"
-            "font-size: 12px;"
+            "font-size: 11px;"
         "}"
         "QListWidget::item:hover {"
             "background: #FFF3E0;"
             "color: #F57C00;"
         "}"
         "QListWidget::item:selected {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FF9800, stop:1 #F57C00);"
+            "background: #FF9800;"
             "color: white;"
-            "font-weight: 600;"
+            "font-weight: 500;"
         "}"
     );
     relationshipsLayout->addWidget(relationshipsListWidget);
@@ -235,49 +231,67 @@ void RelationshipsView::createRelationshipDesigner()
     designerLayout = new QVBoxLayout(designerPanel);
     designerLayout->setContentsMargins(10, 10, 10, 10);
     
-    // Title
+    // Title - MÁS SIMPLE
     QLabel *designerTitle = new QLabel("🎨 Diseñador Visual");
-    designerTitle->setFont(QFont("Inter", 16, QFont::Bold));
-    designerTitle->setStyleSheet("color: #2C3E50; margin: 10px 0;");
+    designerTitle->setFont(QFont("Inter", 14, QFont::Bold));
+    designerTitle->setStyleSheet("color: #2C3E50; margin: 5px 0;");
     designerLayout->addWidget(designerTitle);
     
-    // Instruction card
+    // Instrucciones SIMPLES y CLARAS
     QWidget *instructionCard = new QWidget();
     instructionCard->setStyleSheet(
         "QWidget {"
-            "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #E8F5E8, stop:1 #F1F8E9);"
+            "background: #E8F5E8;"
             "border: 1px solid #C8E6C9;"
-            "border-radius: 8px;"
-            "padding: 10px;"
+            "border-radius: 6px;"
+            "padding: 8px;"
         "}"
     );
     QVBoxLayout *cardLayout = new QVBoxLayout(instructionCard);
-    cardLayout->setMargin(12);
+    cardLayout->setMargin(8);
     
-    QLabel *instructionTitle = new QLabel("💡 Cómo usar:");
-    instructionTitle->setFont(QFont("Inter", 11, QFont::Bold));
-    instructionTitle->setStyleSheet("color: #2E7D32;");
-    
-    QLabel *instructionText = new QLabel("• Arrastra las tablas para organizarlas\n• Las líneas conectan tablas relacionadas\n• Haz clic en elementos para ver detalles");
-    instructionText->setStyleSheet("color: #388E3C; font-size: 10px; margin-top: 5px;");
+    QLabel *instructionText = new QLabel("💡 Arrastra tablas desde la lista izquierda aquí para conectarlas");
+    instructionText->setStyleSheet("color: #2E7D32; font-size: 11px; font-weight: 500;");
     instructionText->setWordWrap(true);
     
-    cardLayout->addWidget(instructionTitle);
     cardLayout->addWidget(instructionText);
     designerLayout->addWidget(instructionCard);
     
-    // Graphics view for visual design
+    // Graphics view MEJORADO para drag & drop
     designerScene = new QGraphicsScene();
     designerView = new QGraphicsView(designerScene);
     designerView->setDragMode(QGraphicsView::RubberBandDrag);
     designerView->setRenderHint(QPainter::Antialiasing);
+    designerView->setAcceptDrops(true);
     designerView->setStyleSheet(
         "QGraphicsView {"
-            "border: 2px solid #E0E0E0;"
-            "border-radius: 10px;"
-            "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #FAFAFA, stop:1 #F5F5F5);"
+            "border: 2px dashed #CCCCCC;"
+            "border-radius: 8px;"
+            "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #FAFAFA, stop:1 #F0F0F0);"
+        "}"
+        "QGraphicsView:hover {"
+            "border-color: #2196F3;"
+            "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #F8FCFF, stop:1 #E3F2FD);"
         "}"
     );
+    
+    // Agregar texto de ayuda en el centro cuando esté vacío
+    if (tableItems.isEmpty()) {
+        QLabel *dropHintLabel = new QLabel("Arrastra tablas aquí para crear relaciones");
+        dropHintLabel->setStyleSheet(
+            "QLabel {"
+                "color: #9E9E9E;"
+                "font-size: 14px;"
+                "font-style: italic;"
+                "background: transparent;"
+            "}"
+        );
+        dropHintLabel->setAlignment(Qt::AlignCenter);
+        
+        // Posicionar en el centro del view
+        QGraphicsProxyWidget *proxyWidget = designerScene->addWidget(dropHintLabel);
+        proxyWidget->setPos(200, 150);
+    }
     
     designerLayout->addWidget(designerView);
 }
@@ -285,303 +299,129 @@ void RelationshipsView::createRelationshipDesigner()
 void RelationshipsView::createPropertiesPanel()
 {
     propertiesPanel = new QWidget();
-    propertiesPanel->setFixedWidth(300);
+    propertiesPanel->setFixedWidth(280);
     propertiesLayout = new QVBoxLayout(propertiesPanel);
     propertiesLayout->setContentsMargins(10, 10, 10, 10);
     
-    propertiesGroup = new QGroupBox("⚙️ Configuración de Relaciones");
+    propertiesGroup = new QGroupBox("⚙️ Nueva Relación");
     propertiesGroup->setFont(QFont("Inter", 12, QFont::Bold));
     propertiesGroup->setStyleSheet(
         "QGroupBox {"
             "font-weight: bold;"
-            "border: 2px solid #E8F5E8;"
-            "border-radius: 10px;"
-            "margin-top: 15px;"
+            "border: 1px solid #E8F5E8;"
+            "border-radius: 8px;"
+            "margin-top: 12px;"
             "background: #F9FFF9;"
         "}"
         "QGroupBox::title {"
             "subcontrol-origin: margin;"
-            "left: 15px;"
-            "padding: 0 8px;"
+            "left: 12px;"
+            "padding: 0 6px;"
             "color: #2E7D32;"
             "background: white;"
         "}"
     );
     QVBoxLayout *groupLayout = new QVBoxLayout(propertiesGroup);
+    groupLayout->setSpacing(12);
     
-    // Scroll area for properties
-    propertiesScrollArea = new QScrollArea();
-    propertiesContent = new QWidget();
-    propertiesContentLayout = new QVBoxLayout(propertiesContent);
-    
-    // Relationship type
-    relationshipTypeLabel = new QLabel("🔗 Tipo de Relación:");
+    // SOLO LO ESENCIAL - Tipo de relación
+    relationshipTypeLabel = new QLabel("Tipo:");
     relationshipTypeLabel->setFont(QFont("Inter", 11, QFont::Medium));
-    relationshipTypeLabel->setStyleSheet("color: #2C3E50; margin: 8px 0 4px 0;");
+    relationshipTypeLabel->setStyleSheet("color: #2C3E50;");
     
     relationshipTypeCombo = new QComboBox();
     relationshipTypeCombo->addItems({
-        "👫 Uno a Uno (1:1) - Ej: Empleado ↔ Credencial",
-        "👤➡️👥 Uno a Muchos (1:N) - Ej: Profesor → Cursos", 
-        "👥↔️👥 Muchos a Muchos (N:M) - Ej: Estudiante ↔ Curso"
+        "👫 Uno a Uno (1:1)",
+        "👤➡️👥 Uno a Muchos (1:N)", 
+        "👥↔️👥 Muchos a Muchos (N:M)"
     });
     relationshipTypeCombo->setStyleSheet(
         "QComboBox {"
-            "border: 2px solid #E3F2FD;"
-            "border-radius: 6px;"
-            "padding: 8px 12px;"
+            "border: 1px solid #E3F2FD;"
+            "border-radius: 4px;"
+            "padding: 6px 10px;"
             "background: white;"
             "font-size: 11px;"
-        "}"
-        "QComboBox:focus {"
-            "border-color: #2196F3;"
-        "}"
-        "QComboBox::drop-down {"
-            "border: none;"
-            "width: 20px;"
-        "}"
-        "QComboBox::down-arrow {"
-            "image: none;"
-            "border-left: 5px solid transparent;"
-            "border-right: 5px solid transparent;"
-            "border-top: 5px solid #666;"
-            "margin-right: 5px;"
         "}"
     );
     
-    // Source table
-    sourceTableLabel = new QLabel("📊 Tabla Origen:");
-    sourceTableLabel->setFont(QFont("Inter", 11, QFont::Medium));
-    sourceTableLabel->setStyleSheet("color: #2C3E50; margin: 8px 0 4px 0;");
+    // Tablas origen y destino
+    sourceTableLabel = new QLabel("De:");
+    sourceTableLabel->setStyleSheet("color: #2C3E50; font-weight: 500;");
     sourceTableCombo = new QComboBox();
     
-    // Target table
-    targetTableLabel = new QLabel("🎯 Tabla Destino:");
-    targetTableLabel->setFont(QFont("Inter", 11, QFont::Medium));
-    targetTableLabel->setStyleSheet("color: #2C3E50; margin: 8px 0 4px 0;");
+    targetTableLabel = new QLabel("A:");
+    targetTableLabel->setStyleSheet("color: #2C3E50; font-weight: 500;");
     targetTableCombo = new QComboBox();
     
-    // Source field
-    sourceFieldLabel = new QLabel("🔑 Campo Origen:");
-    sourceFieldLabel->setFont(QFont("Inter", 11, QFont::Medium));
-    sourceFieldLabel->setStyleSheet("color: #2C3E50; margin: 8px 0 4px 0;");
-    sourceFieldCombo = new QComboBox();
-    
-    // Target field
-    targetFieldLabel = new QLabel("🔗 Campo Destino:");
-    targetFieldLabel->setFont(QFont("Inter", 11, QFont::Medium));
-    targetFieldLabel->setStyleSheet("color: #2C3E50; margin: 8px 0 4px 0;");
-    targetFieldCombo = new QComboBox();
-    
-    // Style all combos the same
     QString comboStyle = 
         "QComboBox {"
-            "border: 2px solid #E3F2FD;"
-            "border-radius: 6px;"
-            "padding: 8px 12px;"
+            "border: 1px solid #E3F2FD;"
+            "border-radius: 4px;"
+            "padding: 6px 10px;"
             "background: white;"
             "font-size: 11px;"
-        "}"
-        "QComboBox:focus {"
-            "border-color: #2196F3;"
         "}";
         
     sourceTableCombo->setStyleSheet(comboStyle);
     targetTableCombo->setStyleSheet(comboStyle);
-    sourceFieldCombo->setStyleSheet(comboStyle);
-    targetFieldCombo->setStyleSheet(comboStyle);
     
-    // Relationship name
-    relationshipNameLabel = new QLabel("📝 Nombre de la Relación:");
-    relationshipNameLabel->setFont(QFont("Inter", 11, QFont::Medium));
-    relationshipNameLabel->setStyleSheet("color: #2C3E50; margin: 8px 0 4px 0;");
-    relationshipNameEdit = new QLineEdit();
-    relationshipNameEdit->setStyleSheet(
-        "QLineEdit {"
-            "border: 2px solid #E3F2FD;"
-            "border-radius: 6px;"
-            "padding: 8px 12px;"
-            "background: white;"
-            "font-size: 11px;"
-        "}"
-        "QLineEdit:focus {"
-            "border-color: #2196F3;"
-        "}"
-    );
-    
-    // Description
-    descriptionLabel = new QLabel("📄 Descripción:");
-    descriptionLabel->setFont(QFont("Inter", 11, QFont::Medium));
-    descriptionLabel->setStyleSheet("color: #2C3E50; margin: 8px 0 4px 0;");
-    descriptionEdit = new QTextEdit();
-    descriptionEdit->setMaximumHeight(100);
-    descriptionEdit->setStyleSheet(
-        "QTextEdit {"
-            "border: 2px solid #E3F2FD;"
-            "border-radius: 6px;"
-            "padding: 8px 12px;"
-            "background: white;"
-            "font-size: 11px;"
-        "}"
-        "QTextEdit:focus {"
-            "border-color: #2196F3;"
-        "}"
-    );
-    
-    // Integrity constraint with better styling
-    enforceIntegrityCheck = new QCheckBox("🔒 Aplicar Integridad Referencial");
-    enforceIntegrityCheck->setChecked(true);
-    enforceIntegrityCheck->setStyleSheet(
-        "QCheckBox {"
-            "font-size: 11px;"
-            "font-weight: 500;"
-            "color: #2C3E50;"
-            "spacing: 8px;"
-        "}"
-        "QCheckBox::indicator {"
-            "width: 18px;"
-            "height: 18px;"
-            "border-radius: 3px;"
-            "border: 2px solid #2196F3;"
-        "}"
-        "QCheckBox::indicator:checked {"
-            "background: #2196F3;"
-            "image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOSIgdmlld0JveD0iMCAwIDEyIDkiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0xIDQuNUw0LjUgOEwxMSAxIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K);"
-        "}"
-    );
-    
-    // Cascade delete option with better styling
-    QCheckBox *cascadeDeleteCheck = new QCheckBox("⚠️ Eliminación en Cascada");
-    cascadeDeleteCheck->setToolTip("Al eliminar un registro padre, eliminar automáticamente los registros hijos relacionados");
-    cascadeDeleteCheck->setStyleSheet(
-        "QCheckBox {"
-            "font-size: 11px;"
-            "font-weight: 500;"
-            "color: #E65100;"
-            "spacing: 8px;"
-        "}"
-        "QCheckBox::indicator {"
-            "width: 18px;"
-            "height: 18px;"
-            "border-radius: 3px;"
-            "border: 2px solid #FF9800;"
-        "}"
-        "QCheckBox::indicator:checked {"
-            "background: #FF9800;"
-        "}"
-    );
-    
-    // Explanation text with better formatting
-    QLabel *explanationLabel = new QLabel();
-    explanationLabel->setText(
-        "<div style='background: #F8F9FA; padding: 12px; border-radius: 8px; border-left: 4px solid #2196F3;'>"
-        "<p style='margin: 0 0 8px 0; font-weight: 600; color: #1976D2;'>💡 Tipos de Relaciones:</p>"
-        "<p style='margin: 2px 0; font-size: 11px; color: #37474F;'>• <b>1:1</b> - Cada registro se relaciona con exactamente uno</p>"
-        "<p style='margin: 2px 0; font-size: 11px; color: #37474F;'>• <b>1:N</b> - Un padre puede tener múltiples hijos</p>"
-        "<p style='margin: 2px 0; font-size: 11px; color: #37474F;'>• <b>N:M</b> - Múltiples registros relacionados (tabla intermedia)</p>"
-        "<p style='margin: 8px 0 0 0; font-weight: 600; color: #1976D2;'>🔒 Integridad:</p>"
-        "<p style='margin: 2px 0; font-size: 11px; color: #37474F;'>Garantiza que las claves foráneas sean válidas</p>"
-        "</div>"
-    );
-    explanationLabel->setWordWrap(true);
-    
-    // Buttons with better styling
+    // Botón para crear
     applyChangesBtn = new QPushButton("✅ Crear Relación");
-    cancelChangesBtn = new QPushButton("❌ Cancelar");
-    
-    QString primaryBtnStyle = 
+    applyChangesBtn->setStyleSheet(
         "QPushButton {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4CAF50, stop:1 #388E3C);"
+            "background: #4CAF50;"
             "color: white;"
             "border: none;"
-            "border-radius: 8px;"
-            "padding: 12px 20px;"
+            "border-radius: 6px;"
+            "padding: 10px 16px;"
             "font-weight: 600;"
             "font-size: 12px;"
         "}"
         "QPushButton:hover {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #66BB6A, stop:1 #4CAF50);"
-        "}";
-        
-    QString cancelBtnStyle = 
-        "QPushButton {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #F44336, stop:1 #D32F2F);"
-            "color: white;"
-            "border: none;"
-            "border-radius: 8px;"
-            "padding: 12px 20px;"
-            "font-weight: 600;"
-            "font-size: 12px;"
+            "background: #45A049;"
         "}"
-        "QPushButton:hover {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #EF5350, stop:1 #F44336);"
-        "}";
+    );
     
-    applyChangesBtn->setStyleSheet(primaryBtnStyle);
-    cancelChangesBtn->setStyleSheet(cancelBtnStyle);
+    // Información simple
+    QLabel *infoLabel = new QLabel(
+        "<b>Tipos de Relaciones:</b><br>"
+        "• <b>1:1</b> - Uno a uno<br>"
+        "• <b>1:N</b> - Uno a muchos<br>"
+        "• <b>N:M</b> - Muchos a muchos"
+    );
+    infoLabel->setStyleSheet("color: #666; font-size: 10px; margin: 8px 0;");
+    infoLabel->setWordWrap(true);
     
-    // Add to layout with better spacing
-    propertiesContentLayout->addWidget(relationshipTypeLabel);
-    propertiesContentLayout->addWidget(relationshipTypeCombo);
-    propertiesContentLayout->addSpacing(8);
+    // Agregar al layout
+    groupLayout->addWidget(relationshipTypeLabel);
+    groupLayout->addWidget(relationshipTypeCombo);
+    groupLayout->addSpacing(8);
+    groupLayout->addWidget(sourceTableLabel);
+    groupLayout->addWidget(sourceTableCombo);
+    groupLayout->addSpacing(4);
+    groupLayout->addWidget(targetTableLabel);
+    groupLayout->addWidget(targetTableCombo);
+    groupLayout->addSpacing(12);
+    groupLayout->addWidget(applyChangesBtn);
+    groupLayout->addSpacing(8);
+    groupLayout->addWidget(infoLabel);
+    groupLayout->addStretch();
     
-    propertiesContentLayout->addWidget(sourceTableLabel);
-    propertiesContentLayout->addWidget(sourceTableCombo);
-    propertiesContentLayout->addSpacing(8);
-    
-    propertiesContentLayout->addWidget(targetTableLabel);
-    propertiesContentLayout->addWidget(targetTableCombo);
-    propertiesContentLayout->addSpacing(8);
-    
-    propertiesContentLayout->addWidget(sourceFieldLabel);
-    propertiesContentLayout->addWidget(sourceFieldCombo);
-    propertiesContentLayout->addSpacing(8);
-    
-    propertiesContentLayout->addWidget(targetFieldLabel);
-    propertiesContentLayout->addWidget(targetFieldCombo);
-    propertiesContentLayout->addSpacing(8);
-    
-    propertiesContentLayout->addWidget(relationshipNameLabel);
-    propertiesContentLayout->addWidget(relationshipNameEdit);
-    propertiesContentLayout->addSpacing(8);
-    
-    propertiesContentLayout->addWidget(descriptionLabel);
-    propertiesContentLayout->addWidget(descriptionEdit);
-    propertiesContentLayout->addSpacing(12);
-    
-    propertiesContentLayout->addWidget(enforceIntegrityCheck);
-    propertiesContentLayout->addSpacing(4);
-    propertiesContentLayout->addWidget(cascadeDeleteCheck);
-    propertiesContentLayout->addSpacing(12);
-    
-    propertiesContentLayout->addWidget(explanationLabel);
-    propertiesContentLayout->addStretch();
-    
-    QHBoxLayout *buttonLayout = new QHBoxLayout();
-    buttonLayout->addWidget(applyChangesBtn);
-    buttonLayout->addWidget(cancelChangesBtn);
-    propertiesContentLayout->addLayout(buttonLayout);
-    
-    propertiesScrollArea->setWidget(propertiesContent);
-    propertiesScrollArea->setWidgetResizable(true);
-    
-    groupLayout->addWidget(propertiesScrollArea);
     propertiesLayout->addWidget(propertiesGroup);
     
-    // Connect table combo changes to update field combos
+    // Connect table combo changes to update field combos - SIMPLIFICADO
     connect(sourceTableCombo, QOverload<const QString &>::of(&QComboBox::currentTextChanged),
             [this](const QString &tableName) {
-                sourceFieldCombo->clear();
                 if (tableFields.contains(tableName)) {
-                    sourceFieldCombo->addItems(tableFields[tableName]);
+                    // Auto-populate fields when table is selected
                 }
             });
     
     connect(targetTableCombo, QOverload<const QString &>::of(&QComboBox::currentTextChanged),
             [this](const QString &tableName) {
-                targetFieldCombo->clear();
                 if (tableFields.contains(tableName)) {
-                    targetFieldCombo->addItems(tableFields[tableName]);
+                    // Auto-populate fields when table is selected
                 }
             });
     
@@ -688,7 +528,13 @@ void RelationshipsView::loadTables()
                 tableName.remove(".meta.json");
                 
                 availableTables.append(tableName);
-                tablesListWidget->addItem(tableName);
+                
+                // Create draggable item for tables list
+                QListWidgetItem *item = new QListWidgetItem("📊 " + tableName);
+                item->setData(Qt::UserRole, tableName);
+                item->setFlags(item->flags() | Qt::ItemIsDragEnabled);
+                tablesListWidget->addItem(item);
+                
                 sourceTableCombo->addItem(tableName);
                 targetTableCombo->addItem(tableName);
                 
@@ -753,6 +599,35 @@ void RelationshipsView::addTableToDesigner(const QString &tableName, const QPoin
     tableItems.append(tableItem);
 }
 
+void RelationshipsView::addTableToDesigner(const QString &tableName, const QPoint &position)
+{
+    // Check if table already exists in designer
+    QList<QGraphicsItem*> items = designerScene->items();
+    for (QGraphicsItem *item : items) {
+        TableGraphicsItem *tableItem = dynamic_cast<TableGraphicsItem*>(item);
+        if (tableItem && tableItem->getTableName() == tableName) {
+            // Table already exists, just move it
+            QPointF scenePos = designerView->mapToScene(position);
+            tableItem->setPos(scenePos);
+            return;
+        }
+    }
+    
+    // Create new table item
+    TableGraphicsItem *newTableItem = new TableGraphicsItem(tableName);
+    QPointF scenePos = designerView->mapToScene(position);
+    newTableItem->setPos(scenePos);
+    designerScene->addItem(newTableItem);
+    
+    // Update combo boxes to reflect available tables in designer
+    if (sourceTableCombo->findText(tableName) == -1) {
+        sourceTableCombo->addItem(tableName);
+    }
+    if (targetTableCombo->findText(tableName) == -1) {
+        targetTableCombo->addItem(tableName);
+    }
+}
+
 void RelationshipsView::createRelationshipBetweenTables(const QString &table1, const QString &table2, 
                                                        const QString &relationship_type)
 {
@@ -787,8 +662,6 @@ void RelationshipsView::onCreateRelationship()
 {
     QString sourceTable = sourceTableCombo->currentText();
     QString targetTable = targetTableCombo->currentText();
-    QString sourceField = sourceFieldCombo->currentText();
-    QString targetField = targetFieldCombo->currentText();
     QString relationshipType = relationshipTypeCombo->currentText();
     
     // Extract just the type part (1:1, 1:N, N:M)
@@ -801,43 +674,24 @@ void RelationshipsView::onCreateRelationship()
         shortType = "N:M";
     }
     
-    if (!sourceTable.isEmpty() && !targetTable.isEmpty() && sourceTable != targetTable) {
-        if (sourceField.isEmpty() || targetField.isEmpty()) {
-            QMessageBox::warning(this, "Error", "Selecciona los campos para la relación.");
-            return;
-        }
-        
-        createRelationshipBetweenTables(sourceTable, targetTable, shortType);
-        
-        // Add to relationships list with more detail
-        QString relationshipDesc;
-        if (shortType == "N:M") {
-            relationshipDesc = QString("%1.%2 ↔ %3.%4 (%5) [Tabla: %1_%3]")
-                             .arg(sourceTable, sourceField, targetTable, targetField, shortType);
-        } else {
-            QString arrow = (shortType == "1:1") ? "↔" : "→";
-            relationshipDesc = QString("%1.%2 %3 %4.%5 (%6)")
-                             .arg(sourceTable, sourceField, arrow, targetTable, targetField, shortType);
-        }
-        
-        relationshipsListWidget->addItem(relationshipDesc);
-        
-        // Show success message with explanation
-        QString message = QString("Relación %1 creada entre:\n• %2.%3\n• %4.%5")
-                        .arg(shortType, sourceTable, sourceField, targetTable, targetField);
-        
-        if (shortType == "N:M") {
-            message += QString("\n\nSe creará una tabla intermedia: %1_%2").arg(sourceTable, targetTable);
-        }
-        
-        if (enforceIntegrityCheck->isChecked()) {
-            message += "\n\nIntegridad referencial: ACTIVADA";
-        }
-        
-        QMessageBox::information(this, "Relación Creada", message);
-    } else {
-        QMessageBox::warning(this, "Error", "Selecciona tablas válidas y diferentes para crear la relación.");
+    if (sourceTable.isEmpty() || targetTable.isEmpty()) {
+        QMessageBox::warning(this, "Error", "Debe seleccionar ambas tablas");
+        return;
     }
+    
+    if (sourceTable == targetTable) {
+        QMessageBox::warning(this, "Error", "No puede crear una relación de una tabla consigo misma");
+        return;
+    }
+    
+    // Create visual representation
+    createRelationshipBetweenTables(sourceTable, targetTable, shortType);
+    
+    // Add to relationships list
+    QString relationshipDesc = QString("%1 → %2 (%3)").arg(sourceTable, targetTable, shortType);
+    relationshipsListWidget->addItem(relationshipDesc);
+    
+    QMessageBox::information(this, "Éxito", "Relación creada correctamente");
 }
 
 void RelationshipsView::onDeleteRelationship()
@@ -845,14 +699,6 @@ void RelationshipsView::onDeleteRelationship()
     int currentRow = relationshipsListWidget->currentRow();
     if (currentRow >= 0) {
         relationshipsListWidget->takeItem(currentRow);
-        
-        // Remove from designer (simplified)
-        if (currentRow < relationshipLines.size()) {
-            designerScene->removeItem(relationshipLines[currentRow]);
-            delete relationshipLines[currentRow];
-            relationshipLines.removeAt(currentRow);
-        }
-        
         QMessageBox::information(this, "Relación Eliminada", "La relación ha sido eliminada.");
     } else {
         QMessageBox::warning(this, "Error", "Selecciona una relación para eliminar.");
@@ -877,8 +723,8 @@ void RelationshipsView::onRelationshipSelectionChanged()
 
 void RelationshipsView::showTableDetails(const QString &tableName)
 {
-    // Update properties panel with table information
-    relationshipNameEdit->setText(QString("Nueva relación con %1").arg(tableName));
+    // Update properties panel with table information - SIMPLIFICADO
+    // relationshipNameEdit->setText(QString("Nueva relación con %1").arg(tableName));
     
     QString tableInfo = QString("Tabla seleccionada: %1\n\n").arg(tableName);
     
@@ -892,39 +738,34 @@ void RelationshipsView::showTableDetails(const QString &tableName)
     tableInfo += "\nPara crear una relación:\n"
                 "1. Selecciona el tipo de relación\n"
                 "2. Elige las tablas origen y destino\n"
-                "3. Selecciona los campos que se relacionarán\n"
-                "4. Configura las opciones de integridad\n"
-                "5. Haz clic en 'Aplicar Cambios'";
+                "3. Haz clic en 'Crear Relación'";
     
-    descriptionEdit->setText(tableInfo);
+    // descriptionEdit->setText(tableInfo);
 }
 
 void RelationshipsView::updatePropertiesPanel(const QString &selectedItem)
 {
-    // Parse relationship info and populate properties panel
-    relationshipNameEdit->setText(selectedItem.split(" ").first());
+    // Parse relationship info and populate properties panel - SIMPLIFICADO
+    // relationshipNameEdit->setText(selectedItem.split(" ").first());
     
     QString description;
     if (selectedItem.contains("1:1")) {
         description = "Relación Uno a Uno:\n\n"
                      "Cada registro en la tabla origen se relaciona con exactamente un registro en la tabla destino y viceversa.\n\n"
-                     "Ejemplo: Un empleado tiene una sola credencial y cada credencial pertenece a un solo empleado.\n\n"
-                     "Implementación: La clave primaria de una tabla es clave foránea en la otra.";
+                     "Ejemplo: Un empleado tiene una sola credencial y cada credencial pertenece a un solo empleado.";
     } else if (selectedItem.contains("1:N")) {
         description = "Relación Uno a Muchos:\n\n"
                      "Un registro en la tabla origen puede relacionarse con múltiples registros en la tabla destino, pero cada registro destino se relaciona con solo uno en el origen.\n\n"
-                     "Ejemplo: Un profesor puede impartir múltiples cursos, pero cada curso tiene un solo profesor.\n\n"
-                     "Implementación: La tabla 'muchos' contiene la clave foránea que referencia a la tabla 'uno'.";
+                     "Ejemplo: Un profesor puede impartir múltiples cursos, pero cada curso tiene un solo profesor.";
     } else if (selectedItem.contains("N:M")) {
         description = "Relación Muchos a Muchos:\n\n"
                      "Múltiples registros en la tabla origen pueden relacionarse con múltiples registros en la tabla destino.\n\n"
-                     "Ejemplo: Los estudiantes pueden inscribirse en múltiples cursos y cada curso puede tener múltiples estudiantes.\n\n"
-                     "Implementación: Requiere una tabla intermedia que contiene las claves foráneas de ambas tablas.";
+                     "Ejemplo: Los estudiantes pueden inscribirse en múltiples cursos y cada curso puede tener múltiples estudiantes.";
     } else {
         description = "Selecciona una relación para ver sus detalles.";
     }
     
-    descriptionEdit->setText(description);
+    // descriptionEdit->setText(description);
 }
 
 // TableGraphicsItem Implementation
@@ -937,6 +778,21 @@ TableGraphicsItem::TableGraphicsItem(const QString &tableName, const QRectF &rec
     
     nameText = new QGraphicsTextItem(tableName, this);
     nameText->setPos(rect.x() + 5, rect.y() + 5);
+    QFont font = nameText->font();
+    font.setBold(true);
+    font.setPointSize(10);
+    nameText->setFont(font);
+}
+
+TableGraphicsItem::TableGraphicsItem(const QString &tableName, QGraphicsItem *parent)
+    : QGraphicsRectItem(QRectF(0, 0, 150, 100), parent), tableName(tableName), isDarkTheme(false)
+{
+    setFlag(QGraphicsItem::ItemIsMovable);
+    setFlag(QGraphicsItem::ItemIsSelectable);
+    setFlag(QGraphicsItem::ItemSendsGeometryChanges);
+    
+    nameText = new QGraphicsTextItem(tableName, this);
+    nameText->setPos(5, 5);
     QFont font = nameText->font();
     font.setBold(true);
     font.setPointSize(10);
