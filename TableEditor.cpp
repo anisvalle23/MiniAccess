@@ -47,50 +47,39 @@ void TableEditor::setupUI()
 void TableEditor::createLeftPanel()
 {
     leftPanel = new QWidget();
-    leftPanel->setFixedWidth(220); // Mucho más pequeño
-    leftPanel->setStyleSheet(
-        "QWidget {"
-            "background-color: #FAFAFA;"
-        "}"
-    );
-    
+    leftPanel->setFixedWidth(220);
+    leftPanel->setStyleSheet("QWidget { background-color: #FAFAFA; }");
+
     leftPanelLayout = new QVBoxLayout(leftPanel);
-    leftPanelLayout->setContentsMargins(12, 16, 12, 16); // Márgenes laterales más pequeños
-    leftPanelLayout->setSpacing(12); // Espaciado más compacto
-    
-    // New table button
+    leftPanelLayout->setContentsMargins(12, 16, 12, 16);
+    leftPanelLayout->setSpacing(12);
+
+    // Botón nueva tabla
     newTableBtn = new QPushButton("Nueva Tabla");
-    newTableBtn->setFont(QFont("Inter", 14, QFont::Medium));
-    newTableBtn->setStyleSheet(
-        "QPushButton {"
-            "background-color: #A4373A;"
-            "color: #FFFFFF;"
-            "border: none;"
-            "border-radius: 8px;"
-            "padding: 12px 16px;"
-            "font-weight: 500;"
-            "text-align: center;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: #8B2635;"
-        "}"
-        "QPushButton:pressed {"
-            "background-color: #6D1D29;"
-        "}"
-    );
     leftPanelLayout->addWidget(newTableBtn);
-    
+
     // Table list section
     updateTableList();
-    
+
+    // <<< AQUI es donde lo pones >>>
+    connect(tableTree, &QTreeWidget::itemClicked,
+            this, &TableEditor::onSidebarItemClicked,
+            Qt::UniqueConnection);
+
     leftPanelLayout->addStretch();
-    
-    // Connect signals
+
     connect(newTableBtn, &QPushButton::clicked, this, &TableEditor::onNewTableClicked);
 }
 
+
 void TableEditor::updateTableList()
 {
+    if (tableListSection) {
+        leftPanelLayout->removeWidget(tableListSection);
+        tableListSection->deleteLater();
+        tableListSection = nullptr;
+    }
+
     tableListSection = new QWidget();
     QVBoxLayout *tableListLayout = new QVBoxLayout(tableListSection);
     tableListLayout->setContentsMargins(0, 0, 0, 0);
@@ -556,22 +545,23 @@ void TableEditor::onCancelClicked()
 void TableEditor::onSaveClicked()
 {
     if (!tableNameInput || tableNameInput->text().trimmed().isEmpty()) {
-        // Show error message
         QMessageBox::warning(this, "Error", "Por favor ingresa un nombre para la tabla.");
         return;
     }
-    
+
     QString tableName = tableNameInput->text().trimmed();
-    
-    // Hide panel
+
     hideCreateTablePanel();
-    
-    // Show table view with the created table
+
+    // Si no existe ya en el sidebar, agregarlo
+    QList<QTreeWidgetItem*> found = tableTree->findItems(tableName, Qt::MatchExactly);
+    if (found.isEmpty())
+        addTableToSidebar(tableName);
+
     showTableView(tableName);
-    
-    // Clear form for next use
     tableNameInput->clear();
 }
+
 
 
 void TableEditor::showCreateTablePanel()
@@ -629,63 +619,77 @@ void TableEditor::hideCreateTablePanel()
 
 void TableEditor::showTableView(const QString &tableName)
 {
-    // Store current table name
     currentTableName = tableName;
-    
-    // If this is a new table or the first time, create both views
-    if (!currentTableView || currentTableView->property("tableName").toString() != tableName) {
-        // Clear the main content area
-        QLayoutItem *child;
-        while ((child = mainContentLayout->takeAt(0)) != nullptr) {
-            delete child->widget();
-            delete child;
-        }
-        
-        // Create table view
-        currentTableView = new TableView(this);
-        currentTableView->setTableName(tableName);
-        currentTableView->updateTheme(isDarkTheme);
-        currentTableView->setProperty("tableName", tableName);
-        
-        // Create table data view (but don't show it yet)
-        currentTableData = new TableData(this);
-        currentTableData->setTableName(tableName);
-        currentTableData->setProperty("tableName", tableName);
-        
-        // Connect signals for switching between views
-        connect(currentTableView, &TableView::switchToDataView, this, [this]() {
+
+    // 1) Crear o recuperar el TableView de cache
+    TableView *view = nullptr;
+    if (tableViews.contains(tableName)) {
+        view = tableViews.value(tableName);
+    } else {
+        view = new TableView(this);
+        view->setTableName(tableName);
+        view->updateTheme(isDarkTheme);
+        view->setProperty("tableName", tableName);
+
+        // Conexiones SOLO al crearlo (UniqueConnection por seguridad)
+        connect(view, &TableView::switchToDataView, this, [this]() {
             switchToDataView();
-        });
-        connect(currentTableData, &TableData::switchToDesignView, this, [this]() {
+        }, Qt::UniqueConnection);
+
+        connect(view, &TableView::tableDesignChanged, this,
+                [this, tableName](const QStringList &fieldNames, const QStringList &fieldTypes) {
+                    // Guardar diseño en "arreglos" por tabla
+                    TableDesignData &d = tableDesigns[tableName];
+                    d.fieldNames = fieldNames;
+                    d.fieldTypes = fieldTypes;
+                    // Si existe su TableData, sincronizar
+                    if (tableDatas.contains(tableName) && tableDatas.value(tableName)) {
+                        tableDatas.value(tableName)->setupDataView(fieldNames, fieldTypes);
+                    }
+                }, Qt::UniqueConnection);
+
+        tableViews.insert(tableName, view);
+    }
+
+    // 2) Crear o recuperar el TableData de cache (aunque no se muestre todavía)
+    TableData *data = nullptr;
+    if (tableDatas.contains(tableName)) {
+        data = tableDatas.value(tableName);
+    } else {
+        data = new TableData(this);
+        data->setTableName(tableName);
+        data->setProperty("tableName", tableName);
+
+        connect(data, &TableData::switchToDesignView, this, [this]() {
             switchToDesignView();
-        });
-        // --- Sincronización automática de campos ---
-        connect(currentTableView, &TableView::tableDesignChanged, this, [this](const QStringList &fieldNames, const QStringList &fieldTypes) {
-            if (currentTableData) {
-                currentTableData->setupDataView(fieldNames, fieldTypes);
-            }
-        });
-        
-        // Add table to sidebar list
-        addTableToSidebar(tableName);
+        }, Qt::UniqueConnection);
+
+        // Si ya hay diseño guardado, aplicarlo
+        if (tableDesigns.contains(tableName)) {
+            const auto &d = tableDesigns.value(tableName);
+            data->setupDataView(d.fieldNames, d.fieldTypes);
+        }
+        tableDatas.insert(tableName, data);
     }
-    
-    // Show design view and hide data view
-    if (currentTableData && mainContentLayout->indexOf(currentTableData) != -1) {
-        mainContentLayout->removeWidget(currentTableData);
-        currentTableData->hide();
+
+    // 3) Mostrar SOLO el view (diseño) ahora
+    //    Limpia layout principal y añade el que corresponde (sin borrar caches)
+    while (QLayoutItem *child = mainContentLayout->takeAt(0)) {
+        if (auto *w = child->widget()) {
+            w->hide();
+            mainContentLayout->removeWidget(w);
+        }
+        delete child;
     }
-    
-    if (mainContentLayout->indexOf(currentTableView) == -1) {
-        mainContentLayout->addWidget(currentTableView);
-    }
-    currentTableView->show();
+    mainContentLayout->addWidget(view);
+    view->show();
 }
+
 
 void TableEditor::addTableToSidebar(const QString &tableName)
 {
     // Create new tree widget item for the table
-    QTreeWidgetItem *tableItem = new QTreeWidgetItem(tableTree);
+    auto *tableItem = new QTreeWidgetItem(tableTree);
     tableItem->setText(0, tableName);
     tableItem->setIcon(0, QIcon("🗄️")); // You can use a proper icon here
     
@@ -700,49 +704,40 @@ void TableEditor::addTableToSidebar(const QString &tableName)
 
 void TableEditor::showTableDataView(const QString &tableName)
 {
-    // Store current table name
     currentTableName = tableName;
-    
-    // If this is a new table or the first time, create both views
-    if (!currentTableData || currentTableData->property("tableName").toString() != tableName) {
-        // Clear the main content area only if we're switching tables
-        QLayoutItem *child;
-        while ((child = mainContentLayout->takeAt(0)) != nullptr) {
-            delete child->widget();
-            delete child;
-        }
-        
-        // Create table view (but don't show it yet)
-        currentTableView = new TableView(this);
-        currentTableView->setTableName(tableName);
-        currentTableView->updateTheme(isDarkTheme);
-        currentTableView->setProperty("tableName", tableName);
-        
-        // Create table data view
-        currentTableData = new TableData(this);
-        currentTableData->setTableName(tableName);
-        currentTableData->setProperty("tableName", tableName);
-        
-        // Connect signals for switching between views
-        connect(currentTableView, &TableView::switchToDataView, this, [this]() {
+
+    // Asegura que existen en cache
+    if (!tableViews.contains(tableName)) {
+        tableViews.insert(tableName, new TableView(this));
+        tableViews[tableName]->setTableName(tableName);
+        tableViews[tableName]->updateTheme(isDarkTheme);
+        connect(tableViews[tableName], &TableView::switchToDataView, this, [this]() {
             switchToDataView();
-        });
-        
-        connect(currentTableData, &TableData::switchToDesignView, this, [this]() {
+        }, Qt::UniqueConnection);
+    }
+    if (!tableDatas.contains(tableName)) {
+        tableDatas.insert(tableName, new TableData(this));
+        tableDatas[tableName]->setTableName(tableName);
+        connect(tableDatas[tableName], &TableData::switchToDesignView, this, [this]() {
             switchToDesignView();
-        });
+        }, Qt::UniqueConnection);
+
+        if (tableDesigns.contains(tableName)) {
+            const auto &d = tableDesigns.value(tableName);
+            tableDatas[tableName]->setupDataView(d.fieldNames, d.fieldTypes);
+        }
     }
-    
-    // Show data view and hide design view
-    if (currentTableView && mainContentLayout->indexOf(currentTableView) != -1) {
-        mainContentLayout->removeWidget(currentTableView);
-        currentTableView->hide();
+
+    // Mostrar solo Data
+    while (QLayoutItem *child = mainContentLayout->takeAt(0)) {
+        if (auto *w = child->widget()) {
+            w->hide();
+            mainContentLayout->removeWidget(w);
+        }
+        delete child;
     }
-    
-    if (mainContentLayout->indexOf(currentTableData) == -1) {
-        mainContentLayout->addWidget(currentTableData);
-    }
-    currentTableData->show();
+    mainContentLayout->addWidget(tableDatas.value(tableName));
+    tableDatas.value(tableName)->show();
 }
 
 void TableEditor::onDeleteColumnClicked()
@@ -772,32 +767,41 @@ void TableEditor::animateCreateTablePanel()
 
 void TableEditor::switchToDataView()
 {
-    if (!currentTableView || !currentTableData) return;
-    
-    // Hide design view and show data view
-    if (mainContentLayout->indexOf(currentTableView) != -1) {
-        mainContentLayout->removeWidget(currentTableView);
-        currentTableView->hide();
+    if (!tableDatas.contains(currentTableName)) return;
+    TableData *data = tableDatas.value(currentTableName);
+    if (!data) return;
+
+    while (QLayoutItem *child = mainContentLayout->takeAt(0)) {
+        if (auto *w = child->widget()) {
+            w->hide();
+            mainContentLayout->removeWidget(w);
+        }
+        delete child;
     }
-    
-    if (mainContentLayout->indexOf(currentTableData) == -1) {
-        mainContentLayout->addWidget(currentTableData);
-    }
-    currentTableData->show();
+    mainContentLayout->addWidget(data);
+    data->show();
 }
 
 void TableEditor::switchToDesignView()
 {
-    if (!currentTableView || !currentTableData) return;
-    
-    // Hide data view and show design view
-    if (mainContentLayout->indexOf(currentTableData) != -1) {
-        mainContentLayout->removeWidget(currentTableData);
-        currentTableData->hide();
+    if (!tableViews.contains(currentTableName)) return;
+    TableView *view = tableViews.value(currentTableName);
+    if (!view) return;
+
+    while (QLayoutItem *child = mainContentLayout->takeAt(0)) {
+        if (auto *w = child->widget()) {
+            w->hide();
+            mainContentLayout->removeWidget(w);
+        }
+        delete child;
     }
-    
-    if (mainContentLayout->indexOf(currentTableView) == -1) {
-        mainContentLayout->addWidget(currentTableView);
-    }
-    currentTableView->show();
+    mainContentLayout->addWidget(view);
+    view->show();
+}
+
+void TableEditor::onSidebarItemClicked(QTreeWidgetItem *item, int /*column*/)
+{
+    if (!item) return;
+    const QString selectedTableName = item->text(0);
+    showTableView(selectedTableName);   // o showTableDataView si quieres abrir en datos
 }
