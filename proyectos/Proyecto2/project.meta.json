@@ -1,0 +1,10 @@
+{
+    "magic": "MINIACCESS_PROJECT",
+    "paths": {
+        "indexes": "indexes",
+        "logs": "logs",
+        "tables": "tables"
+    },
+    "project": "Proyecto2",
+    "version": 1
+}

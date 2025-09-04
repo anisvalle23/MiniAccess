@@ -3,20 +3,27 @@
 
 #include <QMainWindow>
 #include <QWidget>
-#include <QHBoxLayout>
 #include <QVBoxLayout>
-#include <QPushButton>
+#include <QHBoxLayout>
 #include <QLabel>
+#include <QPushButton>
 #include <QFrame>
-#include <QFont>
-#include <QPixmap>
-#include <QIcon>
 #include <QApplication>
 #include <QScreen>
-#include <QRect>
+#include <QFont>
+#include <QPropertyAnimation>
+#include <QEvent>
+#include <QGraphicsDropShadowEffect>
+#include <QTimer>
+#include <QScrollArea>
+#include <QGraphicsOpacityEffect>
+#include <QParallelAnimationGroup>
+#include <QStackedWidget>
 
 QT_BEGIN_NAMESPACE
 QT_END_NAMESPACE
+
+class TableEditor;
 
 class MainWindow : public QMainWindow
 {
@@ -25,32 +32,85 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+    void setProjectName(const QString &projectName);
+
+private slots:
+    void onSidebarEnter();
+    void onSidebarLeave();
+    void onSettingsButtonHover();
+    void onSettingsButtonLeave();
+    void onSidebarItemClicked();
+
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
     void setupUI();
+    void createHeader();
     void createSidebar();
-    void createCentralArea();
+    void createMainContent();
+    void createHomeView();
+    void createWelcomeSection();
+    void createDatabaseSection();
+    void createExploreSection();
+    void switchToView(int viewIndex);
+    void updateSidebarSelection(int selectedIndex);
     void styleComponents();
+    void setupSidebarAnimation();
+    void updateSidebarItems(bool expanded);
+    void updateThemeStyles();
+    void updateHeaderTheme(bool isDark);
+    void updateSidebarTheme(bool isDark);
+    void updateMainContentTheme(bool isDark);
     
     // UI Components
     QWidget *centralWidget;
-    QHBoxLayout *mainLayout;
+    QVBoxLayout *mainLayout;
     
-    // Sidebar
-    QFrame *sidebar;
+        // Header components
+    QWidget *headerWidget;
+    QHBoxLayout *headerLayout;
+    QLabel *projectNameLabel;
+    QPushButton *settingsBtn;
+    QPropertyAnimation *settingsRotationAnimation;
+    
+    // Sidebar (overlay)
+    QWidget *sidebarOverlay;
+    QWidget *sidebarWidget;
     QVBoxLayout *sidebarLayout;
-    QPushButton *btnInicio;
-    QPushButton *btnTablas;
-    QPushButton *btnRegistros;
-    QPushButton *btnConsultas;
-    QPushButton *btnRelaciones;
-    QPushButton *btnConfiguracion;
+    QPropertyAnimation *sidebarWidthAnimation;
+    QPropertyAnimation *sidebarOpacityAnimation;
+    QParallelAnimationGroup *sidebarAnimationGroup;
+    QGraphicsOpacityEffect *sidebarOpacityEffect;
+    QGraphicsDropShadowEffect *sidebarShadowEffect;
+    bool sidebarExpanded;
     
-    // Central Area
-    QWidget *centralArea;
-    QVBoxLayout *centralLayout;
-    QLabel *titleLabel;
-    QLabel *subtitleLabel;
+    // Sidebar buttons
+    QList<QPushButton*> sidebarButtons;
+    QList<QLabel*> sidebarLabels;
+    QList<QLabel*> sidebarLabelsWidgets;
+    
+    // Main Content Area (doesn't move when sidebar expands)
+    QWidget *mainContainer;
+    QVBoxLayout *mainContainerLayout;
+    QStackedWidget *stackedWidget;
+    
+    // Home view
+    QWidget *homeView;
+    QVBoxLayout *homeViewLayout;
+    QWidget *contentArea;
+    QVBoxLayout *contentLayout;
+    QLabel *welcomeLabel;
+    QLabel *descriptionLabel;
+    
+    // Table Editor view
+    TableEditor *tableEditorView;
+    
+    // Current view tracking
+    int currentViewIndex;
+    
+    // Project data
+    QString currentProjectName;
 };
 
 #endif // MAINWINDOW_H

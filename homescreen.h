@@ -28,6 +28,9 @@
 #include <QFrame>
 #include <QToolTip>
 #include <QGraphicsRotation>
+#include "ThemeManager.h"
+#include "ThemePopover.h"
+#include "CreateProject.h"
 
 // Widget personalizado para el fondo animado
 class AnimatedBackground : public QWidget
@@ -68,11 +71,12 @@ private slots:
 
 private:
     void setupUI();
-    void createHeader();
     void createHeroSection();
-    void setupAnimations();
+    void createHeader();
     void styleComponents();
+    void updateLayout(); // Nueva función para forzar re-alineación
     void centerWindow();
+    void setupAnimations();
     
     // UI Components principales
     QWidget *centralWidget;
@@ -93,6 +97,10 @@ private:
     QWidget *headerWidget;
     QFrame *headerLine;
     QPushButton *settingsButton;
+    ThemePopover *themePopover;
+    
+    // Ventana de CreateProject
+    CreateProject *createProjectWindow;
     
     // Efectos gráficos
     QGraphicsDropShadowEffect *cardShadow;

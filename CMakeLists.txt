@@ -20,6 +20,20 @@ set(PROJECT_SOURCES
         splashscreen.h
         homescreen.cpp
         homescreen.h
+        CreateProject.cpp
+        CreateProject.h
+        ThemeManager.cpp
+        ThemeManager.h
+        ThemeTokens.cpp
+        ThemeTokens.h
+        ThemePopover.cpp
+        ThemePopover.h
+        TableEditor.cpp
+        TableEditor.h
+        TableView.cpp
+        TableView.h
+        TableData.cpp
+        TableData.h
         mainwindow.ui
 )
 
@@ -42,6 +56,7 @@ else()
     else()
         add_executable(MiniAccess
             ${PROJECT_SOURCES}
+            projectpathsqt.h projectpathsqt.cpp
         )
     endif()
 endif()

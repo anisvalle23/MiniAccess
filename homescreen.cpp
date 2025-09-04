@@ -1,4 +1,7 @@
 #include "homescreen.h"
+#include "ThemeManager.h"
+#include "ThemeTokens.h"
+#include <QDebug>
 
 // Implementación de AnimatedBackground
 AnimatedBackground::AnimatedBackground(QWidget *parent)
@@ -27,17 +30,34 @@ void AnimatedBackground::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
     
-    // Fondo blanco con degradado radial sutil en rojo burdeos
-    QRadialGradient gradient(width() / 2, height() / 2, qMax(width(), height()) / 2);
-    gradient.setColorAt(0, QColor(164, 55, 58, 20));     // 8% opacidad centro
-    gradient.setColorAt(0.4, QColor(164, 55, 58, 12));   // 5% opacidad
-    gradient.setColorAt(0.8, QColor(164, 55, 58, 5));    // 2% opacidad
-    gradient.setColorAt(1, QColor(255, 255, 255, 255));  // Blanco puro
+    bool isDark = ThemeManager::instance().isDark();
     
-    painter.fillRect(rect(), QBrush(gradient));
+    // Fondo base según el tema
+    QColor baseColor = isDark ? QColor(15, 15, 17) : QColor(255, 255, 255);
+    painter.fillRect(rect(), baseColor);
+    
+    // Degradado radial sutil según el tema
+    QRadialGradient gradient(width() / 2, height() / 2.5, qMax(width(), height()) / 3);
+    
+    if (isDark) {
+        // Tema oscuro: degradado muy sutil
+        gradient.setColorAt(0, QColor(164, 55, 58, 8));      // Centro muy sutil
+        gradient.setColorAt(0.5, QColor(164, 55, 58, 3));    // Transición
+        gradient.setColorAt(1, QColor(164, 55, 58, 0));      // Transparente
+    } else {
+        // Tema claro: degradado original pero más sutil
+        gradient.setColorAt(0, QColor(164, 55, 58, 15));     // Centro sutil
+        gradient.setColorAt(0.5, QColor(164, 55, 58, 8));    // Transición
+        gradient.setColorAt(1, QColor(164, 55, 58, 0));      // Transparente
+    }
+    
+    painter.setBrush(QBrush(gradient));
+    painter.setPen(Qt::NoPen);
+    painter.drawEllipse(width()/2 - 400, height()/2 - 300, 800, 600);
     
     // Grid parallax ultra suave
-    painter.setPen(QPen(QColor(164, 55, 58, 8), 0.5)); // Muy sutil
+    int gridOpacity = isDark ? 3 : 6;
+    painter.setPen(QPen(QColor(164, 55, 58, gridOpacity), 0.5));
     int gridSize = 50;
     int offsetX = (int)(mousePos.x() * 0.001) % gridSize;
     int offsetY = (int)(mousePos.y() * 0.001) % gridSize;
@@ -49,30 +69,34 @@ void AnimatedBackground::paintEvent(QPaintEvent *event)
         painter.drawLine(0, y, width(), y);
     }
     
-    // Blobs borrosos flotantes orgánicos - Valores seguros y visibles
+    // Blobs borrosos flotantes orgánicos adaptados al tema
     painter.setPen(Qt::NoPen);
+    
+    int blob1Opacity = isDark ? 12 : 20;
+    int blob2Opacity = isDark ? 10 : 16;
     
     // Blob 1 - Izquierda superior
     QRadialGradient blob1Gradient(blob1X, blob1Y, 180);
-    blob1Gradient.setColorAt(0, QColor(164, 55, 58, 25));    // Moderadamente visible
-    blob1Gradient.setColorAt(0.6, QColor(164, 55, 58, 12));  // Transición suave
-    blob1Gradient.setColorAt(1, QColor(164, 55, 58, 0));     // Borde transparente
+    blob1Gradient.setColorAt(0, QColor(164, 55, 58, blob1Opacity));
+    blob1Gradient.setColorAt(0.6, QColor(164, 55, 58, blob1Opacity / 2));
+    blob1Gradient.setColorAt(1, QColor(164, 55, 58, 0));
     painter.setBrush(QBrush(blob1Gradient));
     painter.drawEllipse(QPointF(blob1X, blob1Y), 180, 120);
     
     // Blob 2 - Derecha inferior
     QRadialGradient blob2Gradient(blob2X, blob2Y, 150);
-    blob2Gradient.setColorAt(0, QColor(164, 55, 58, 20));    // Moderadamente visible
-    blob2Gradient.setColorAt(0.6, QColor(164, 55, 58, 8));   // Transición suave
-    blob2Gradient.setColorAt(1, QColor(164, 55, 58, 0));     // Borde transparente
+    blob2Gradient.setColorAt(0, QColor(164, 55, 58, blob2Opacity));
+    blob2Gradient.setColorAt(0.6, QColor(164, 55, 58, blob2Opacity / 2));
+    blob2Gradient.setColorAt(1, QColor(164, 55, 58, 0));
     painter.setBrush(QBrush(blob2Gradient));
     painter.drawEllipse(QPointF(blob2X, blob2Y), 150, 100);
     
     // Partículas mínimas ascendentes
     painter.setPen(Qt::NoPen);
     for (int i = 0; i < particles.size(); ++i) {
-        painter.setBrush(QColor(164, 55, 58, (int)(particleOpacity[i] * 255)));
-        painter.drawEllipse(particles[i], 3, 3);
+        int particleOpacityValue = isDark ? (int)(particleOpacity[i] * 120) : (int)(particleOpacity[i] * 180);
+        painter.setBrush(QColor(164, 55, 58, particleOpacityValue));
+        painter.drawEllipse(particles[i], 2, 2);
     }
 }
 
@@ -108,10 +132,25 @@ void AnimatedBackground::updateAnimation()
 
 // Implementación de HomeScreen
 HomeScreen::HomeScreen(QWidget *parent)
-    : QMainWindow(parent), animationsStarted(false)
+    : QMainWindow(parent), animationsStarted(false), createProjectWindow(nullptr)
 {
+        // Crear popover de temas
+    themePopover = new ThemePopover(this);
+    themePopover->setSettingsButton(settingsButton);
+    
     setupUI();
     centerWindow();
+    
+    // Conectar al sistema de temas para actualizar estilos
+    connect(&ThemeManager::instance(), &ThemeManager::themeChanged, 
+            this, [this](ThemeManager::Theme) {
+        styleComponents();
+        updateLayout();
+        
+        // Procesar eventos pendientes y actualizar
+        QApplication::processEvents();
+        update();
+    });
     
     // Iniciar animaciones de entrada con delay
     QTimer::singleShot(500, this, &HomeScreen::startEntranceAnimations);
@@ -173,37 +212,21 @@ void HomeScreen::createHeroSection()
     heroLayout->setSpacing(0);
     heroLayout->setContentsMargins(50, 60, 50, 60);
     
-    // Badge superior discreto "Mini Access"
-    badgeLabel = new QLabel("Mini Access");
+    // Badge superior discreto "Mini Access" - REMOVIDO
+    badgeLabel = new QLabel("");
     badgeLabel->setAlignment(Qt::AlignCenter);
     badgeLabel->setFont(QFont("Inter", 12, QFont::Medium));
-    badgeLabel->setStyleSheet(
-        "QLabel {"
-        "    background-color: rgba(164, 55, 58, 0.08);"
-        "    color: #A4373A;"
-        "    padding: 6px 14px;"
-        "    border-radius: 18px;"
-        "    border: 1px solid rgba(164, 55, 58, 0.15);"
-        "}"
-    );
-    badgeLabel->setFixedSize(100, 30);
+    // Los estilos se aplicarán en styleComponents() según el tema
+    badgeLabel->setFixedSize(0, 0);
+    badgeLabel->setVisible(false);
     
     // Card/Glass container para el título (máx 800px)
     titleCard = new QWidget();
     titleCard->setMaximumWidth(800);
-    titleCard->setStyleSheet(
-        "QWidget {"
-        "    background-color: rgba(255, 247, 247, 0.7);"
-        "    border-radius: 22px;"
-        "    border: 1px solid rgba(164, 55, 58, 0.08);"
-        "}"
-    );
+    // Los estilos se aplicarán en styleComponents() según el tema
     
-    // Sombra muy ligera para la card
+    // Sombra muy ligera para la card (se configurará en styleComponents)
     cardShadow = new QGraphicsDropShadowEffect();
-    cardShadow->setBlurRadius(25);
-    cardShadow->setColor(QColor(164, 55, 58, 20));
-    cardShadow->setOffset(0, 6);
     titleCard->setGraphicsEffect(cardShadow);
     
     // Layout interno de la card
@@ -213,7 +236,7 @@ void HomeScreen::createHeroSection()
     titleCardLayout->setContentsMargins(50, 40, 50, 40);
     
     // Título línea 1 - Extra bold muy grande
-    titleLine1 = new QLabel("Construye en un fin de semana");
+    titleLine1 = new QLabel("Mini Access");
     titleLine1->setAlignment(Qt::AlignCenter);
     titleLine1->setFont(QFont("Inter", 48, QFont::ExtraBold));
     titleLine1->setStyleSheet(
@@ -222,8 +245,8 @@ void HomeScreen::createHeroSection()
     );
     titleLine1->setWordWrap(true);
     
-    // Título línea 2 - Extra bold muy grande
-    titleLine2 = new QLabel("Escala a millones");
+    // Título línea 2 - REMOVIDO
+    titleLine2 = new QLabel("");
     titleLine2->setAlignment(Qt::AlignCenter);
     titleLine2->setFont(QFont("Inter", 48, QFont::ExtraBold));
     titleLine2->setStyleSheet(
@@ -231,13 +254,14 @@ void HomeScreen::createHeroSection()
         "line-height: 1.1;"
     );
     titleLine2->setWordWrap(true);
+    titleLine2->setVisible(false);
     
     // Agregar títulos a la card
     titleCardLayout->addWidget(titleLine1);
     titleCardLayout->addWidget(titleLine2);
     
     // Subcopy descriptivo
-    descriptionLabel = new QLabel("Mini Access es la plataforma de base de datos: crea tablas, relaciones y APIs al instante.");
+    descriptionLabel = new QLabel("La plataforma de base de datos. Crea tablas, relaciones y APIs.");
     descriptionLabel->setAlignment(Qt::AlignCenter);
     descriptionLabel->setFont(QFont("Inter", 16, QFont::Normal));
     descriptionLabel->setStyleSheet(
@@ -354,10 +378,96 @@ void HomeScreen::startEntranceAnimations()
 
 void HomeScreen::styleComponents()
 {
+    bool isDark = ThemeManager::instance().isDark();
+    QString accentColor = isDark ? ThemeTokens::Dark::ACCENT_ADJUSTED : ThemeTokens::ACCENT_PRIMARY;
+    QString hoverColor = ThemeTokens::ThemeHelper::getButtonHoverColor(isDark);
+    QString pressedColor = ThemeTokens::ThemeHelper::getButtonPressedColor(isDark);
+    QString shadowColor = ThemeTokens::ThemeHelper::getShadowColor(isDark);
+    QString surfaceColor = isDark ? ThemeTokens::Dark::SURFACE : ThemeTokens::Light::SURFACE;
+    QString textPrimary = isDark ? ThemeTokens::Dark::TEXT_PRIMARY : ThemeTokens::Light::TEXT_PRIMARY;
+    QString textSecondary = isDark ? ThemeTokens::Dark::TEXT_SECONDARY : ThemeTokens::Light::TEXT_SECONDARY;
+    
+    // Reestablecer alineación del layout principal
+    if (heroLayout) {
+        heroLayout->setAlignment(Qt::AlignCenter);
+    }
+    
+    // Asegurar que todos los elementos mantengan su alineación central
+    if (badgeLabel) {
+        badgeLabel->setAlignment(Qt::AlignCenter);
+    }
+    if (titleLine1) {
+        titleLine1->setAlignment(Qt::AlignCenter);
+    }
+    if (titleLine2) {
+        titleLine2->setAlignment(Qt::AlignCenter);
+    }
+    if (descriptionLabel) {
+        descriptionLabel->setAlignment(Qt::AlignCenter);
+    }
+    
+    // Estilo del badge según el tema
+    badgeLabel->setStyleSheet(QString(
+        "QLabel {"
+        "    background-color: rgba(164, 55, 58, %1);"
+        "    color: %2;"
+        "    padding: 6px 14px;"
+        "    border-radius: 18px;"
+        "    border: 1px solid rgba(164, 55, 58, %3);"
+        "    text-align: center;"
+        "}"
+    ).arg(isDark ? "0.12" : "0.08", accentColor, isDark ? "0.25" : "0.15"));
+    
+    // Estilo de la title card según el tema
+    titleCard->setStyleSheet(QString(
+        "QWidget {"
+        "    background-color: %1;"
+        "    border-radius: 22px;"
+        "    border: 1px solid rgba(164, 55, 58, %2);"
+        "}"
+    ).arg(isDark ? "rgba(22, 22, 25, 0.8)" : "rgba(255, 247, 247, 0.7)", 
+          isDark ? "0.15" : "0.08"));
+    
+    // Configurar sombra de la card según el tema
+    if (cardShadow) {
+        cardShadow->setBlurRadius(25);
+        cardShadow->setColor(QColor(isDark ? 0 : 164, isDark ? 0 : 55, isDark ? 0 : 58, isDark ? 40 : 20));
+        cardShadow->setOffset(0, isDark ? 8 : 6);
+    }
+    
+    // Estilo de los títulos según el tema con alineación explícita
+    titleLine1->setStyleSheet(QString(
+        "QLabel {"
+        "    color: %1;"
+        "    line-height: 1.1;"
+        "}"
+    ).arg(textPrimary));
+    // Forzar alineación central programáticamente
+    titleLine1->setAlignment(Qt::AlignCenter);
+    
+    titleLine2->setStyleSheet(QString(
+        "QLabel {"
+        "    color: %1;"
+        "    line-height: 1.1;"
+        "}"
+    ).arg(textPrimary));
+    // Forzar alineación central programáticamente
+    titleLine2->setAlignment(Qt::AlignCenter);
+    
+    // Estilo de la descripción según el tema con alineación explícita
+    descriptionLabel->setStyleSheet(QString(
+        "QLabel {"
+        "    color: %1;"
+        "    line-height: 1.5;"
+        "}"
+    ).arg(textSecondary));
+    // Forzar alineación central programáticamente
+    descriptionLabel->setAlignment(Qt::AlignCenter);
+    
     // Estilo del botón CTA con microinteracciones
-    ctaButton->setStyleSheet(
+    ctaButton->setStyleSheet(QString(
         "QPushButton {"
-        "    background-color: #A4373A;"
+        "    background-color: %1;"
         "    color: white;"
         "    border: none;"
         "    border-radius: 12px;"
@@ -365,26 +475,49 @@ void HomeScreen::styleComponents()
         "    padding: 16px 32px;"
         "}"
         "QPushButton:hover {"
-        "    background-color: #8F2D30;"
+        "    background-color: %2;"
         "}"
         "QPushButton:pressed {"
-        "    background-color: #7A252A;"
+        "    background-color: %3;"
         "}"
-    );
+    ).arg(accentColor, hoverColor, pressedColor));
     
     // Sombra suave para el botón
+    if (buttonShadow) {
+        delete buttonShadow;
+    }
     buttonShadow = new QGraphicsDropShadowEffect();
     buttonShadow->setBlurRadius(12);
-    buttonShadow->setColor(QColor(164, 55, 58, 35));
+    buttonShadow->setColor(QColor(isDark ? 0 : 164, isDark ? 0 : 55, isDark ? 0 : 58, isDark ? 60 : 35));
     buttonShadow->setOffset(0, 3);
     ctaButton->setGraphicsEffect(buttonShadow);
     
-    // Estilo general limpio
-    setStyleSheet(
-        "QMainWindow {"
-        "    background-color: #FFFFFF;"
-        "}"
-    );
+    // Actualizar el background animado
+    if (backgroundWidget) {
+        backgroundWidget->update();
+    }
+    
+    // Forzar re-centrado de todos los elementos
+    updateLayout();
+}
+
+void HomeScreen::updateLayout()
+{
+    // Reestablecer todas las alineaciones
+    if (heroLayout) {
+        heroLayout->setAlignment(Qt::AlignCenter);
+        
+        // Actualizar cada widget en el layout
+        for (int i = 0; i < heroLayout->count(); ++i) {
+            QLayoutItem *item = heroLayout->itemAt(i);
+            if (item && item->widget()) {
+                heroLayout->setAlignment(item->widget(), Qt::AlignCenter);
+            }
+        }
+    }
+    
+    // Procesar eventos para asegurar que se apliquen los cambios
+    QApplication::processEvents();
 }
 
 void HomeScreen::centerWindow()
@@ -401,6 +534,8 @@ void HomeScreen::centerWindow()
 
 void HomeScreen::onStartProjectClicked()
 {
+    qDebug() << "DEBUG: onStartProjectClicked() iniciado";
+    
     // Efecto ripple sutil al hacer click
     QPropertyAnimation *liftAnimation = new QPropertyAnimation(ctaButton, "geometry");
     liftAnimation->setDuration(100);
@@ -423,7 +558,30 @@ void HomeScreen::onStartProjectClicked()
     clickGroup->addAnimation(returnAnimation);
     clickGroup->start(QAbstractAnimation::DeleteWhenStopped);
     
-    // Aquí agregar lógica para iniciar proyecto
+    qDebug() << "DEBUG: Animación de botón configurada";
+    
+    try {
+        qDebug() << "DEBUG: Intentando crear CreateProject window";
+        // Crear y mostrar la ventana CreateProject
+        createProjectWindow = new CreateProject(nullptr); // Cambiar parent a nullptr temporalmente
+        qDebug() << "DEBUG: CreateProject window creada exitosamente";
+        
+        createProjectWindow->show();
+        qDebug() << "DEBUG: CreateProject window mostrada";
+        
+        // Cerrar la ventana actual con un pequeño delay
+        QTimer::singleShot(200, this, [this]() {
+            qDebug() << "DEBUG: Cerrando HomeScreen";
+            this->close();
+        });
+        
+    } catch (const std::exception& e) {
+        qDebug() << "DEBUG: Excepción capturada:" << e.what();
+    } catch (...) {
+        qDebug() << "DEBUG: Excepción desconocida capturada";
+    }
+    
+    qDebug() << "DEBUG: onStartProjectClicked() terminado";
 }
 
 void HomeScreen::createHeader()
@@ -496,6 +654,12 @@ void HomeScreen::createHeader()
 
 void HomeScreen::onSettingsClicked()
 {
+    // Verificar si el popover está visible para hacer toggle
+    if (themePopover->isPopoverVisible()) {
+        themePopover->hidePopover();
+        return;
+    }
+    
     // Crear efecto de rotación en el ícono
     QGraphicsRotation *rotation = new QGraphicsRotation();
     rotation->setOrigin(QVector3D(16, 16, 0)); // Centro del botón
@@ -532,7 +696,7 @@ void HomeScreen::onSettingsClicked()
     fullSequence->addAnimation(returnAnimation);
     fullSequence->start(QAbstractAnimation::DeleteWhenStopped);
     
-    // Mostrar tooltip temporal con información adicional
-    QToolTip::showText(settingsButton->mapToGlobal(QPoint(16, 40)), 
-                      "Configuraciones del sistema", settingsButton, QRect(), 2000);
+    // Mostrar popover de tema
+    QPoint popoverPosition = settingsButton->mapToGlobal(QPoint(0, settingsButton->height()));
+    themePopover->showPopover(popoverPosition);
 }
