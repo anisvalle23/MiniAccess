@@ -2,6 +2,7 @@
 #include "ThemeManager.h"
 #include "ThemeTokens.h"
 #include "TableEditor.h"
+#include "RelationshipsView.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), sidebarExpanded(false), currentViewIndex(0)
@@ -285,9 +286,13 @@ void MainWindow::createMainContent()
     // Create table editor view
     tableEditorView = new TableEditor();
     
+    // Create relationships view
+    relationshipsView = new RelationshipsView();
+    
     // Add views to stacked widget
     stackedWidget->addWidget(homeView);     // Index 0
     stackedWidget->addWidget(tableEditorView); // Index 1
+    stackedWidget->addWidget(relationshipsView); // Index 2
     
     // Set initial view
     stackedWidget->setCurrentIndex(0);
@@ -713,6 +718,16 @@ void MainWindow::switchToView(int viewIndex)
             stackedWidget->setCurrentIndex(1);
             // Update table editor theme if needed
             tableEditorView->updateTheme(ThemeManager::instance().isDark());
+            break;
+        case 2:
+            // Relationships view (skip "Base de Datos" - index 2 in sidebar is actually "Relaciones" - index 3)
+            stackedWidget->setCurrentIndex(0);
+            break;
+        case 3:
+            // Relationships view
+            stackedWidget->setCurrentIndex(2);
+            // Update relationships view theme if needed
+            relationshipsView->updateTheme(ThemeManager::instance().isDark());
             break;
         default:
             // For now, other views will show home
