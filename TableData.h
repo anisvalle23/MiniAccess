@@ -29,6 +29,7 @@ public:
     void setModelData(QWidget *editor, QAbstractItemModel *model,
                      const QModelIndex &index) const override;
     void updateEditorGeometry(QWidget*, const QStyleOptionViewItem&, const QModelIndex&) const override;
+    void initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const override;
 };
 
 class TableData : public QWidget
@@ -53,6 +54,10 @@ public:
     QString fieldTypeForColumn(int col) const;
     void markCellInvalid(int row,int col,const QString& msg) const;
     void clearCellError(int row,int col) const;
+    bool isValueValidForType(const QString& type, const QString& value) const;
+    void showSoftWarning(int row, int col, const QString& msg) const;
+    QString formatCurrency(const QString& raw) const;
+
 
 public slots:
     void onPersonDataChanged(QTableWidgetItem *item);

@@ -66,6 +66,7 @@ private slots:
     void onCancelClicked();
     void onSaveClicked();
     void onDeleteColumnClicked();
+    void onSidebarItemClicked(QTreeWidgetItem *item, int column);
 
 private:
     void setupUI();
@@ -137,6 +138,8 @@ private:
     TableView *currentTableView;
     TableData *currentTableData;
     QMap<QString, TableDesignData> tableDesigns;
+    QMap<QString, TableView*> tableViews;
+    QMap<QString, TableData*> tableDatas;
     QString currentTableName;
 };
 
