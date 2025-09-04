@@ -647,8 +647,8 @@ void TableView::onDataTypeChanged(const QString &dataType)
     // Actualizar propiedades específicas según el tipo seleccionado
     updateSpecificProperties(dataType);
     
-    // Actualizar ejemplos de datos
-    updateExampleData();
+    // Emitir señal para actualizar vista de datos (no actualizar ejemplos en vista diseño)
+    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
 }
 
 void TableView::onDescriptionChanged()
@@ -1206,8 +1206,8 @@ void TableView::onTextSizeChanged(const QString &text)
         qDebug() << "DEBUG: Tamaño de texto cambiado a:" << text;
     }
     
-    // Actualizar ejemplos de datos
-    updateExampleData();
+    // Emitir señal para actualizar vista de datos
+    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
 }
 
 void TableView::onNumberTypeChanged(const QString &text)
@@ -1237,22 +1237,22 @@ void TableView::onNumberTypeChanged(const QString &text)
         numberTypeCombo->setToolTip(sizeInfo);
     }
     
-    // Actualizar ejemplos de datos
-    updateExampleData();
+    // Emitir señal para actualizar vista de datos
+    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
 }
 
 void TableView::onCurrencyFormatChanged(const QString &text)
 {
     qDebug() << "DEBUG: Formato de moneda cambiado a:" << text;
-    // Actualizar ejemplo de datos cuando cambie el formato de moneda
-    updateExampleData();
+    // Emitir señal para actualizar vista de datos
+    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
 }
 
 void TableView::onDateFormatChanged(const QString &text)
 {
     qDebug() << "DEBUG: Formato de fecha cambiado a:" << text;
-    // Actualizar ejemplo de datos cuando cambie el formato de fecha
-    updateExampleData();
+    // Emitir señal para actualizar vista de datos
+    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
 }
 
 QString TableView::generateExampleData(const QString &dataType, int column)

@@ -191,6 +191,24 @@ void TableData::setupTableForPersonData()
 void TableData::setupDataView(const QStringList &fieldNames, const QStringList &fieldTypes)
 {
     qDebug() << "DEBUG: Configurando vista de datos con campos:" << fieldNames;
+    qDebug() << "DEBUG: Tipos de campos recibidos:" << fieldTypes;
+    
+    // Verificar que tengamos la misma cantidad de nombres y tipos
+    if (fieldNames.size() != fieldTypes.size()) {
+        qDebug() << "WARNING: Mismatch between field names (" << fieldNames.size() << ") and field types (" << fieldTypes.size() << ")";
+        // Si hay más nombres que tipos, rellenar con "Texto corto (hasta N caracteres)"
+        QStringList adjustedTypes = fieldTypes;
+        while (adjustedTypes.size() < fieldNames.size()) {
+            adjustedTypes << "Texto corto (hasta N caracteres)";
+        }
+        // Si hay más tipos que nombres, truncar los tipos
+        while (adjustedTypes.size() > fieldNames.size()) {
+            adjustedTypes.removeLast();
+        }
+        savedFieldTypes = adjustedTypes;
+    } else {
+        savedFieldTypes = fieldTypes;
+    }
     
     // Guardar datos existentes antes de reconfigurar
     QList<QStringList> existingData;
@@ -201,6 +219,13 @@ void TableData::setupDataView(const QStringList &fieldNames, const QStringList &
     // Solo guardar datos si ya había columnas configuradas
     if (oldColumnCount > 0 && oldRowCount > 0) {
         for (int row = 0; row < oldRowCount; row++) {
+            // Verificar si esta fila es de ejemplo y saltarla
+            QTableWidgetItem *firstItem = dataTable->item(row, 0);
+            if (firstItem && firstItem->toolTip().contains("Ejemplo")) {
+                qDebug() << "DEBUG: Skipping example row" << row << "when saving existing data";
+                continue;
+            }
+            
             QStringList rowData;
             bool hasData = false;
             
@@ -224,7 +249,6 @@ void TableData::setupDataView(const QStringList &fieldNames, const QStringList &
     qDebug() << "DEBUG: Datos existentes guardados:" << existingData.size() << "filas";
     
     savedFieldNames = fieldNames;
-    savedFieldTypes = fieldTypes;
     
     // Configurar tabla con nuevos campos
     dataTable->setColumnCount(fieldNames.size());
@@ -281,11 +305,13 @@ void TableData::setupDataView(const QStringList &fieldNames, const QStringList &
         }
     }
     
-    // Agregar fila de ejemplo en gris al principio
-    updateExampleData();
-    
-    // Solo agregar una fila vacía para empezar a escribir si no hay datos existentes
+    // Agregar fila de ejemplo en gris al principio solo si no hay datos existentes
     if (existingData.isEmpty()) {
+        updateExampleData();
+    }
+    
+    // Solo agregar una fila vacía para empezar a escribir si no hay datos existentes Y no hay fila de ejemplo
+    if (existingData.isEmpty() && dataTable->rowCount() <= 1) {
         addPersonRow();
     }
     
@@ -380,8 +406,29 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
     
     qDebug() << "DEBUG: Datos cambiados en fila:" << row << "columna:" << col;
     
+    // Si el usuario empieza a escribir, eliminar la fila de ejemplo
+    if (!item->text().trimmed().isEmpty()) {
+        // Buscar y eliminar la fila de ejemplo
+        for (int r = 0; r < dataTable->rowCount(); r++) {
+            QTableWidgetItem *firstItem = dataTable->item(r, 0);
+            if (firstItem && firstItem->toolTip().contains("Ejemplo")) {
+                qDebug() << "DEBUG: User started typing, removing example row";
+                dataTable->blockSignals(true);
+                dataTable->removeRow(r);
+                dataTable->blockSignals(false);
+                break;
+            }
+        }
+    }
+    
+    // Verificar que los índices son válidos antes de acceder a savedFieldTypes
+    if (col >= savedFieldTypes.size() || col >= savedFieldNames.size()) {
+        qDebug() << "DEBUG: Column index" << col << "out of range. savedFieldTypes size:" << savedFieldTypes.size() << "savedFieldNames size:" << savedFieldNames.size();
+        return;
+    }
+    
     // Aplicar formato automático para campos de moneda
-    if (col < savedFieldTypes.size() && savedFieldTypes.at(col) == "moneda") {
+    if (col < savedFieldTypes.size() && col < savedFieldNames.size() && savedFieldTypes.at(col) == "moneda") {
         QString text = item->text().trimmed();
         if (!text.isEmpty() && !text.startsWith("Lps ") && !text.startsWith("$") && !text.startsWith("€")) {
             // Bloquear señales para evitar bucle infinito
@@ -463,22 +510,13 @@ QList<QStringList> TableData::getAllPersonData() const
 void TableData::clearAllData()
 {
     dataTable->clearContents();
-    dataTable->setRowCount(1); // Resetear a 1 fila inicial
+    dataTable->setRowCount(0); // Empezar sin filas
     
-    // Crear items vacíos para la primera fila
-    for (int col = 0; col < dataTable->columnCount(); col++) {
-        QTableWidgetItem *item = new QTableWidgetItem("");
-        
-        // Configurar fuente más grande para mejor legibilidad
-        QFont itemFont = item->font();
-        itemFont.setPointSize(16); // Fuente más grande para consistencia con el editor
-        item->setFont(itemFont);
-        
-        item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-        item->setBackground(QBrush(QColor(255, 255, 255)));
-        
-        dataTable->setItem(0, col, item);
-    }
+    // Mostrar fila de ejemplo cuando no hay datos
+    updateExampleData();
+    
+    // Agregar una fila vacía para empezar a escribir
+    addPersonRow();
 }
 
 QString TableData::getTableStyle()
@@ -564,22 +602,22 @@ void TableData::updateExampleData()
     // Bloquear señales para evitar bucles infinitos
     dataTable->blockSignals(true);
     
-    // Eliminar fila de ejemplo existente si la hay
-    for (int row = 0; row < dataTable->rowCount(); row++) {
+    // Eliminar TODAS las filas de ejemplo existentes
+    for (int row = dataTable->rowCount() - 1; row >= 0; row--) {
         QTableWidgetItem *firstItem = dataTable->item(row, 0);
         if (firstItem && firstItem->toolTip().contains("Ejemplo")) {
+            qDebug() << "DEBUG: Removing existing example row at index" << row;
             dataTable->removeRow(row);
-            break;
         }
     }
     
-    // Crear UNA nueva fila de ejemplo al principio
+    // Crear UNA nueva fila de ejemplo al principio (índice 0)
     dataTable->insertRow(0);
     
     // Crear items para la fila de ejemplo
     for (int col = 0; col < savedFieldNames.size(); col++) {
         QString fieldName = savedFieldNames.at(col);
-        QString dataType = savedFieldTypes.at(col);
+        QString dataType = (col < savedFieldTypes.size()) ? savedFieldTypes.at(col) : "Texto corto (hasta N caracteres)";
         
         QTableWidgetItem *exampleItem = new QTableWidgetItem("");
         
@@ -609,7 +647,7 @@ void TableData::updateExampleData()
     // Desbloquear señales
     dataTable->blockSignals(false);
     
-    qDebug() << "DEBUG: Example data updated successfully - single row created";
+    qDebug() << "DEBUG: Created single new example row at index 0";
 }
 
 // #include "TableData.moc"
