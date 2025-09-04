@@ -694,6 +694,42 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
     
     qDebug() << "DEBUG: Campo cambiado en fila:" << row << "columna:" << col;
     
+    // Validación para nombres de campos duplicados (columna 0)
+    if (col == 0 && !item->text().trimmed().isEmpty()) {
+        QString fieldName = item->text().trimmed();
+        
+        // Buscar duplicados (sin importar mayúsculas/minúsculas)
+        for (int checkRow = 0; checkRow < tableWidget->rowCount(); checkRow++) {
+            if (checkRow == row) continue; // Saltar la fila actual
+            
+            QTableWidgetItem *checkItem = tableWidget->item(checkRow, 0);
+            if (checkItem && !checkItem->text().trimmed().isEmpty()) {
+                QString existingName = checkItem->text().trimmed();
+                
+                // Comparación sin considerar mayúsculas/minúsculas
+                if (fieldName.toLower() == existingName.toLower()) {
+                    // Mostrar mensaje de error
+                    QMessageBox::warning(this, "Campo Duplicado", 
+                        QString("Ya existe un campo con el nombre '%1'.\n"
+                                "Los nombres de los campos deben ser únicos (sin importar mayúsculas/minúsculas).")
+                                .arg(existingName));
+                    
+                    // Limpiar el campo duplicado usando blockSignals del widget table
+                    tableWidget->blockSignals(true);
+                    item->setText("");
+                    tableWidget->blockSignals(false);
+                    
+                    // Enfocar en el campo para que el usuario pueda escribir un nombre diferente
+                    tableWidget->setCurrentItem(item);
+                    tableWidget->editItem(item);
+                    
+                    qDebug() << "DEBUG: Campo duplicado detectado:" << fieldName << "vs" << existingName;
+                    return; // Salir sin procesar más
+                }
+            }
+        }
+    }
+    
     // Si se escribió algo en una celda, habilitar la siguiente celda en la misma fila
     if (!item->text().trimmed().isEmpty()) {
         // Habilitar la siguiente columna en la misma fila

@@ -18,6 +18,7 @@
 #include <QTextEdit>
 #include <QScrollArea>
 #include <QFrame>
+#include <QMessageBox>
 #include <QTimer>
 #include <QStyledItemDelegate>
 #include <QPainter>
