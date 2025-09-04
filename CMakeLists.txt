@@ -34,6 +34,8 @@ set(PROJECT_SOURCES
         TableView.h
         TableData.cpp
         TableData.h
+        RelationshipsView.cpp
+        RelationshipsView.h
         mainwindow.ui
 )
 
