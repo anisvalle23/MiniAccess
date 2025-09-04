@@ -1,50 +1,208 @@
 #include "TableData.h"
+#include <QMessageBox>
+#include <QIntValidator>
+#include <QDoubleValidator>
+#include <QRegularExpressionValidator>
+#include <QDate>
+#include <QDateEdit>
+#include <QCalendarWidget>
+#include <QTimer>
 
 // Implementación del DataFieldDelegate
 QWidget *DataFieldDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option,
                                         const QModelIndex &index) const
 {
-    Q_UNUSED(index)
-    
-    QLineEdit *lineEdit = new QLineEdit(parent);
+    const TableData *owner = qobject_cast<const TableData*>(this->parent());
+    const QString type = owner ? owner->fieldTypeForColumn(index.column()) : QString();
+
+    if (type == "fecha") {
+        auto *dateEdit = new QDateEdit(parent);
+        dateEdit->setAttribute(Qt::WA_StyledBackground, true);
+        dateEdit->setAutoFillBackground(true);
+        dateEdit->setMinimumHeight(48);
+        dateEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+        dateEdit->setCalendarPopup(true);                 // popup con flecha
+        dateEdit->setDisplayFormat("dd-MM-yyyy");         // formato mostrado
+        dateEdit->setDate(QDate::currentDate());          // valor inicial
+        dateEdit->setMinimumDate(QDate(1900,1,1));
+        dateEdit->setMaximumDate(QDate(2100,12,31));
+
+        // Personalizar el calendario embebido (cuando lo abras con la flecha)
+        auto *cal = dateEdit->calendarWidget();
+        cal->setGridVisible(true);
+
+        // Estilo similar al resto de editores
+        dateEdit->setStyleSheet(
+            "QDateEdit {"
+            "  background-color: #ffffff;"
+            "  border: 1px solid #93c5fd;"
+            "  border-radius: 6px;"
+            "  padding: 6px 10px;"
+            "  font-size: 16px;"
+            "  color: #111827;"
+            "}"
+            "QDateEdit:focus {"
+            "  border: 1px solid #3b82f6;"
+            "}"
+            );
+
+        // Guardar cambios al seleccionar fecha
+        QObject::connect(dateEdit, &QDateEdit::dateChanged, this, [this, dateEdit](const QDate&){
+            auto *that = const_cast<DataFieldDelegate*>(this);
+            Q_EMIT that->commitData(dateEdit);
+            Q_EMIT that->closeEditor(dateEdit, QAbstractItemDelegate::NoHint);
+        });
+
+        return dateEdit;
+    }
+
+
+    if (type == "Sí / No") {
+        auto *combo = new QComboBox(parent);
+        combo->addItems({QStringLiteral("Sí"), QStringLiteral("No")});
+        combo->setAttribute(Qt::WA_StyledBackground, true);
+        combo->setAutoFillBackground(true);
+        combo->setMinimumHeight(48);
+        combo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+        // 🔧 FIX: castear this para poder emitir signals desde un método const
+        QObject::connect(combo, QOverload<int>::of(&QComboBox::activated),
+                         this, [this, combo](int){
+                             auto *that = const_cast<DataFieldDelegate*>(this);
+                             Q_EMIT that->commitData(combo);
+                             Q_EMIT that->closeEditor(combo, QAbstractItemDelegate::NoHint);
+                         });
+
+        return combo;
+    }
+
+    auto *lineEdit = new QLineEdit(parent);
+    lineEdit->setAttribute(Qt::WA_StyledBackground, true);
+    lineEdit->setAutoFillBackground(true);
+    lineEdit->setMinimumHeight(48);
+    lineEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    lineEdit->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
+
+    // 🔧 FIX: idem para QLineEdit
+    QObject::connect(lineEdit, &QLineEdit::editingFinished, this, [this, lineEdit](){
+        auto *that = const_cast<DataFieldDelegate*>(this);
+        Q_EMIT that->commitData(lineEdit);
+        Q_EMIT that->closeEditor(lineEdit, QAbstractItemDelegate::NoHint);
+    });
+
+    // Editor opaco, padding amplio y texto centrado vertical
     lineEdit->setStyleSheet(
         "QLineEdit {"
-        "background-color: transparent;" // Fondo transparente para que se integre
-        "border: none;" // Sin borde para que no se vea como emergente
-        "padding: 16px 12px;" // Más padding para que el texto se vea más grande
-        "font-size: 16px;" // Fuente más grande
-        "color: #111827;"
-        "selection-background-color: #3b82f6;" // Color de selección del texto
+        "  background-color: #ffffff;"
+        "  border: 1px solid #93c5fd;"
+        "  border-radius: 6px;"
+        "  padding: 12px;"                 /* más grande */
+        "  font-size: 14px;"               /* más legible */
+        "  color: #111827;"
+        "  selection-background-color: #3b82f6;"
         "}"
         "QLineEdit:focus {"
-        "background-color: rgba(59, 130, 246, 0.1);" // Fondo muy sutil al hacer foco
-        "border: none;"
-        "outline: none;"
+        "  background-color: #ffffff;"
+        "  border: 1px solid #3b82f6;"
         "}"
-    );
-    
-    // El editor debe ocupar exactamente el espacio de la celda
+        );
+
+
+    if (type == "Entero") {
+        auto *v = new QIntValidator(lineEdit);
+        v->setBottom(std::numeric_limits<int>::min());
+        v->setTop(std::numeric_limits<int>::max());
+        lineEdit->setValidator(v);
+    } else if (type == "Decimales" || type == "moneda") {
+        auto *v = new QDoubleValidator(lineEdit);
+        v->setNotation(QDoubleValidator::StandardNotation);
+        if (type == "moneda") v->setDecimals(2);
+        lineEdit->setValidator(v);
+    } else if (type == "fecha") {
+        QRegularExpression rx(R"(^(0?[1-9]|[12][0-9]|3[01])([/\-])(0?[1-9]|1[0-2])\2(\d{2}|\d{4})$)");
+        lineEdit->setValidator(new QRegularExpressionValidator(rx, lineEdit));
+    } else if (type.startsWith("Texto corto")) {
+        lineEdit->setMaxLength(255);
+    }
+    // Texto largo / Párrafo: sin restricción
+
+    // Guardar valor previo por si hay que revertir
+    lineEdit->setProperty("prevText", index.model()->data(index, Qt::EditRole));
     return lineEdit;
+    }
+
+void DataFieldDelegate::updateEditorGeometry(QWidget *editor,
+                                             const QStyleOptionViewItem &option,
+                                             const QModelIndex &) const
+{
+    const int margin = 2;
+    editor->setGeometry(option.rect.adjusted(margin, margin, -margin, -margin));
 }
+
 
 void DataFieldDelegate::setEditorData(QWidget *editor, const QModelIndex &index) const
 {
-    QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
-    if (lineEdit) {
-        QString value = index.model()->data(index, Qt::EditRole).toString();
-        lineEdit->setText(value);
+    if (auto *dateEdit = qobject_cast<QDateEdit*>(editor)) {
+        // Acepta dd-mm-aaaa o dd/mm/aaaa (y año de 2 dígitos)
+        QString txt = index.model()->data(index, Qt::EditRole).toString().trimmed();
+        QDate d;
+        if (!txt.isEmpty()) {
+            const QChar sep = txt.contains('/') ? '/' : '-';
+            const QString fmt = (txt.count(sep)==2 && txt.split(sep).last().size()==4)
+                                    ? QString("dd%1MM%1yyyy").arg(sep)
+                                    : QString("dd%1MM%1yy").arg(sep);
+            d = QDate::fromString(txt, fmt);
+        }
+        if (!d.isValid()) d = QDate::currentDate();
+        dateEdit->setDate(d);
+        return;
+    }
+
+    if (auto *combo = qobject_cast<QComboBox*>(editor)) {
+        auto normalize = [](QString v)->QString {
+            v = v.trimmed().toLower();
+            if (v=="si" || v=="sí" || v=="true" || v=="1") return "Sí";
+            if (v=="no" || v=="false" || v=="0")          return "No";
+            return "Sí";
+        };
+        const QString current = normalize(index.model()->data(index, Qt::EditRole).toString());
+        int i = combo->findText(current, Qt::MatchExactly);
+        combo->setCurrentIndex(i >= 0 ? i : 0);
+        return;
+    }
+
+    if (auto *line = qobject_cast<QLineEdit*>(editor)) {
+        line->setText(index.model()->data(index, Qt::EditRole).toString());
     }
 }
 
 void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
-                                   const QModelIndex &index) const
+                                     const QModelIndex &index) const
 {
-    QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
-    if (lineEdit) {
-        QString value = lineEdit->text();
-        model->setData(index, value, Qt::EditRole);
+    if (auto *dateEdit = qobject_cast<QDateEdit*>(editor)) {
+        const QDate d = dateEdit->date();
+        model->setData(index, d.toString("dd-MM-yyyy"), Qt::EditRole);
+        if (auto *owner = qobject_cast<TableData*>(this->parent()))
+            owner->clearCellError(index.row(), index.column());
+        return;
+    }
+
+    if (auto *combo = qobject_cast<QComboBox*>(editor)) {
+        model->setData(index, combo->currentText(), Qt::EditRole);
+        if (auto *owner = qobject_cast<TableData*>(this->parent()))
+            owner->clearCellError(index.row(), index.column());
+        return;
+    }
+
+    if (auto *line = qobject_cast<QLineEdit*>(editor)) {
+        // tu validación/normalización (moneda, fecha, etc.)
+        model->setData(index, line->text().trimmed(), Qt::EditRole);
+        if (auto *owner = qobject_cast<TableData*>(this->parent()))
+            owner->clearCellError(index.row(), index.column());
     }
 }
+
 
 TableData::TableData(QWidget *parent) : QWidget(parent)
 {
@@ -651,3 +809,24 @@ void TableData::updateExampleData()
 }
 
 // #include "TableData.moc"
+QString TableData::fieldTypeForColumn(int col) const {
+    if (col >= 0 && col < savedFieldTypes.size())
+        return savedFieldTypes.at(col);
+    return QStringLiteral("Texto corto (hasta N caracteres)");
+}
+
+void TableData::markCellInvalid(int row, int col, const QString& msg) const {
+    if (!dataTable) return;
+    if (auto *it = dataTable->item(row, col)) {
+        it->setBackground(QBrush(QColor("#FEE2E2"))); // rojo suave
+        it->setToolTip(msg);
+    }
+}
+
+void TableData::clearCellError(int row, int col) const {
+    if (!dataTable) return;
+    if (auto *it = dataTable->item(row, col)) {
+        it->setBackground(QBrush(QColor(255,255,255)));
+        it->setToolTip({});
+    }
+}

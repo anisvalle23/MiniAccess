@@ -28,6 +28,7 @@ public:
     void setEditorData(QWidget *editor, const QModelIndex &index) const override;
     void setModelData(QWidget *editor, QAbstractItemModel *model,
                      const QModelIndex &index) const override;
+    void updateEditorGeometry(QWidget*, const QStyleOptionViewItem&, const QModelIndex&) const override;
 };
 
 class TableData : public QWidget
@@ -49,6 +50,9 @@ public:
     
     // Limpiar todos los datos
     void clearAllData();
+    QString fieldTypeForColumn(int col) const;
+    void markCellInvalid(int row,int col,const QString& msg) const;
+    void clearCellError(int row,int col) const;
 
 public slots:
     void onPersonDataChanged(QTableWidgetItem *item);
