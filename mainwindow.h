@@ -24,6 +24,7 @@ QT_BEGIN_NAMESPACE
 QT_END_NAMESPACE
 
 class TableEditor;
+class RelationshipsView;
 
 class MainWindow : public QMainWindow
 {
@@ -105,6 +106,9 @@ private:
     
     // Table Editor view
     TableEditor *tableEditorView;
+    
+    // Relationships view
+    RelationshipsView *relationshipsView;
     
     // Current view tracking
     int currentViewIndex;
