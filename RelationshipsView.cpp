@@ -10,6 +10,8 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QStyleOptionGraphicsItem>
 #include <QGraphicsProxyWidget>
+#include <QDrag>
+#include <QMimeData>
 #include <cmath>
 
 RelationshipsView::RelationshipsView(QWidget *parent)
@@ -155,6 +157,19 @@ void RelationshipsView::createRelationshipsList()
     tablesListWidget = new QListWidget();
     tablesListWidget->setDragDropMode(QAbstractItemView::DragOnly);
     tablesListWidget->setDefaultDropAction(Qt::CopyAction);
+    
+    // Habilitar drag iniciado por mouse
+    connect(tablesListWidget, &QListWidget::itemPressed, [this](QListWidgetItem *item) {
+        if (item && QApplication::mouseButtons() & Qt::LeftButton) {
+            QDrag *drag = new QDrag(this);
+            QMimeData *mimeData = new QMimeData;
+            QString tableName = item->data(Qt::UserRole).toString();
+            mimeData->setText(tableName);
+            drag->setMimeData(mimeData);
+            drag->exec(Qt::CopyAction);
+        }
+    });
+    
     tablesListWidget->setMaximumHeight(120);
     tablesListWidget->setStyleSheet(
         "QListWidget {"
@@ -259,7 +274,7 @@ void RelationshipsView::createRelationshipDesigner()
     
     // Graphics view MEJORADO para drag & drop
     designerScene = new QGraphicsScene();
-    designerView = new QGraphicsView(designerScene);
+    designerView = new RelationshipDesignerView(designerScene, this);
     designerView->setDragMode(QGraphicsView::RubberBandDrag);
     designerView->setRenderHint(QPainter::Antialiasing);
     designerView->setAcceptDrops(true);
@@ -504,90 +519,65 @@ void RelationshipsView::loadTables()
     sourceTableCombo->clear();
     targetTableCombo->clear();
     
-    // Load tables from project directory
-    QString projectPath = QDir::currentPath() + "/proyectos";
-    QDir projectDir(projectPath);
+    // Crear tablas predeterminadas para demostración
+    QStringList predefinedTables = {"estudiante", "maestro"};
     
-    if (!projectDir.exists()) {
-        return;
-    }
-    
-    // Look for project folders
-    QStringList projectFolders = projectDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-    
-    if (!projectFolders.isEmpty()) {
-        QString currentProject = projectFolders.first(); // Use first project for now
-        QString tablesPath = projectPath + "/" + currentProject + "/tables";
-        QDir tablesDir(tablesPath);
+    for (const QString &tableName : predefinedTables) {
+        availableTables.append(tableName);
         
-        if (tablesDir.exists()) {
-            QStringList tableFiles = tablesDir.entryList({"*.meta.json"}, QDir::Files);
-            
-            for (const QString &file : tableFiles) {
-                QString tableName = file;
-                tableName.remove(".meta.json");
-                
-                availableTables.append(tableName);
-                
-                // Create draggable item for tables list
-                QListWidgetItem *item = new QListWidgetItem("📊 " + tableName);
-                item->setData(Qt::UserRole, tableName);
-                item->setFlags(item->flags() | Qt::ItemIsDragEnabled);
-                tablesListWidget->addItem(item);
-                
-                sourceTableCombo->addItem(tableName);
-                targetTableCombo->addItem(tableName);
-                
-                // Load table fields (simplified - you might want to parse the actual meta file)
-                QStringList fields;
-                if (tableName.toLower().contains("empleado")) {
-                    fields << "id" << "nombre" << "apellido" << "email" << "departamento_id" << "salario";
-                } else if (tableName.toLower().contains("departamento")) {
-                    fields << "id" << "nombre" << "presupuesto" << "jefe_id";
-                } else if (tableName.toLower().contains("curso")) {
-                    fields << "id" << "nombre" << "creditos" << "profesor_id" << "semestre";
-                } else if (tableName.toLower().contains("estudiante")) {
-                    fields << "id" << "nombre" << "apellido" << "email" << "carrera" << "semestre";
-                } else if (tableName.toLower().contains("profesor")) {
-                    fields << "id" << "nombre" << "apellido" << "email" << "especialidad" << "departamento_id";
-                } else {
-                    fields << "id" << "nombre" << "descripcion" << "fecha_creacion" << "activo";
-                }
-                tableFields[tableName] = fields;
-            }
+        // Create draggable item for tables list
+        QListWidgetItem *item = new QListWidgetItem("📊 " + tableName);
+        item->setData(Qt::UserRole, tableName);
+        item->setFlags(item->flags() | Qt::ItemIsDragEnabled);
+        tablesListWidget->addItem(item);
+        
+        sourceTableCombo->addItem(tableName);
+        targetTableCombo->addItem(tableName);
+        
+        // Definir campos básicos para cada tabla
+        QStringList fields;
+        if (tableName == "estudiante") {
+            fields << "id" << "nombre" << "apellido" << "email" << "carrera" << "maestro_id";
+        } else if (tableName == "maestro") {
+            fields << "id" << "nombre" << "apellido" << "especialidad" << "telefono";
         }
-    }
-    
-    // Add some sample tables to the designer
-    if (!availableTables.isEmpty()) {
-        addTableToDesigner(availableTables.first(), QPointF(100, 100));
-        if (availableTables.size() > 1) {
-            addTableToDesigner(availableTables[1], QPointF(300, 100));
-        }
+        tableFields[tableName] = fields;
     }
 }
 
 void RelationshipsView::loadRelationships()
 {
     relationshipsListWidget->clear();
-    
-    // Load existing relationships (ejemplos para demostración)
-    QStringList sampleRelationships = {
-        "empleados.id ↔ credenciales.empleado_id (1:1)",
-        "profesores.id → cursos.profesor_id (1:N)",
-        "estudiantes.id ↔ cursos.id (N:M) [Tabla: estudiantes_cursos]",
-        "departamentos.id → empleados.departamento_id (1:N)",
-        "categorias.id → productos.categoria_id (1:N)"
-    };
-    
-    for (const QString &rel : sampleRelationships) {
-        relationshipsListWidget->addItem(rel);
-    }
+    // Las relaciones se mostrarán solo cuando se vayan creando
+    // No hay relaciones predeterminadas, todo será dinámico
 }
 
 void RelationshipsView::addTableToDesigner(const QString &tableName, const QPointF &position)
 {
-    QRectF rect(position.x(), position.y(), 150, 100);
+    // Verificar si la tabla ya existe en el diseñador
+    for (auto *item : tableItems) {
+        if (item->getTableName() == tableName) {
+            // Ya existe, solo moverla
+            item->setPos(position);
+            return;
+        }
+    }
+    
+    // Remove hint text if this is the first table
+    if (tableItems.isEmpty()) {
+        QList<QGraphicsItem*> items = designerScene->items();
+        for (QGraphicsItem *item : items) {
+            QGraphicsProxyWidget *proxy = dynamic_cast<QGraphicsProxyWidget*>(item);
+            if (proxy) {
+                designerScene->removeItem(proxy);
+                delete proxy;
+                break;
+            }
+        }
+    }
+    
+    // Crear nuevo item de tabla con tamaño ajustado para mostrar campos
+    QRectF rect(position.x(), position.y(), 180, 120);
     TableGraphicsItem *tableItem = new TableGraphicsItem(tableName, rect);
     
     if (tableFields.contains(tableName)) {
@@ -889,9 +879,15 @@ void TableGraphicsItem::paint(QPainter *painter, const QStyleOptionGraphicsItem 
 
 QVariant TableGraphicsItem::itemChange(GraphicsItemChange change, const QVariant &value)
 {
-    if (change == ItemPositionChange) {
+    if (change == ItemPositionChange && scene()) {
         // Update connected relationship lines
-        // This would be implemented to update relationship lines when table moves
+        QList<QGraphicsItem*> items = scene()->items();
+        for (QGraphicsItem *item : items) {
+            RelationshipLine *line = dynamic_cast<RelationshipLine*>(item);
+            if (line && (line->getSourceTable() == this || line->getTargetTable() == this)) {
+                line->updatePosition();
+            }
+        }
     }
     
     return QGraphicsRectItem::itemChange(change, value);
@@ -914,25 +910,40 @@ RelationshipLine::RelationshipLine(TableGraphicsItem *source, TableGraphicsItem 
     
     typeText = new QGraphicsTextItem(relationshipType, this);
     QFont font = typeText->font();
-    font.setPointSize(8);
+    font.setPointSize(10);
+    font.setBold(true);
     typeText->setFont(font);
+    
+    // Style the text with a background
+    typeText->setDefaultTextColor(QColor("#FFFFFF"));
 }
 
 void RelationshipLine::updatePosition()
 {
     if (!sourceTable || !targetTable) return;
     
-    QRectF sourceRect = sourceTable->rect();
-    QRectF targetRect = targetTable->rect();
+    // Get table rectangles in scene coordinates
+    QRectF sourceRect = sourceTable->rect().translated(sourceTable->pos());
+    QRectF targetRect = targetTable->rect().translated(targetTable->pos());
     
-    QPointF sourceCenter = sourceRect.center();
-    QPointF targetCenter = targetRect.center();
+    // Calculate connection points (center of right edge for source, center of left edge for target)
+    QPointF sourcePoint, targetPoint;
     
-    setLine(QLineF(sourceCenter, targetCenter));
+    if (sourceRect.center().x() < targetRect.center().x()) {
+        // Source is to the left of target
+        sourcePoint = QPointF(sourceRect.right(), sourceRect.center().y());
+        targetPoint = QPointF(targetRect.left(), targetRect.center().y());
+    } else {
+        // Source is to the right of target
+        sourcePoint = QPointF(sourceRect.left(), sourceRect.center().y());
+        targetPoint = QPointF(targetRect.right(), targetRect.center().y());
+    }
+    
+    setLine(QLineF(sourcePoint, targetPoint));
     
     // Position type text at the middle of the line
     if (typeText) {
-        QPointF midPoint = (sourceCenter + targetCenter) / 2;
+        QPointF midPoint = (sourcePoint + targetPoint) / 2;
         typeText->setPos(midPoint.x() - typeText->boundingRect().width() / 2,
                         midPoint.y() - typeText->boundingRect().height() / 2);
     }
@@ -969,8 +980,13 @@ void RelationshipLine::updateTheme(bool isDark)
         if (isDark) {
             typeText->setDefaultTextColor(QColor("#FFFFFF"));
         } else {
-            typeText->setDefaultTextColor(QColor("#000000"));
+            typeText->setDefaultTextColor(QColor("#1976D2"));
         }
+        
+        // Add background to text for better visibility
+        typeText->setHtml(QString("<div style='background-color: %1; padding: 2px 6px; border-radius: 4px; font-weight: bold;'>%2</div>")
+                         .arg(isDark ? "#424242" : "#E3F2FD")
+                         .arg(relationshipType));
     }
 }
 
@@ -981,26 +997,75 @@ void RelationshipLine::paint(QPainter *painter, const QStyleOptionGraphicsItem *
     
     painter->setRenderHint(QPainter::Antialiasing);
     
+    // Set pen color and style based on theme
+    QPen pen;
     if (isDarkTheme) {
-        painter->setPen(QPen(QColor("#606060"), 2));
+        pen.setColor(QColor("#4FC3F7"));
+        pen.setWidth(3);
     } else {
-        painter->setPen(QPen(QColor("#0066CC"), 2));
+        pen.setColor(QColor("#1976D2"));
+        pen.setWidth(3);
     }
+    pen.setStyle(Qt::SolidLine);
+    painter->setPen(pen);
     
-    painter->drawLine(line());
-    
-    // Draw arrow at the end
     QLineF l = line();
+    painter->drawLine(l);
+    
+    // Draw arrow at the end with better styling
     double angle = std::atan2((l.p2().y() - l.p1().y()), (l.p2().x() - l.p1().x()));
     
     QPointF arrowP1 = l.p2() - QPointF(
-        std::sin(angle + M_PI / 3) * 10,
-        std::cos(angle + M_PI / 3) * 10);
+        std::sin(angle + M_PI / 3) * 15,
+        std::cos(angle + M_PI / 3) * 15);
     QPointF arrowP2 = l.p2() - QPointF(
-        std::sin(angle + M_PI - M_PI / 3) * 10,
-        std::cos(angle + M_PI - M_PI / 3) * 10);
+        std::sin(angle + M_PI - M_PI / 3) * 15,
+        std::cos(angle + M_PI - M_PI / 3) * 15);
     
     QPolygonF arrowHead;
     arrowHead << l.p2() << arrowP1 << arrowP2;
+    
+    // Fill arrow with solid color
+    QBrush brush;
+    if (isDarkTheme) {
+        brush.setColor(QColor("#4FC3F7"));
+    } else {
+        brush.setColor(QColor("#1976D2"));
+    }
+    brush.setStyle(Qt::SolidPattern);
+    painter->setBrush(brush);
     painter->drawPolygon(arrowHead);
+}
+
+// Custom QGraphicsView class for drag and drop
+RelationshipDesignerView::RelationshipDesignerView(QGraphicsScene *scene, RelationshipsView *parent)
+    : QGraphicsView(scene), relationshipsView(parent) 
+{
+    setAcceptDrops(true);
+    setDragMode(QGraphicsView::RubberBandDrag);
+    setRenderHint(QPainter::Antialiasing);
+}
+
+void RelationshipDesignerView::dragEnterEvent(QDragEnterEvent *event)
+{
+    if (event->mimeData()->hasText()) {
+        event->acceptProposedAction();
+    }
+}
+
+void RelationshipDesignerView::dragMoveEvent(QDragMoveEvent *event)
+{
+    if (event->mimeData()->hasText()) {
+        event->acceptProposedAction();
+    }
+}
+
+void RelationshipDesignerView::dropEvent(QDropEvent *event)
+{
+    if (event->mimeData()->hasText()) {
+        QString tableName = event->mimeData()->text();
+        QPointF scenePos = mapToScene(event->pos());
+        relationshipsView->addTableToDesigner(tableName, scenePos);
+        event->acceptProposedAction();
+    }
 }

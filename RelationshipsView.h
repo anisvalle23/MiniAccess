@@ -28,10 +28,32 @@
 #include <QBrush>
 #include <QFont>
 #include <QFontMetrics>
+
+// Forward declarations
 #include <QMouseEvent>
+#include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <QDropEvent>
 
 class TableGraphicsItem;
 class RelationshipLine;
+
+// Custom QGraphicsView for drag and drop
+class RelationshipDesignerView : public QGraphicsView
+{
+    Q_OBJECT
+
+public:
+    RelationshipDesignerView(QGraphicsScene *scene, class RelationshipsView *parent);
+
+protected:
+    void dragEnterEvent(QDragEnterEvent *event) override;
+    void dragMoveEvent(QDragMoveEvent *event) override;
+    void dropEvent(QDropEvent *event) override;
+
+private:
+    class RelationshipsView *relationshipsView;
+};
 
 class RelationshipsView : public QWidget
 {
@@ -41,6 +63,7 @@ public:
     explicit RelationshipsView(QWidget *parent = nullptr);
     void updateTheme(bool isDark);
     void refreshTableList();
+    void addTableToDesigner(const QString &tableName, const QPointF &position);
 
 private slots:
     void onCreateRelationship();
@@ -60,7 +83,6 @@ private:
     void styleComponents();
     void loadTables();
     void loadRelationships();
-    void addTableToDesigner(const QString &tableName, const QPointF &position);
     void createRelationshipBetweenTables(const QString &table1, const QString &table2, 
                                        const QString &relationship_type);
     void updatePropertiesPanel(const QString &selectedItem);
