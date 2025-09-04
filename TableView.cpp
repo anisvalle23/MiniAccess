@@ -1,1472 +1,5 @@
 #include "TableView.h"
 #include <QDebug>
-#include <exception>
-
-TableView::TableView(QWidget *parent)
-    : QWidget(parent), isDarkTheme(false)
-{
-    setupUI();
-    styleTable();
-}
-
-void TableView::setupUI()
-{
-    // Main layout
-    mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(0, 0, 0, 0);
-    mainLayout->setSpacing(0);
-    
-    // Create header with table name and toolbar
-    createHeader();
-    
-    // Create main splitter for table and properties
-    mainSplitter = new QSplitter(Qt::Vertical, this);
-    mainSplitter->setHandleWidth(12); // Better handle size for easier resizing
-    mainSplitter->setChildrenCollapsible(true);
-    mainSplitter->setStyleSheet(
-        "QSplitter::handle {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-                "stop:0 #F1F5F9, stop:0.5 #E2E8F0, stop:1 #CBD5E1);"
-            "border: 1px solid #D1D5DB;"
-            "border-radius: 6px;"
-            "margin: 2px 4px;"
-        "}"
-        "QSplitter::handle:hover {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-                "stop:0 #E2E8F0, stop:0.5 #CBD5E1, stop:1 #9CA3AF);"
-            "border-color: #9CA3AF;"
-        "}"
-        "QSplitter::handle:pressed {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-                "stop:0 #CBD5E1, stop:0.5 #9CA3AF, stop:1 #6B7280);"
-            "border-color: #6B7280;"
-        "}"
-    );
-    
-    // Create table view area (top)
-    createTableArea();
-    
-    // Create properties area (bottom) - visible by default
-    createPropertiesArea();
-    // propertiesArea->hide(); // Remove this line to show by default
-    
-    // Add areas to splitter
-    mainSplitter->addWidget(tableArea);
-    mainSplitter->addWidget(propertiesArea);
-    
-    // Set initial sizes with better proportions for compact design
-    mainSplitter->setSizes({700, 250}); // Table larger, properties more compact
-    // Set minimum sizes for better resizing behavior
-    tableArea->setMinimumHeight(300);
-    propertiesArea->setMinimumHeight(180); // Reduced minimum
-    
-    // Add to main layout
-    mainLayout->addWidget(headerWidget);
-    mainLayout->addWidget(mainSplitter);
-    
-    // Apply initial theme
-    updateTheme(false);
-    
-    // Configurar la tabla inicial como Vista de Diseño con campo predeterminado
-    QTimer::singleShot(50, this, [this]() {
-        setupDesignView();
-    });
-}
-
-void TableView::setTableName(const QString &tableName)
-{
-    currentTableName = tableName;
-    tableNameLabel->setText(tableName);
-}
-
-void TableView::updateTheme(bool isDark)
-{
-    isDarkTheme = isDark;
-    
-    // Update widget background
-    QString bgColor = isDark ? "#111827" : "#FFFFFF";
-    QString propertiesBg = isDark ? "#1F2937" : "#F9FAFB";
-    QString borderColor = isDark ? "#374151" : "#E5E7EB";
-    
-    setStyleSheet(QString("QWidget { background-color: %1; }").arg(bgColor));
-    
-    // Update header
-    if (headerWidget) {
-        headerWidget->setStyleSheet(QString("QWidget { background-color: %1; border-bottom: 1px solid %2; }").arg(bgColor, borderColor));
-    }
-    
-    // Update properties area
-    if (propertiesArea) {
-        propertiesArea->setStyleSheet(QString("QWidget { background-color: %1; border-top: 1px solid %2; }").arg(propertiesBg, borderColor));
-    }
-    
-    // Update table name label
-    QString titleColor = isDark ? "#F9FAFB" : "#111827";
-    if (tableNameLabel) {
-        tableNameLabel->setStyleSheet(QString("QLabel { color: %1; }").arg(titleColor));
-    }
-    
-    // Update table style
-    styleTable();
-}
-
-void TableView::styleTable()
-{
-    QString bgColor = isDarkTheme ? "#111827" : "#FFFFFF";
-    QString borderColor = isDarkTheme ? "#374151" : "#E5E7EB";
-    QString headerBgColor = isDarkTheme ? "#1F2937" : "#F9FAFB";
-    QString textColor = isDarkTheme ? "#F9FAFB" : "#111827";
-    QString headerTextColor = isDarkTheme ? "#F3F4F6" : "#374151";
-    QString selectionColor = isDarkTheme ? "#374151" : "#EBF4FF";
-    QString alternateRowColor = isDarkTheme ? "#1F2937" : "#F8FAFC";
-    
-    tableWidget->setStyleSheet(QString(
-        "QTableWidget {"
-            "background-color: %1;"
-            "border: 1px solid %2;"
-            "border-radius: 8px;"
-            "gridline-color: %2;"
-            "color: %3;"
-            "selection-background-color: %6;"
-            "alternate-background-color: %7;"
-        "}"
-        "QTableWidget::item {"
-            "padding: 8px 12px;"
-            "border-bottom: 1px solid %2;"
-        "}"
-        "QTableWidget::item:selected {"
-            "background-color: %6;"
-            "color: %3;"
-        "}"
-        "QHeaderView::section {"
-            "background-color: %4;"
-            "color: %5;"
-            "padding: 12px 16px;"
-            "border: none;"
-            "border-bottom: 2px solid %2;"
-            "border-right: 1px solid %2;"
-            "font-weight: 600;"
-        "}"
-        "QHeaderView::section:horizontal {"
-            "border-top-left-radius: 8px;"
-            "border-top-right-radius: 8px;"
-        "}"
-        "QScrollBar:vertical {"
-            "background-color: %1;"
-            "width: 8px;"
-            "border-radius: 4px;"
-        "}"
-        "QScrollBar::handle:vertical {"
-            "background-color: %2;"
-            "border-radius: 4px;"
-            "min-height: 20px;"
-        "}"
-        "QScrollBar::handle:vertical:hover {"
-            "background-color: %5;"
-        "}"
-        "QScrollBar:horizontal {"
-            "background-color: %1;"
-            "height: 8px;"
-            "border-radius: 4px;"
-        "}"
-        "QScrollBar::handle:horizontal {"
-            "background-color: %2;"
-            "border-radius: 4px;"
-            "min-width: 20px;"
-        "}"
-        "QScrollBar::handle:horizontal:hover {"
-            "background-color: %5;"
-        "}"
-        "QScrollBar::add-line, QScrollBar::sub-line {"
-            "border: none;"
-            "background: none;"
-        "}"
-    ).arg(bgColor)
-     .arg(borderColor)
-     .arg(textColor)
-     .arg(headerBgColor)
-     .arg(headerTextColor)
-     .arg(selectionColor)
-     .arg(alternateRowColor));
-}
-
-void TableView::createHeader()
-{
-    headerWidget = new QWidget();
-    headerWidget->setFixedHeight(60); // Más pequeño
-    headerWidget->setStyleSheet("QWidget { background-color: #FFFFFF; border-bottom: 1px solid #E5E7EB; }");
-    
-    QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(16, 8, 16, 8); // Márgenes más pequeños
-    headerLayout->setSpacing(12);
-    
-    // Table name
-    tableNameLabel = new QLabel();
-    tableNameLabel->setFont(QFont("Inter", 18, QFont::Bold)); // Fuente más pequeña
-    tableNameLabel->setStyleSheet("QLabel { color: #111827; }");
-    headerLayout->addWidget(tableNameLabel);
-    
-    // Toolbar with icons (moved next to table name)
-    QWidget *toolbar = new QWidget();
-    QHBoxLayout *toolbarLayout = new QHBoxLayout(toolbar);
-    toolbarLayout->setContentsMargins(0, 0, 0, 0);
-    toolbarLayout->setSpacing(6); // Espaciado más pequeño
-    
-    // Add common table operation buttons with red theme
-    addToolbarButton(toolbarLayout, "➕", "Agregar fila");
-    addToolbarButton(toolbarLayout, "✏️", "Editar");
-    addToolbarButton(toolbarLayout, "🗑️", "Eliminar");
-    addToolbarButton(toolbarLayout, "💾", "Guardar");
-    addToolbarButton(toolbarLayout, "🔄", "Actualizar");
-    addToolbarButton(toolbarLayout, "📋", "Copiar");
-    addToolbarButton(toolbarLayout, "📄", "Exportar");
-    
-    headerLayout->addWidget(toolbar);
-    headerLayout->addStretch(); // Push everything to the left
-}
-
-void TableView::addToolbarButton(QHBoxLayout *layout, const QString &icon, const QString &tooltip)
-{
-    QPushButton *btn = new QPushButton(icon);
-    btn->setFixedSize(36, 36);
-    btn->setToolTip("");  // Disable tooltip to prevent floating popups
-    btn->setStyleSheet(
-        "QPushButton {"
-            "background-color: #FEF2F2;"
-            "border: 1px solid #FCA5A5;"
-            "border-radius: 8px;"
-            "font-size: 16px;"
-            "padding: 6px;"
-            "color: #DC2626;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: #FEE2E2;"
-            "border-color: #F87171;"
-        "}"
-        "QPushButton:pressed {"
-            "background-color: #FECACA;"
-            "border-color: #EF4444;"
-        "}"
-    );
-    layout->addWidget(btn);
-}
-
-void TableView::createTableArea()
-{
-    tableArea = new QWidget();
-    QVBoxLayout *tableLayout = new QVBoxLayout(tableArea);
-    tableLayout->setContentsMargins(12, 6, 12, 6); // Márgenes más pequeños
-    tableLayout->setSpacing(6); // Espaciado más pequeño
-    
-    // Crear botones de vista como pestañas pequeñas
-    QWidget *viewButtonsWidget = new QWidget();
-    QHBoxLayout *viewButtonsLayout = new QHBoxLayout(viewButtonsWidget);
-    viewButtonsLayout->setContentsMargins(0, 0, 0, 0);
-    viewButtonsLayout->setSpacing(4); // Espaciado pequeño entre botones
-    
-    // Botón Vista de Diseño (activo por defecto)
-    designViewBtn = new QPushButton("Vista de Diseño");
-    designViewBtn->setFixedHeight(28); // Altura pequeña
-    designViewBtn->setFont(QFont("Inter", 11, QFont::Medium)); // Fuente pequeña
-    designViewBtn->setStyleSheet(
-        "QPushButton {"
-            "background-color: #EFF6FF;" // Fondo azul claro (activo)
-            "color: #1D4ED8;" // Texto azul
-            "border: 1px solid #BFDBFE;"
-            "border-radius: 6px;"
-            "padding: 4px 12px;" // Padding pequeño
-            "font-weight: 500;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: #DBEAFE;"
-        "}"
-    );
-    
-    // Botón Vista Datos
-    dataViewBtn = new QPushButton("Vista Datos");
-    dataViewBtn->setFixedHeight(28); // Altura pequeña
-    dataViewBtn->setFont(QFont("Inter", 11, QFont::Medium)); // Fuente pequeña
-    dataViewBtn->setStyleSheet(
-        "QPushButton {"
-            "background-color: #F9FAFB;" // Fondo gris claro (inactivo)
-            "color: #6B7280;" // Texto gris
-            "border: 1px solid #E5E7EB;"
-            "border-radius: 6px;"
-            "padding: 4px 12px;" // Padding pequeño
-            "font-weight: 500;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: #F3F4F6;"
-            "color: #374151;"
-        "}"
-    );
-    
-    // Conectar señales de los botones
-    connect(designViewBtn, &QPushButton::clicked, this, &TableView::onDesignViewClicked);
-    connect(dataViewBtn, &QPushButton::clicked, this, &TableView::onDataViewClicked);
-    
-    // Agregar botones al layout (solo Vista de Diseño y Vista Datos)
-    viewButtonsLayout->addWidget(designViewBtn);
-    viewButtonsLayout->addWidget(dataViewBtn);
-    viewButtonsLayout->addStretch(); // Empujar botones a la izquierda
-    
-    tableLayout->addWidget(viewButtonsWidget);
-    
-    // Create table widget for field design
-    tableWidget = new QTableWidget();
-    
-    // Set up table structure for field design (like Access design view)
-    tableWidget->setColumnCount(3);
-    tableWidget->setRowCount(1); // Solo la primera fila (Id) por defecto
-    
-    QStringList headers;
-    headers << "Nombre del Campo" << "Tipo de Datos" << "Descripción (Opcional)";
-    tableWidget->setHorizontalHeaderLabels(headers);
-    
-    // Set column widths - proporciones más elegantes
-    tableWidget->setColumnWidth(0, 250); // Campo nombre un poco más ancho
-    tableWidget->setColumnWidth(1, 180); // Tipo de datos un poco más ancho
-    tableWidget->setColumnWidth(2, 400); // Descripción amplia para texto largo
-    
-    // Configure column resize behavior
-    tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed); // Campo nombre fijo
-    tableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed); // Tipo de datos fijo  
-    tableWidget->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch); // Descripción se expande
-    
-    // Enable horizontal scrolling
-    tableWidget->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    tableWidget->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    
-    // Add default first field with "Id" as field name
-    QTableWidgetItem *idItem = new QTableWidgetItem("Id");
-    idItem->setToolTip(""); // Disable tooltip
-    tableWidget->setItem(0, 0, idItem);
-
-    QTableWidgetItem *typeItem = new QTableWidgetItem("int");
-    typeItem->setToolTip(""); // Disable tooltip
-    tableWidget->setItem(0, 1, typeItem);
-
-    QTableWidgetItem *descItem = new QTableWidgetItem("Identificador único");
-    descItem->setToolTip(""); // Disable tooltip
-    tableWidget->setItem(0, 2, descItem);
-    
-    // NO agregar filas vacías predeterminadas - solo la primera fila (Id)
-    // Las filas se agregarán automáticamente cuando el usuario escriba
-    
-    // Connect signal para agregar filas automáticamente
-    connect(tableWidget, &QTableWidget::itemChanged, this, &TableView::onTableItemChanged);
-    
-    // Enable safe data type delegate for dropdown selection
-    DataTypeDelegate *dataTypeDelegate = new DataTypeDelegate(this);
-    tableWidget->setItemDelegateForColumn(1, dataTypeDelegate);
-    
-    // Keep description delegate disabled to prevent floating text editors
-    // DescriptionDelegate *descriptionDelegate = new DescriptionDelegate(this);
-    // tableWidget->setItemDelegateForColumn(2, descriptionDelegate);
-    
-    // Configure table properties for design view
-    tableWidget->setAlternatingRowColors(true);
-    tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
-    tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
-    tableWidget->setGridStyle(Qt::SolidLine);
-    tableWidget->setShowGrid(true);
-    
-    // Enable cell editing but with basic triggers only
-    tableWidget->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
-    
-    // Disable tooltips for the table to prevent floating popups
-    tableWidget->setAttribute(Qt::WA_AlwaysShowToolTips, false);
-    tableWidget->setToolTip("");
-    
-    // Disable context menu but allow editing
-    tableWidget->setContextMenuPolicy(Qt::NoContextMenu);
-    
-    // Disable mouse tracking to prevent hover tooltips
-    tableWidget->setMouseTracking(false);
-    
-    // Style the table with clear borders and better editing visibility - Excel/Access-like appearance
-    tableWidget->setStyleSheet(
-        "QTableWidget {"
-            "background-color: #FFFFFF;"
-            "border: 2px solid #D1D5DB;" // Thicker border like Excel
-            "border-radius: 4px;" // Smaller radius for more professional look
-            "gridline-color: #E5E7EB;"
-            "selection-background-color: #EBF4FF;"
-            "alternate-background-color: #FAFBFC;"
-            "font-family: 'Segoe UI', 'Inter';" // More Excel-like font
-            "font-size: 13px;"
-            "outline: none;" // Remove focus outline
-        "}"
-        "QTableWidget::item {"
-            "padding: 12px 16px;" // More Excel-like padding
-            "border-right: 1px solid #E5E7EB;"
-            "border-bottom: 1px solid #E5E7EB;"
-            "font-size: 13px;"
-            "color: #1F2937;"
-            "background-color: #FFFFFF;"
-            "min-height: 35px;" // Excel-like row height
-        "}"
-        "QTableWidget::item:selected {"
-            "background-color: #DBEAFE;" // Excel-like selection color
-            "color: #1E40AF;"
-            "border: 2px solid #3B82F6;" // Thicker selection border
-        "}"
-        "QTableWidget::item:focus {"
-            "background-color: #FFFFFF;"
-            "color: #1F2937;"
-            "border: 3px solid #3B82F6;" // Thick focus border like Excel
-            "border-radius: 2px;"
-        "}"
-        "QTableWidget::item:hover {"
-            "background-color: #F8FAFC;" // Subtle hover effect
-        "}"
-        "QLineEdit {" // Styling for in-cell editing
-            "background-color: #FFFFFF;"
-            "color: #1F2937;"
-            "font-size: 13px;"
-            "font-family: 'Segoe UI', 'Inter';"
-            "border: 3px solid #3B82F6;"
-            "border-radius: 3px;"
-            "padding: 8px 12px;"
-            "min-height: 20px;"
-        "}"
-        "QTextEdit {" // Styling for multi-line cell editing
-            "background-color: #FFFFFF;"
-            "color: #1F2937;"
-            "font-size: 13px;"
-            "font-family: 'Segoe UI', 'Inter';"
-            "border: 3px solid #3B82F6;"
-            "border-radius: 3px;"
-            "padding: 8px 12px;"
-            "min-height: 60px;"
-        "}"
-        "QHeaderView::section {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #F8FAFC, stop:1 #E2E8F0);" // Excel-like gradient
-            "color: #475569;"
-            "padding: 16px 20px;"
-            "border: none;"
-            "border-right: 1px solid #CBD5E1;"
-            "border-bottom: 2px solid #CBD5E1;" // Thicker bottom border
-            "font-weight: 700;" // Bolder text like Excel
-            "font-size: 12px;" // Smaller header font
-            "font-family: 'Segoe UI', 'Inter';"
-            "text-transform: none;" // Remove uppercase transform
-            "letter-spacing: 0em;"
-            "min-height: 40px;" // Excel-like header height
-        "}"
-        "QHeaderView::section:first {"
-            "border-top-left-radius: 4px;"
-        "}"
-        "QHeaderView::section:last {"
-            "border-top-right-radius: 4px;"
-            "border-right: none;"
-        "}"
-        "QHeaderView::section:hover {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #E2E8F0, stop:1 #CBD5E1);" // Darker on hover
-        "}"
-        "QHeaderView::section:pressed {"
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #CBD5E1, stop:1 #94A3B8);" // Even darker when pressed
-        "}"
-        // Excel-like scrollbars
-        "QScrollBar:vertical {"
-            "background-color: #F1F5F9;"
-            "width: 16px;" // Wider scrollbar like Excel
-            "border: 1px solid #E2E8F0;"
-            "border-radius: 0px;" // No radius for Excel-like appearance
-        "}"
-        "QScrollBar::handle:vertical {"
-            "background-color: #CBD5E1;"
-            "border: 1px solid #94A3B8;"
-            "border-radius: 0px;"
-            "min-height: 30px;"
-        "}"
-        "QScrollBar::handle:vertical:hover {"
-            "background-color: #94A3B8;"
-        "}"
-        "QScrollBar::handle:vertical:pressed {"
-            "background-color: #64748B;"
-        "}"
-        "QScrollBar:horizontal {"
-            "background-color: #F1F5F9;"
-            "height: 16px;" // Wider scrollbar like Excel
-            "border: 1px solid #E2E8F0;"
-            "border-radius: 0px;"
-        "}"
-        "QScrollBar::handle:horizontal {"
-            "background-color: #CBD5E1;"
-            "border: 1px solid #94A3B8;"
-            "border-radius: 0px;"
-            "min-width: 30px;"
-        "}"
-        "QScrollBar::handle:horizontal:hover {"
-            "background-color: #94A3B8;"
-        "}"
-        "QScrollBar::handle:horizontal:pressed {"
-            "background-color: #64748B;"
-        "}"
-        "QScrollBar::add-line, QScrollBar::sub-line {"
-            "border: none;"
-            "background: none;"
-        "}"
-        "QScrollBar::add-page, QScrollBar::sub-page {"
-            "background: none;"
-        "}"
-    );
-    
-    // Set row height for Excel-like appearance
-    tableWidget->verticalHeader()->setDefaultSectionSize(45); // Excel-like row height
-    tableWidget->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed); // Fixed height for consistency
-    tableWidget->verticalHeader()->setMinimumSectionSize(45); // Minimum height
-    
-    tableWidget->verticalHeader()->setVisible(true);
-    
-    // Custom header for showing primary key icon in first row
-    QStringList verticalHeaders;
-    verticalHeaders << "🔑"; // Primary key icon for first row only
-    tableWidget->setVerticalHeaderLabels(verticalHeaders);
-    
-    tableWidget->verticalHeader()->setStyleSheet(
-        "QHeaderView::section {"
-            "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #F8FAFC, stop:1 #E2E8F0);" // Excel-like gradient
-            "color: #64748B;"
-            "padding: 8px 12px;"
-            "border: none;"
-            "border-right: 2px solid #CBD5E1;" // Thicker border like Excel
-            "border-bottom: 1px solid #E5E7EB;"
-            "font-size: 12px;" // Smaller font like Excel
-            "font-weight: 600;" // Bold like Excel
-            "width: 45px;" // Wider like Excel
-            "text-align: center;"
-            "font-family: 'Segoe UI', 'Inter';"
-        "}"
-        "QHeaderView::section:first {" // Special styling for primary key row
-            "font-size: 16px;"
-            "color: #DC2626;" // Red color for primary key
-            "font-weight: 700;"
-            "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #FEF2F2, stop:1 #FEE2E2);"
-        "}"
-        "QHeaderView::section:hover {"
-            "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #E2E8F0, stop:1 #CBD5E1);" // Darker on hover
-        "}"
-        "QHeaderView::section:pressed {"
-            "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #CBD5E1, stop:1 #94A3B8);" // Even darker when pressed
-        "}"
-    );
-    
-    // Connect selection change to update properties
-    connect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCellSelectionChanged);
-    
-    // Re-enable double click but with safer implementation
-    connect(tableWidget, &QTableWidget::cellDoubleClicked, this, &TableView::onCellDoubleClicked);
-    
-    tableLayout->addWidget(tableWidget);
-}
-
-void TableView::createPropertiesArea()
-{
-    propertiesArea = new QWidget();
-    propertiesArea->setStyleSheet(
-        "QWidget { "
-            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FAFBFC, stop:1 #F8FAFC); "
-            "border-top: 2px solid #E2E8F0; "
-            "border-radius: 0 0 8px 8px;"
-        "}"
-    );
-    propertiesArea->setMaximumHeight(350); // Reduced from 600
-    propertiesArea->setMinimumHeight(180); // Reduced from 200
-    propertiesArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    
-    QVBoxLayout *propertiesLayout = new QVBoxLayout(propertiesArea);
-    propertiesLayout->setContentsMargins(16, 16, 16, 16); // Reduced from 24
-    propertiesLayout->setSpacing(12); // Reduced from 20
-    
-    // Properties title - smaller
-    QLabel *propertiesTitle = new QLabel("Propiedades del Campo");
-    propertiesTitle->setFont(QFont("Inter", 14, QFont::DemiBold)); // Reduced from 16
-    propertiesTitle->setStyleSheet(
-        "QLabel { "
-            "color: #1E293B; "
-            "margin-bottom: 10px; " // Reduced from 16
-            "padding: 8px 0px; " // Reduced from 12
-            "border-bottom: 2px solid #E2E8F0;"
-        "}"
-    );
-    propertiesLayout->addWidget(propertiesTitle);
-    
-    // Create scroll area for properties form
-    QScrollArea *scrollArea = new QScrollArea();
-    scrollArea->setWidgetResizable(true);
-    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    scrollArea->setFrameShape(QFrame::NoFrame);
-    scrollArea->setStyleSheet(
-        "QScrollArea {"
-            "background-color: transparent;"
-            "border: none;"
-        "}"
-        "QScrollBar:vertical {"
-            "background-color: #F1F5F9;"
-            "width: 8px;" // Reduced from 12
-            "border-radius: 4px;" // Reduced from 6
-        "}"
-        "QScrollBar::handle:vertical {"
-            "background-color: #CBD5E1;"
-            "border-radius: 4px;" // Reduced from 6
-            "min-height: 20px;" // Reduced from 30
-        "}"
-        "QScrollBar::handle:vertical:hover {"
-            "background-color: #94A3B8;"
-        "}"
-    );
-    
-    // Create improved grid layout with tighter spacing
-    QWidget *propertiesForm = new QWidget();
-    propertiesForm->setStyleSheet("QWidget { background-color: transparent; }");
-    QGridLayout *formLayout = new QGridLayout(propertiesForm);
-    formLayout->setContentsMargins(0, 0, 0, 0);
-    formLayout->setHorizontalSpacing(16); // Reduced from 24
-    formLayout->setVerticalSpacing(12); // Reduced from 20
-    
-    // Set column stretch for responsive design
-    formLayout->setColumnStretch(0, 1);
-    formLayout->setColumnStretch(1, 1);
-    formLayout->setColumnStretch(2, 1);
-    
-    // Row 1: Nombre, Tamaño, Valor Default
-    formLayout->addWidget(createPropertyLabel("Nombre:"), 0, 0);
-    formLayout->addWidget(createPropertyLabel("Tamaño:"), 0, 1);
-    formLayout->addWidget(createPropertyLabel("Valor Default:"), 0, 2);
-    
-    // Create compact input fields
-    fieldNameEdit = new QLineEdit();
-    fieldNameEdit->setStyleSheet(getCompactInputStyle()); // Use compact style
-    fieldNameEdit->setMinimumHeight(32); // Reduced from 44
-    fieldNameEdit->setMaximumHeight(32);
-    fieldNameEdit->setToolTip("");
-    fieldNameEdit->setAttribute(Qt::WA_InputMethodEnabled, false);
-    fieldNameEdit->setCompleter(nullptr);
-    formLayout->addWidget(fieldNameEdit, 1, 0);
-    
-    fieldSizeEdit = new QLineEdit();
-    fieldSizeEdit->setStyleSheet(getCompactInputStyle()); // Use compact style
-    fieldSizeEdit->setMinimumHeight(32);
-    fieldSizeEdit->setMaximumHeight(32);
-    fieldSizeEdit->setText("255");
-    fieldSizeEdit->setToolTip("");
-    fieldSizeEdit->setAttribute(Qt::WA_InputMethodEnabled, false);
-    fieldSizeEdit->setCompleter(nullptr);
-    formLayout->addWidget(fieldSizeEdit, 1, 1);
-    
-    defaultValueEdit = new QLineEdit();
-    defaultValueEdit->setStyleSheet(getCompactInputStyle()); // Use compact style
-    defaultValueEdit->setMinimumHeight(32);
-    defaultValueEdit->setMaximumHeight(32);
-    defaultValueEdit->setText("0.0");
-    defaultValueEdit->setToolTip("");
-    defaultValueEdit->setAttribute(Qt::WA_InputMethodEnabled, false);
-    defaultValueEdit->setCompleter(nullptr);
-    formLayout->addWidget(defaultValueEdit, 1, 2);
-    
-    // Row 2: Tipo, Requerido, Descripción  
-    formLayout->addWidget(createPropertyLabel("Tipo:"), 2, 0);
-    formLayout->addWidget(createPropertyLabel("Requerido:"), 2, 1);
-    formLayout->addWidget(createPropertyLabel("Descripción:"), 2, 2);
-    
-    // Compact data type combo - completely disabled dropdown
-    dataTypeCombo = new QComboBox();
-    dataTypeCombo->addItems({"Texto", "Número", "Fecha/Hora", "Moneda", "AutoNumber", "Sí/No", "Objeto OLE", "Hipervínculo"});
-    dataTypeCombo->setCurrentText("Texto");
-    dataTypeCombo->setStyleSheet(getCompactComboStyle()); // Use compact style
-    dataTypeCombo->setMinimumHeight(32); // Reduced from 44
-    dataTypeCombo->setMaximumHeight(32);
-    dataTypeCombo->setToolTip("");
-    dataTypeCombo->setAttribute(Qt::WA_InputMethodEnabled, false);
-    dataTypeCombo->setEditable(false);
-    // Completely disable any dropdown behavior
-    dataTypeCombo->setEnabled(false); // Disable completely
-    dataTypeCombo->hide(); // Hide it completely
-    
-    // Replace with a simple label showing the type
-    dataTypeLabel = new QLabel("Texto");
-    dataTypeLabel->setStyleSheet(
-        "QLabel {"
-            "background-color: #F9FAFB;"
-            "border: 1px solid #D1D5DB;"
-            "border-radius: 4px;"
-            "padding: 6px 10px;"
-            "color: #111827;"
-            "font-size: 12px;"
-            "font-family: 'Inter', system-ui;"
-        "}"
-    );
-    dataTypeLabel->setMinimumHeight(32);
-    dataTypeLabel->setMaximumHeight(32);
-    formLayout->addWidget(dataTypeLabel, 3, 0);
-    
-    // Compact required checkbox
-    requiredCheck = new QCheckBox();
-    requiredCheck->setChecked(false); // Changed to unchecked as in image
-    requiredCheck->setStyleSheet(
-        "QCheckBox {"
-            "spacing: 6px;" // Reduced from 8
-            "font-size: 12px;" // Reduced from 14
-        "}"
-        "QCheckBox::indicator {"
-            "width: 16px;" // Reduced from 18
-            "height: 16px;" // Reduced from 18
-            "border: 2px solid #D1D5DB;"
-            "border-radius: 3px;" // Reduced from 4
-            "background-color: #FFFFFF;"
-        "}"
-        "QCheckBox::indicator:checked {"
-            "background-color: #EC4899;"
-            "border-color: #EC4899;"
-            "image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iOCIgdmlld0JveD0iMCAwIDEwIDgiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik05IDFMMy41IDYuNUwxIDQiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+);" // Smaller checkmark
-        "}"
-        "QCheckBox::indicator:hover {"
-            "border-color: #9CA3AF;"
-        "}"
-    );
-    
-    QWidget *requiredWidget = new QWidget();
-    QHBoxLayout *requiredLayout = new QHBoxLayout(requiredWidget);
-    requiredLayout->setContentsMargins(0, 0, 0, 0);
-    requiredLayout->setSpacing(6); // Reduced from 8
-    requiredLayout->addWidget(requiredCheck);
-    
-    QLabel *requiredLabel = new QLabel("Campo Requerido");
-    requiredLabel->setStyleSheet("QLabel { color: #374151; font-size: 12px; }"); // Reduced font
-    requiredLayout->addWidget(requiredLabel);
-    requiredLayout->addStretch();
-    
-    formLayout->addWidget(requiredWidget, 3, 1);
-    
-    descriptionEdit = new QLineEdit();
-    descriptionEdit->setStyleSheet(getCompactInputStyle()); // Use compact style
-    descriptionEdit->setMinimumHeight(32);
-    descriptionEdit->setMaximumHeight(32);
-    descriptionEdit->setText("");
-    descriptionEdit->setToolTip("");
-    descriptionEdit->setAttribute(Qt::WA_InputMethodEnabled, false);
-    descriptionEdit->setCompleter(nullptr);
-    formLayout->addWidget(descriptionEdit, 3, 2);
-    
-    // Completely disable hidden combo to prevent any floating behavior
-    fieldSizeCombo = new QComboBox();
-    fieldSizeCombo->setVisible(false);
-    fieldSizeCombo->setEnabled(false);
-    fieldSizeCombo->setAttribute(Qt::WA_DeleteOnClose);
-    fieldSizeCombo->setParent(nullptr); // Remove from parent to prevent any rendering
-    
-    // Set the form widget to the scroll area
-    scrollArea->setWidget(propertiesForm);
-    propertiesLayout->addWidget(scrollArea);
-    
-    // Conectar señales para sincronizar cambios del área de propiedades con la tabla
-    connect(fieldNameEdit, &QLineEdit::textChanged, this, &TableView::onFieldNameChanged);
-    connect(descriptionEdit, &QLineEdit::textChanged, this, &TableView::onDescriptionChanged);
-    connect(requiredCheck, &QCheckBox::toggled, this, &TableView::onRequiredChanged);
-}
-
-QLabel* TableView::createPropertyLabel(const QString &text)
-{
-    QLabel *label = new QLabel(text);
-    label->setFont(QFont("Inter", 11, QFont::Medium)); // Reduced from 13
-    label->setStyleSheet(
-        "QLabel { "
-            "color: #374151; "
-            "font-weight: 600; "
-            "margin-bottom: 4px; " // Reduced from 8
-            "padding: 1px 0px;" // Reduced from 2px
-            "letter-spacing: 0.025em;"
-        "}"
-    );
-    label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    label->setMinimumHeight(16); // Reduced from 20
-    return label;
-}
-
-QString TableView::getInputStyle()
-{
-    return "QLineEdit {"
-           "background-color: #FFFFFF;"
-           "border: 1px solid #D1D5DB;"
-           "border-radius: 6px;"
-           "padding: 8px 12px;"
-           "color: #111827;"
-           "font-size: 13px;"
-           "}"
-           "QLineEdit:focus {"
-           "border-color: #A4373A;"
-           "outline: none;"
-           "}";
-}
-
-QString TableView::getCompactInputStyle()
-{
-    return "QLineEdit {"
-           "background-color: #FFFFFF;"
-           "border: 1px solid #D1D5DB;"
-           "border-radius: 4px;"
-           "padding: 6px 10px;" // Better padding for compact size
-           "color: #111827;"
-           "font-size: 12px;" // Good readable size
-           "font-family: 'Inter', system-ui;"
-           "}"
-           "QLineEdit:focus {"
-           "border-color: #A4373A;"
-           "outline: none;"
-           "box-shadow: 0 0 0 2px rgba(164, 55, 58, 0.1);" // Subtle focus effect
-           "}"
-           "QLineEdit:hover {"
-           "border-color: #9CA3AF;"
-           "}";
-}
-
-QString TableView::getComboStyle()
-{
-    return "QComboBox {"
-           "background-color: #FFFFFF;"
-           "border: 1px solid #D1D5DB;"
-           "border-radius: 6px;"
-           "padding: 8px 12px;"
-           "color: #111827;"
-           "font-size: 13px;"
-           "}"
-           "QComboBox:focus {"
-           "border-color: #A4373A;"
-           "}"
-           "QComboBox::drop-down {"
-           "border: none;"
-           "}"
-           "QComboBox::down-arrow {"
-           "image: none;"
-           "border: none;"
-           "}";
-}
-
-QString TableView::getCompactComboStyle()
-{
-    return "QComboBox {"
-           "background-color: #FFFFFF;"
-           "border: 1px solid #D1D5DB;"
-           "border-radius: 4px;"
-           "padding: 6px 10px 6px 10px;" // Better padding for readability
-           "color: #111827;"
-           "font-size: 12px;" // Slightly larger for better readability
-           "font-family: 'Inter', system-ui;"
-           "padding-right: 25px;" // Space for arrow
-           "}"
-           "QComboBox:focus {"
-           "border-color: #A4373A;"
-           "outline: none;"
-           "box-shadow: 0 0 0 2px rgba(164, 55, 58, 0.1);"
-           "}"
-           "QComboBox:hover {"
-           "border-color: #9CA3AF;"
-           "}"
-           "QComboBox::drop-down {"
-           "subcontrol-origin: padding;"
-           "subcontrol-position: top right;"
-           "width: 20px;"
-           "border-left: 1px solid #D1D5DB;"
-           "border-top-right-radius: 4px;"
-           "border-bottom-right-radius: 4px;"
-           "background-color: #F9FAFB;"
-           "}"
-           "QComboBox::drop-down:hover {"
-           "background-color: #F3F4F6;"
-           "}"
-           "QComboBox::down-arrow {"
-           "image: none;"
-           "border: none;"
-           "width: 0;"
-           "height: 0;"
-           "border-left: 4px solid transparent;"
-           "border-right: 4px solid transparent;"
-           "border-top: 5px solid #6B7280;"
-           "margin: 0px;"
-           "}"
-           "QComboBox::down-arrow:hover {"
-           "border-top-color: #374151;"
-           "}"
-           "QComboBox QAbstractItemView {"
-           "background-color: #FFFFFF;"
-           "border: 1px solid #D1D5DB;"
-           "border-radius: 4px;"
-           "selection-background-color: #EFF6FF;"
-           "color: #111827;"
-           "font-size: 12px;" // Match combo font size
-           "padding: 2px;"
-           "outline: none;"
-           "}"
-           "QComboBox QAbstractItemView::item {"
-           "padding: 8px 12px;" // Comfortable padding
-           "min-height: 18px;" // Adequate height
-           "border-radius: 2px;"
-           "margin: 1px 2px;"
-           "}"
-           "QComboBox QAbstractItemView::item:selected {"
-           "background-color: #DBEAFE;"
-           "color: #1E40AF;"
-           "}";
-}
-
-QString TableView::getEnhancedInputStyle()
-{
-    return "QLineEdit {"
-           "background-color: #FFFFFF;"
-           "border: 2px solid #E2E8F0;"
-           "border-radius: 6px;" // Slightly smaller radius for more professional look
-           "padding: 12px 16px;" // Increased padding for better appearance
-           "color: #1F2937;"
-           "font-size: 13px;"
-           "font-family: 'Segoe UI', 'Inter';" // Excel-like font
-           "font-weight: 400;"
-           "}"
-           "QLineEdit:focus {"
-           "border-color: #3B82F6;"
-           "outline: none;"
-           "box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);"
-           "}"
-           "QLineEdit:hover {"
-           "border-color: #CBD5E1;"
-           "}";
-}
-
-QString TableView::getEnhancedComboStyle()
-{
-    return "QComboBox {"
-           "background-color: #FFFFFF;"
-           "border: 2px solid #E2E8F0;"
-           "border-radius: 6px;" // Smaller radius for professional look
-           "padding: 12px 16px 12px 16px;" // Increased padding
-           "color: #1F2937;"
-           "font-size: 13px;"
-           "font-family: 'Segoe UI', 'Inter';" // Excel-like font
-           "font-weight: 400;"
-           "padding-right: 35px;"
-           "}"
-           "QComboBox:focus {"
-           "border-color: #3B82F6;"
-           "}"
-           "QComboBox:hover {"
-           "border-color: #CBD5E1;"
-           "}"
-           "QComboBox::drop-down {"
-           "subcontrol-origin: padding;"
-           "subcontrol-position: top right;"
-           "width: 30px;"
-           "border-left: 1px solid #E2E8F0;"
-           "border-top-right-radius: 6px;"
-           "border-bottom-right-radius: 6px;"
-           "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #F8FAFC, stop:1 #F1F5F9);"
-           "}"
-           "QComboBox::drop-down:hover {"
-           "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #F1F5F9, stop:1 #E2E8F0);"
-           "}"
-           "QComboBox::down-arrow {"
-           "image: none;"
-           "border: none;"
-           "width: 0;"
-           "height: 0;"
-           "border-left: 6px solid transparent;"
-           "border-right: 6px solid transparent;"
-           "border-top: 8px solid #64748B;"
-           "margin: 0px;"
-           "}"
-           "QComboBox::down-arrow:hover {"
-           "border-top-color: #475569;"
-           "}"
-           "QComboBox QAbstractItemView {"
-           "background-color: #FFFFFF;"
-           "border: 2px solid #E2E8F0;"
-           "border-radius: 6px;"
-           "selection-background-color: #EFF6FF;"
-           "color: #1F2937;"
-           "font-size: 13px;"
-           "padding: 6px;" // Increased padding
-           "outline: none;"
-           "margin-top: 2px;"
-           "}"
-           "QComboBox QAbstractItemView::item {"
-           "padding: 12px 16px;" // Increased padding for items
-           "min-height: 25px;" // Increased height
-           "border-radius: 4px;"
-           "margin: 2px 4px;"
-           "}"
-           "QComboBox QAbstractItemView::item:selected {"
-           "background-color: #DBEAFE;"
-           "color: #1E40AF;"
-           "}";
-}
-
-QString TableView::getEnhancedTextEditStyle()
-{
-    return "QTextEdit {"
-           "background-color: #FFFFFF;"
-           "border: 2px solid #E2E8F0;"
-           "border-radius: 8px;"
-           "padding: 10px 14px;"
-           "color: #1F2937;"
-           "font-size: 13px;"
-           "font-family: 'Inter';"
-           "font-weight: 400;"
-           "}"
-           "QTextEdit:focus {"
-           "border-color: #3B82F6;"
-           "outline: none;"
-           "}"
-           "QTextEdit:hover {"
-           "border-color: #CBD5E1;"
-           "}";
-}
-
-void TableView::onCellSelectionChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
-{
-    Q_UNUSED(previousRow)
-    Q_UNUSED(previousColumn)
-    
-    qDebug() << "DEBUG: onCellSelectionChanged llamado - fila:" << currentRow << "columna:" << currentColumn;
-    
-    // Verificar que los widgets del área de propiedades existen
-    if (!fieldNameEdit || !dataTypeLabel || !descriptionEdit) {
-        qDebug() << "WARNING: Widgets del área de propiedades no están inicializados";
-        return;
-    }
-    
-    // Always update properties when a cell is selected
-    if (currentRow >= 0 && currentColumn >= 0) {
-        // Update properties based on selected field
-        if (currentRow < tableWidget->rowCount()) {
-            QTableWidgetItem *fieldNameItem = tableWidget->item(currentRow, 0);
-            QTableWidgetItem *dataTypeItem = tableWidget->item(currentRow, 1);
-            QTableWidgetItem *descriptionItem = tableWidget->item(currentRow, 2);
-            
-            try {
-                if (fieldNameItem) {
-                    fieldNameEdit->setText(fieldNameItem->text());
-                } else {
-                    fieldNameEdit->clear();
-                }
-                
-                if (dataTypeItem) {
-                    QString dataType = dataTypeItem->text();
-                    // Update the label instead of combo
-                    dataTypeLabel->setText(dataType);
-                } else {
-                    // Set default type
-                    dataTypeLabel->setText("Texto");
-                }
-                
-                if (descriptionItem) {
-                    descriptionEdit->setText(descriptionItem->text());
-                } else {
-                    descriptionEdit->clear();
-                }
-                
-                // Set sample properties based on data type and field
-                try {
-                    qDebug() << "DEBUG: Llamando updateFieldProperties para fila" << currentRow;
-                    updateFieldProperties(currentRow, fieldNameItem ? fieldNameItem->text() : "");
-                    qDebug() << "DEBUG: updateFieldProperties completado exitosamente";
-                } catch (...) {
-                    qDebug() << "ERROR: Excepción en updateFieldProperties - CONTINUANDO";
-                }
-                
-            } catch (...) {
-                qDebug() << "ERROR: Excepción en onCellSelectionChanged al actualizar widgets";
-            }
-        }
-    }
-    
-    qDebug() << "DEBUG: onCellSelectionChanged completado exitosamente";
-}
-
-void TableView::onCellDoubleClicked(int row, int column)
-{
-    Q_UNUSED(row)
-    Q_UNUSED(column)
-    
-    // Simple implementation - just ensure properties are visible
-    if (propertiesArea->isHidden()) {
-        propertiesArea->show();
-        // Set better proportional sizes for compact design
-        QList<int> sizes = mainSplitter->sizes();
-        int totalHeight = sizes[0] + sizes[1];
-        int tableHeight = totalHeight * 0.75; // 75% for table
-        int propertiesHeight = totalHeight * 0.25; // 25% for compact properties
-        mainSplitter->setSizes({tableHeight, propertiesHeight});
-    }
-    
-    // Force update the current selection without causing floating elements
-    int currentRow = tableWidget->currentRow();
-    if (currentRow >= 0) {
-        onCellSelectionChanged(currentRow, tableWidget->currentColumn(), -1, -1);
-    }
-}
-
-void TableView::updateFieldProperties(int row, const QString &fieldName)
-{
-    qDebug() << "DEBUG: updateFieldProperties iniciado para fila" << row << "campo" << fieldName;
-    
-    // Verificar que todos los widgets necesarios existen
-    if (!fieldSizeEdit || !fieldSizeCombo || !requiredCheck || !defaultValueEdit) {
-        qDebug() << "ERROR: Algunos widgets de propiedades no están inicializados";
-        qDebug() << "fieldSizeEdit:" << (fieldSizeEdit ? "OK" : "NULL");
-        qDebug() << "fieldSizeCombo:" << (fieldSizeCombo ? "OK" : "NULL");
-        qDebug() << "requiredCheck:" << (requiredCheck ? "OK" : "NULL");
-        qDebug() << "defaultValueEdit:" << (defaultValueEdit ? "OK" : "NULL");
-        return;
-    }
-    
-    // Get the data type for this field
-    QTableWidgetItem *dataTypeItem = tableWidget->item(row, 1);
-    QString dataType = dataTypeItem ? dataTypeItem->text() : "";
-    qDebug() << "DEBUG: Tipo de dato encontrado:" << dataType;
-    
-    try {
-        // Clear current properties - uno por uno con validación
-        qDebug() << "DEBUG: Limpiando widgets de propiedades uno por uno...";
-        
-        try {
-            qDebug() << "DEBUG: Limpiando fieldSizeEdit...";
-            if (fieldSizeEdit) fieldSizeEdit->clear();
-            qDebug() << "DEBUG: fieldSizeEdit limpiado OK";
-        } catch (...) {
-            qDebug() << "ERROR: Crash al limpiar fieldSizeEdit";
-        }
-        
-        try {
-            qDebug() << "DEBUG: Limpiando fieldSizeCombo...";
-            if (fieldSizeCombo) fieldSizeCombo->clear();
-            qDebug() << "DEBUG: fieldSizeCombo limpiado OK";
-        } catch (...) {
-            qDebug() << "ERROR: Crash al limpiar fieldSizeCombo";
-        }
-        
-        try {
-            qDebug() << "DEBUG: Configurando requiredCheck...";
-            if (requiredCheck) requiredCheck->setChecked(false);
-            qDebug() << "DEBUG: requiredCheck configurado OK";
-        } catch (...) {
-            qDebug() << "ERROR: Crash al configurar requiredCheck";
-        }
-        
-        try {
-            qDebug() << "DEBUG: Limpiando defaultValueEdit...";
-            if (defaultValueEdit) defaultValueEdit->clear();
-            qDebug() << "DEBUG: defaultValueEdit limpiado OK";
-        } catch (...) {
-            qDebug() << "ERROR: Crash al limpiar defaultValueEdit";
-        }
-        
-        qDebug() << "DEBUG: Todos los widgets limpiados exitosamente";
-    } catch (...) {
-        qDebug() << "ERROR: Excepción al limpiar widgets";
-        return;
-    }
-    
-    // Keep all controls in their default state - no show/hide to prevent floating elements
-    // Always keep fieldSizeCombo hidden to prevent floating "Entero" popup
-    fieldSizeCombo->hide();
-    fieldSizeEdit->show();
-    
-    // Set default values based on data type without showing/hiding widgets
-    if (dataType == "int") {
-        fieldSizeEdit->setText("Entero largo");
-        if (fieldName.toLower() == "id") {
-            requiredCheck->setChecked(true);
-            defaultValueEdit->setText("AutoNumber");
-        }
-    }
-    else if (dataType == "float") {
-        fieldSizeEdit->setText("Decimal");
-        defaultValueEdit->setText("0.0");
-    }
-    else if (dataType == "bool") {
-        fieldSizeEdit->setText("Verdadero/Falso");
-        fieldSizeEdit->setText("Sí/No");
-        fieldSizeEdit->setReadOnly(true);
-        defaultValueEdit->setPlaceholderText("Falso");
-    }
-    else if (dataType == "char[N]" || dataType == "string") {
-        // fieldSizeEdit->show();  // Eliminado para evitar elementos flotantes
-        // fieldSizeCombo->hide(); // Eliminado para evitar elementos flotantes
-        fieldSizeEdit->setReadOnly(false);
-        fieldSizeEdit->setText(dataType == "char[N]" ? "50" : "255");
-        fieldSizeEdit->setPlaceholderText("Tamaño de campo (Max 255)");
-        if (fieldName.toLower().contains("nombre") || fieldName.toLower().contains("email")) {
-            requiredCheck->setChecked(true);
-        }
-    }
-    else if (dataType == "moneda") {
-        // fieldSizeEdit->hide();  // Eliminado para evitar elementos flotantes
-        // fieldSizeCombo->show(); // Eliminado para evitar elementos flotantes
-        // fieldSizeCombo->addItems({"Moneda Lps", "Dollar", "Euros", "Millares"}); // Eliminado
-        // fieldSizeCombo->setCurrentText("Moneda Lps"); // Eliminado
-        fieldSizeEdit->setText("Moneda Lps");
-        defaultValueEdit->setPlaceholderText("0.00");
-    }
-    else if (dataType == "fecha") {
-        // fieldSizeEdit->hide();  // Eliminado para evitar elementos flotantes
-        // fieldSizeCombo->show(); // Eliminado para evitar elementos flotantes
-        // fieldSizeCombo->addItems({"DD-MM-YY", "DD/MM/YY", "DD/MESTEXTO/YYYY"}); // Eliminado
-        // fieldSizeCombo->setCurrentText("DD-MM-YY"); // Eliminado
-        fieldSizeEdit->setText("DD-MM-YY");
-        defaultValueEdit->setPlaceholderText("Fecha()");
-    }
-    else {
-        // Default case
-        // fieldSizeEdit->show();  // Eliminado para evitar elementos flotantes
-        // fieldSizeCombo->hide(); // Eliminado para evitar elementos flotantes
-        fieldSizeEdit->setReadOnly(false);
-        fieldSizeEdit->setText("255");
-    }
-    
-    // Update property labels based on data type
-    updatePropertyLabels(dataType);
-}
-
-void TableView::updatePropertyLabels(const QString &dataType)
-{
-    // Find the property labels and update them
-    QList<QLabel*> labels = propertiesArea->findChildren<QLabel*>();
-    
-    for (QLabel* label : labels) {
-        if (label->text().startsWith("Tamaño:") || label->text().startsWith("Formato:")) {
-            if (dataType == "int" || dataType == "float") {
-                label->setText("Tamaño:");
-                fieldSizeEdit->setToolTip(""); // Remove tooltip
-            }
-            else if (dataType == "char[N]" || dataType == "string") {
-                label->setText("Tamaño:");
-                fieldSizeEdit->setToolTip(""); // Remove tooltip
-            }
-            else if (dataType == "moneda") {
-                label->setText("Formato:");
-                fieldSizeEdit->setToolTip(""); // Remove tooltip
-            }
-            else if (dataType == "fecha") {
-                label->setText("Formato:");
-                fieldSizeEdit->setToolTip(""); // Remove tooltip
-            }
-            break;
-        }
-    }
-}
-
-void TableView::onDesignViewClicked()
-{
-    // Cambiar estilo del botón activo
-    designViewBtn->setStyleSheet(
-        "QPushButton {"
-            "background-color: #EFF6FF;" // Fondo azul claro (activo)
-            "color: #1D4ED8;" // Texto azul
-            "border: 1px solid #BFDBFE;"
-            "border-radius: 6px;"
-            "padding: 4px 12px;"
-            "font-weight: 500;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: #DBEAFE;"
-        "}"
-    );
-    
-    // Cambiar estilo de botón inactivo (Solo Vista Datos)
-    dataViewBtn->setStyleSheet(
-        "QPushButton {"
-            "background-color: #F9FAFB;"
-            "color: #6B7280;"
-            "border: 1px solid #E5E7EB;"
-            "border-radius: 6px;"
-            "padding: 4px 12px;"
-            "font-weight: 500;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: #F3F4F6;"
-            "color: #374151;"
-        "}"
-    );
-    
-    // Cambiar la tabla para vista de diseño
-    setupDesignView();
-}
-
-void TableView::onDataViewClicked()
-{
-    qDebug() << "DEBUG: onDataViewClicked() iniciado";
-    
-    try {
-        // Cambiar estilo del botón activo
-        if (dataViewBtn) {
-            dataViewBtn->setStyleSheet(
-                "QPushButton {"
-                    "background-color: #EFF6FF;" // Fondo azul claro (activo)
-                    "color: #1D4ED8;" // Texto azul
-                    "border: 1px solid #BFDBFE;"
-                    "border-radius: 6px;"
-                    "padding: 4px 12px;"
-                    "font-weight: 500;"
-                "}"
-                "QPushButton:hover {"
-                    "background-color: #DBEAFE;"
-                "}"
-            );
-            qDebug() << "DEBUG: Estilo de dataViewBtn actualizado";
-        }
-        
-        // Cambiar estilo de botón inactivo (Solo Vista de Diseño)
-        if (designViewBtn) {
-            designViewBtn->setStyleSheet(
-                "QPushButton {"
-                    "background-color: #F9FAFB;"
-                    "color: #6B7280;"
-                    "border: 1px solid #E5E7EB;"
-                    "border-radius: 6px;"
-                    "padding: 4px 12px;"
-                    "font-weight: 500;"
-                "}"
-                "QPushButton:hover {"
-                    "background-color: #F3F4F6;"
-                    "color: #374151;"
-                "}"
-            );
-            qDebug() << "DEBUG: Estilo de designViewBtn actualizado";
-        }
-        
-        // Cambiar la tabla para vista de datos
-        qDebug() << "DEBUG: Llamando a setupDataView()";
-        setupDataView();
-        qDebug() << "DEBUG: setupDataView() completado";
-        
-    } catch (const std::exception& e) {
-        qDebug() << "ERROR en onDataViewClicked():" << e.what();
-    } catch (...) {
-        qDebug() << "ERROR desconocido en onDataViewClicked()";
-    }
-}
-
-void TableView::onTableItemChanged(QTableWidgetItem *item)
-{
-    if (!item) return;
-    
-    int row = item->row();
-    int column = item->column();
-    
-    // Manejar tanto Vista de Diseño (3 columnas) como Vista de Datos (múltiples columnas)
-    bool isDesignView = (tableWidget->columnCount() == 3);
-    bool isDataView = (tableWidget->columnCount() > 3);
-    
-    if (isDesignView) {
-        // VISTA DE DISEÑO: Solo agregar fila cuando se escribe en la primera columna (nombre del campo)
-        if (column == 0 && !item->text().trimmed().isEmpty()) {
-            
-            // Si está escribiendo en la última fila, agregar una nueva fila
-            if (row == tableWidget->rowCount() - 1) {
-                qDebug() << "DEBUG: [Diseño] Agregando nueva fila porque usuario escribió en la última fila";
-                
-                tableWidget->setRowCount(tableWidget->rowCount() + 1);
-                int newRow = tableWidget->rowCount() - 1;
-                
-                // Crear items vacíos para la nueva fila
-                for (int col = 0; col < 3; col++) {
-                    QTableWidgetItem *newItem = new QTableWidgetItem("");
-                    newItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-                    tableWidget->setItem(newRow, col, newItem);
-                }
-                
-                qDebug() << "DEBUG: [Diseño] Nueva fila agregada. Total filas:" << tableWidget->rowCount();
-            }
-        }
-        
-        // Si el usuario borró el contenido de la primera columna, limpiar filas vacías del final
-        if (column == 0 && item->text().trimmed().isEmpty()) {
-            while (tableWidget->rowCount() > 2) {
-                int lastRow = tableWidget->rowCount() - 1;
-                QTableWidgetItem *lastNameItem = tableWidget->item(lastRow, 0);
-                QTableWidgetItem *secondLastNameItem = tableWidget->item(lastRow - 1, 0);
-                
-                if ((!lastNameItem || lastNameItem->text().trimmed().isEmpty()) &&
-                    (!secondLastNameItem || secondLastNameItem->text().trimmed().isEmpty())) {
-                    tableWidget->setRowCount(tableWidget->rowCount() - 1);
-                    qDebug() << "DEBUG: [Diseño] Fila vacía eliminada. Total filas:" << tableWidget->rowCount();
-                } else {
-                    break;
-                }
-            }
-        }
-    }
-    else if (isDataView) {
-        // VISTA DE DATOS: Agregar fila cuando se escribe en cualquier columna de la última fila
-        if (!item->text().trimmed().isEmpty()) {
-            
-            // Si está escribiendo en la última fila, agregar una nueva fila
-            if (row == tableWidget->rowCount() - 1) {
-                qDebug() << "DEBUG: [Datos] Agregando nueva fila porque usuario escribió en la última fila";
-                
-                tableWidget->setRowCount(tableWidget->rowCount() + 1);
-                int newRow = tableWidget->rowCount() - 1;
-                
-                // Crear items vacíos para la nueva fila (todas las columnas)
-                for (int col = 0; col < tableWidget->columnCount(); col++) {
-                    QTableWidgetItem *newItem = new QTableWidgetItem("");
-                    newItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-                    tableWidget->setItem(newRow, col, newItem);
-                }
-                
-                // Actualizar headers verticales numerados
-                QStringList verticalHeaders;
-                for (int i = 0; i < tableWidget->rowCount(); i++) {
-                    verticalHeaders << QString::number(i + 1);
-                }
-                tableWidget->setVerticalHeaderLabels(verticalHeaders);
-                
-                qDebug() << "DEBUG: [Datos] Nueva fila agregada. Total filas:" << tableWidget->rowCount();
-            }
-        }
-        
-        // Si el usuario borró contenido, considerar eliminar filas vacías del final
-        if (item->text().trimmed().isEmpty()) {
-            // Verificar si toda la fila está vacía para posible eliminación
-            while (tableWidget->rowCount() > 2) {
-                int lastRow = tableWidget->rowCount() - 1;
-                int secondLastRow = lastRow - 1;
-                
-                // Verificar si las dos últimas filas están completamente vacías
-                bool lastRowEmpty = true;
-                bool secondLastRowEmpty = true;
-                
-                for (int col = 0; col < tableWidget->columnCount(); col++) {
-                    QTableWidgetItem *lastItem = tableWidget->item(lastRow, col);
-                    QTableWidgetItem *secondLastItem = tableWidget->item(secondLastRow, col);
-                    
-                    if (lastItem && !lastItem->text().trimmed().isEmpty()) {
-                        lastRowEmpty = false;
-                    }
-                    if (secondLastItem && !secondLastItem->text().trimmed().isEmpty()) {
-                        secondLastRowEmpty = false;
-                    }
-                }
-                
-                if (lastRowEmpty && secondLastRowEmpty) {
-                    tableWidget->setRowCount(tableWidget->rowCount() - 1);
-                    
-                    // Actualizar headers verticales
-                    QStringList verticalHeaders;
-                    for (int i = 0; i < tableWidget->rowCount(); i++) {
-                        verticalHeaders << QString::number(i + 1);
-                    }
-                    tableWidget->setVerticalHeaderLabels(verticalHeaders);
-                    
-                    qDebug() << "DEBUG: [Datos] Fila vacía eliminada. Total filas:" << tableWidget->rowCount();
-                } else {
-                    break;
-                }
-            }
-        }
-    }
-}
 
 // DataTypeDelegate Implementation
 DataTypeDelegate::DataTypeDelegate(QObject *parent) : QStyledItemDelegate(parent)
@@ -1480,77 +13,34 @@ QWidget *DataTypeDelegate::createEditor(QWidget *parent, const QStyleOptionViewI
     Q_UNUSED(index)
     
     QComboBox *comboBox = new QComboBox(parent);
-    
-    // Add specific data types as requested
-    comboBox->addItem("int");      // Claves primarias, edades, IDs
-    comboBox->addItem("float");    // Promedios, notas, precios
-    comboBox->addItem("bool");     // Estados activos/inactivos
-    comboBox->addItem("char[N]");  // Nombres, descripciones cortas
-    comboBox->addItem("string");   // Direcciones, observaciones
-    comboBox->addItem("moneda");   // Campos monetarios
-    comboBox->addItem("fecha");    // Campos de fecha
-    
-    // Style the combo box with visible arrow
+    comboBox->addItems({"Entero", "Decimales", "Sí / No", "Texto corto (hasta N caracteres)", "Texto largo / Párrafo", "moneda", "fecha"});
     comboBox->setStyleSheet(
         "QComboBox {"
-            "background-color: #FFFFFF;"
-            "border: 2px solid #3B82F6;"
-            "border-radius: 4px;"
-            "padding: 8px 12px 8px 12px;"
-            "color: #111827;"
-            "font-size: 14px;"
-            "font-family: 'Inter';"
-            "min-height: 20px;"
-            "padding-right: 30px;" // Espacio para la flecha
+        "background-color: white;"
+        "border: 1px solid #D1D5DB;"
+        "border-radius: 6px;"
+        "padding: 8px 12px;"
+        "font-size: 14px;"
+        "color: #111827;"
         "}"
         "QComboBox:focus {"
-            "border-color: #1D4ED8;"
+        "border-color: #3b82f6;"
+        "background-color: white;"
+        "outline: none;"
         "}"
         "QComboBox::drop-down {"
-            "subcontrol-origin: padding;"
-            "subcontrol-position: top right;"
-            "width: 25px;"
-            "border-left: 1px solid #D1D5DB;"
-            "border-top-right-radius: 4px;"
-            "border-bottom-right-radius: 4px;"
-            "background-color: #F3F4F6;"
-        "}"
-        "QComboBox::drop-down:hover {"
-            "background-color: #E5E7EB;"
+        "border: none;"
+        "width: 20px;"
         "}"
         "QComboBox::down-arrow {"
-            "image: none;"
-            "border: none;"
-            "width: 0;"
-            "height: 0;"
-            "border-left: 5px solid transparent;"
-            "border-right: 5px solid transparent;"
-            "border-top: 6px solid #6B7280;"
-            "margin: 0px;"
-        "}"
-        "QComboBox::down-arrow:hover {"
-            "border-top-color: #374151;"
-        "}"
-        "QComboBox QAbstractItemView {"
-            "background-color: #FFFFFF;"
-            "border: 2px solid #E2E8F0;"
-            "border-radius: 8px;"
-            "selection-background-color: #EFF6FF;"
-            "color: #1F2937;"
-            "font-size: 13px;"
-            "padding: 4px;"
-            "outline: none;"
-            "margin-top: 2px;"
-        "}"
-        "QComboBox QAbstractItemView::item {"
-            "padding: 12px 16px;"
-            "min-height: 20px;"
-            "border-radius: 4px;"
-            "margin: 2px 4px;"
-        "}"
-        "QComboBox QAbstractItemView::item:selected {"
-            "background-color: #DBEAFE;"
-            "color: #1E40AF;"
+        "image: none;"
+        "border: 2px solid #6b7280;"
+        "width: 8px;"
+        "height: 8px;"
+        "border-top: none;"
+        "border-left: none;"
+        "margin-right: 5px;"
+        "transform: rotate(45deg);"
         "}"
     );
     
@@ -1562,10 +52,7 @@ void DataTypeDelegate::setEditorData(QWidget *editor, const QModelIndex &index) 
     QComboBox *comboBox = qobject_cast<QComboBox*>(editor);
     if (comboBox) {
         QString value = index.model()->data(index, Qt::EditRole).toString();
-        int idx = comboBox->findText(value);
-        if (idx >= 0) {
-            comboBox->setCurrentIndex(idx);
-        }
+        comboBox->setCurrentText(value.isEmpty() ? "TEXTO CORTO" : value);
     }
 }
 
@@ -1596,46 +83,41 @@ QWidget *DescriptionDelegate::createEditor(QWidget *parent, const QStyleOptionVi
     Q_UNUSED(option)
     Q_UNUSED(index)
     
-    QTextEdit *textEdit = new QTextEdit(parent);
-    textEdit->setLineWrapMode(QTextEdit::WidgetWidth);
-    textEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    textEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    
-    // Style the text edit
-    textEdit->setStyleSheet(
-        "QTextEdit {"
-            "background-color: #FFFFFF;"
-            "border: 2px solid #3B82F6;"
-            "border-radius: 4px;"
-            "color: #111827;"
-            "font-size: 14px;"
-            "font-family: 'Inter';"
-            "padding: 8px 12px;"
-            "min-height: 60px;"
+    QLineEdit *lineEdit = new QLineEdit(parent);
+    lineEdit->setStyleSheet(
+        "QLineEdit {"
+        "background-color: white;"
+        "border: 1px solid #D1D5DB;"
+        "border-radius: 6px;"
+        "padding: 8px 12px;"
+        "font-size: 14px;"
+        "color: #111827;"
         "}"
-        "QTextEdit:focus {"
-            "border-color: #1D4ED8;"
+        "QLineEdit:focus {"
+        "border-color: #3b82f6;"
+        "background-color: white;"
+        "outline: none;"
         "}"
     );
     
-    return textEdit;
+    return lineEdit;
 }
 
 void DescriptionDelegate::setEditorData(QWidget *editor, const QModelIndex &index) const
 {
-    QTextEdit *textEdit = qobject_cast<QTextEdit*>(editor);
-    if (textEdit) {
+    QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
+    if (lineEdit) {
         QString value = index.model()->data(index, Qt::EditRole).toString();
-        textEdit->setPlainText(value);
+        lineEdit->setText(value);
     }
 }
 
 void DescriptionDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
                                      const QModelIndex &index) const
 {
-    QTextEdit *textEdit = qobject_cast<QTextEdit*>(editor);
-    if (textEdit) {
-        model->setData(index, textEdit->toPlainText(), Qt::EditRole);
+    QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
+    if (lineEdit) {
+        model->setData(index, lineEdit->text(), Qt::EditRole);
     }
 }
 
@@ -1643,443 +125,1330 @@ void DescriptionDelegate::updateEditorGeometry(QWidget *editor, const QStyleOpti
                                              const QModelIndex &index) const
 {
     Q_UNUSED(index)
-    QRect rect = option.rect;
-    rect.setHeight(qMax(rect.height(), 80)); // Altura mínima para el editor
-    editor->setGeometry(rect);
+    editor->setGeometry(option.rect);
 }
 
 QSize DescriptionDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
     Q_UNUSED(option)
-    QString text = index.model()->data(index, Qt::DisplayRole).toString();
-    
-    if (text.isEmpty()) {
-        return QSize(-1, 50); // Altura mínima para celdas vacías
-    }
-    
-    // Calcular altura basada en el texto
-    QFontMetrics fm(option.font);
-    int width = 500; // Ancho de la columna descripción
-    QRect textRect = fm.boundingRect(0, 0, width - 32, 0, Qt::TextWordWrap, text);
-    int height = qMax(textRect.height() + 24, 50); // Padding + altura mínima
-    
-    return QSize(-1, height);
+    Q_UNUSED(index)
+    return QSize(200, 30);
 }
 
 void DescriptionDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
                                const QModelIndex &index) const
 {
-    QStyleOptionViewItem opt = option;
-    initStyleOption(&opt, index);
-    
-    // Draw background
-    if (opt.state & QStyle::State_Selected) {
-        painter->fillRect(opt.rect, QColor("#DBEAFE"));
-    } else {
-        painter->fillRect(opt.rect, QColor("#FFFFFF"));
-    }
-    
-    // Draw text with word wrap
-    QString text = index.model()->data(index, Qt::DisplayRole).toString();
-    if (!text.isEmpty()) {
-        painter->setPen(QColor("#111827"));
-        painter->setFont(opt.font);
-        
-        QRect textRect = opt.rect.adjusted(12, 8, -12, -8); // Padding
-        painter->drawText(textRect, Qt::TextWordWrap | Qt::AlignTop | Qt::AlignLeft, text);
-    }
+    QStyledItemDelegate::paint(painter, option, index);
 }
-QString TableView::getModernInputStyle(){    return         "QLineEdit {"
-            "background-color: #FFFFFF;"
-            "border: 2px solid #E5E7EB;"
-            "border-radius: 8px;"
-            "padding: 12px 16px;"
-            "font-size: 14px;"
-            "font-family: 'Inter', system-ui;"
-            "color: #1F2937;"
-            "selection-background-color: #FDF2F8;"
+
+// FieldNameDelegate Implementation
+FieldNameDelegate::FieldNameDelegate(QObject *parent) : QStyledItemDelegate(parent)
+{
+}
+
+QWidget *FieldNameDelegate::createEditor(QWidget *parent, const QStyleOptionViewItem &option,
+                                        const QModelIndex &index) const
+{
+    Q_UNUSED(option)
+    Q_UNUSED(index)
+    
+    QLineEdit *lineEdit = new QLineEdit(parent);
+    lineEdit->setStyleSheet(
+        "QLineEdit {"
+        "background-color: white;"
+        "border: 1px solid #D1D5DB;"
+        "border-radius: 6px;"
+        "padding: 8px 12px;"
+        "font-size: 14px;"
+        "color: #111827;"
         "}"
         "QLineEdit:focus {"
-            "border: 2px solid #A4373A;"
-            "outline: 0px;"
-            "background-color: #FFFFFF;"
+        "border-color: #3b82f6;"
+        "background-color: white;"
+        "outline: none;"
         "}"
-        "QLineEdit:hover {"
-            "border: 2px solid #D1D5DB;"
-        "}";
-}
-
-QString TableView::getModernComboStyle()
-{
-    return 
-        "QComboBox {"
-            "background-color: #FFFFFF;"
-            "border: 2px solid #E5E7EB;"
-            "border-radius: 8px;"
-            "padding: 12px 16px;"
-            "font-size: 14px;"
-            "font-family: 'Inter', system-ui;"
-            "color: #1F2937;"
-            "min-width: 160px;"
-        "}"
-        "QComboBox:focus {"
-            "border: 2px solid #A4373A;"
-            "outline: 0px;"
-        "}"
-        "QComboBox:hover {"
-            "border: 2px solid #D1D5DB;"
-        "}";
-}
-
-void TableView::setupDesignView()
-{
-    qDebug() << "=== DEBUG: setupDesignView() INICIADO - RESTAURAR VISTA DISEÑO ===";
+    );
     
-    try {
-        // Bloquear señales temporalmente
-        tableWidget->blockSignals(true);
-        
-        // PASO 1: GUARDAR CAMPOS EXISTENTES SOLO SI VENIMOS DE VISTA DE DATOS
-        QStringList existingFields;
-        QStringList existingTypes;
-        QStringList existingDescriptions;
-        
-        // Si tenemos más de 3 columnas, significa que venimos de Vista de Datos
-        if (tableWidget->columnCount() > 3) {
-            qDebug() << "DEBUG: Venimos de Vista de Datos, guardando campos definidos";
-            
-            // Los headers de Vista de Datos contienen los nombres de campos
-            for (int col = 0; col < tableWidget->columnCount(); col++) {
-                QTableWidgetItem *header = tableWidget->horizontalHeaderItem(col);
-                if (header && !header->text().trimmed().isEmpty()) {
-                    existingFields << header->text().trimmed();
-                    existingTypes << "text"; // Tipo por defecto
-                    existingDescriptions << ""; // Descripción vacía por defecto
-                }
-            }
-        } else if (tableWidget->columnCount() == 3) {
-            // Ya estamos en Vista de Diseño, leer campos existentes
-            qDebug() << "DEBUG: Ya en Vista de Diseño, leyendo campos existentes";
-            for (int row = 0; row < tableWidget->rowCount(); row++) {
-                QTableWidgetItem *nameItem = tableWidget->item(row, 0);
-                QTableWidgetItem *typeItem = tableWidget->item(row, 1);
-                QTableWidgetItem *descItem = tableWidget->item(row, 2);
-                
-                if (nameItem && !nameItem->text().trimmed().isEmpty()) {
-                    existingFields << nameItem->text().trimmed();
-                    existingTypes << (typeItem ? typeItem->text().trimmed() : "text");
-                    existingDescriptions << (descItem ? descItem->text().trimmed() : "");
-                }
-            }
-        }
-        
-        // Si no hay campos, usar campo por defecto
-        if (existingFields.isEmpty()) {
-            existingFields << "Id";
-            existingTypes << "int";
-            existingDescriptions << "Identificador único";
-        }
-        
-        qDebug() << "DEBUG: Campos a restaurar:" << existingFields.size();
-        
-        // PASO 2: RECONFIGURAR TABLA PARA VISTA DE DISEÑO
-        tableWidget->setColumnCount(3);
-        
-        QStringList headers;
-        headers << "Nombre del Campo" << "Tipo de Datos" << "Descripción (Opcional)";
-        tableWidget->setHorizontalHeaderLabels(headers);
-        
-        // Configurar anchos de columna
-        tableWidget->setColumnWidth(0, 250);
-        tableWidget->setColumnWidth(1, 180);
-        tableWidget->setColumnWidth(2, 400);
-        
-        tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
-        tableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
-        tableWidget->horizontalHeader()->setSectionResizeMode(2, QHeaderView::Stretch);
-        
-        // PASO 3: RESTAURAR CAMPOS EN VISTA DE DISEÑO
-        tableWidget->setRowCount(qMax(existingFields.size(), 1)); // Solo las filas necesarias
-        
-        for (int row = 0; row < existingFields.size(); row++) {
-            // Nombre del Campo
-            QTableWidgetItem *nameItem = new QTableWidgetItem(existingFields[row]);
-            nameItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-            tableWidget->setItem(row, 0, nameItem);
-            
-            // Tipo de Datos
-            QTableWidgetItem *typeItem = new QTableWidgetItem(existingTypes[row]);
-            typeItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-            tableWidget->setItem(row, 1, typeItem);
-            
-            // Descripción
-            QTableWidgetItem *descItem = new QTableWidgetItem(existingDescriptions[row]);
-            descItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-            tableWidget->setItem(row, 2, descItem);
-        }
-        
-        // Solo agregar UNA fila vacía adicional si la última fila tiene contenido
-        bool lastRowHasContent = false;
-        int lastRow = tableWidget->rowCount() - 1;
-        if (lastRow >= 0) {
-            QTableWidgetItem *lastNameItem = tableWidget->item(lastRow, 0);
-            if (lastNameItem && !lastNameItem->text().trimmed().isEmpty()) {
-                lastRowHasContent = true;
-            }
-        }
-        
-        if (lastRowHasContent) {
-            // Agregar solo UNA fila vacía para el siguiente campo
-            tableWidget->setRowCount(tableWidget->rowCount() + 1);
-            int newRow = tableWidget->rowCount() - 1;
-            
-            for (int col = 0; col < 3; col++) {
-                QTableWidgetItem *item = new QTableWidgetItem("");
-                item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-                tableWidget->setItem(newRow, col, item);
-            }
-        }
-        
-        // Mostrar área de propiedades
-        if (propertiesArea) {
-            propertiesArea->show();
-        }
-        
-        // Reactivar señales con timer
-        QTimer::singleShot(100, this, [this]() {
-            tableWidget->blockSignals(false);
-            
-            // Reconectar señales específicas para vista de diseño
-            disconnect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCurrentCellChanged);
-            connect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCellSelectionChanged);
-            
-            qDebug() << "=== DEBUG: setupDesignView() COMPLETADO - VISTA DISEÑO RESTAURADA ===";
-        });
-        
-    } catch (...) {
-        qDebug() << "CRITICAL ERROR: Excepción en setupDesignView()";
+    return lineEdit;
+}
+
+void FieldNameDelegate::setEditorData(QWidget *editor, const QModelIndex &index) const
+{
+    QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
+    if (lineEdit) {
+        QString value = index.model()->data(index, Qt::EditRole).toString();
+        lineEdit->setText(value);
     }
 }
 
-void TableView::setupDataView()
+void FieldNameDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
+                                    const QModelIndex &index) const
 {
-    qDebug() << "DEBUG: setupDataView() iniciado - CONFIGURAR VISTA DE DATOS CON CAMPOS";
+    QLineEdit *lineEdit = qobject_cast<QLineEdit*>(editor);
+    if (lineEdit) {
+        model->setData(index, lineEdit->text(), Qt::EditRole);
+    }
+}
+
+void FieldNameDelegate::updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option,
+                                            const QModelIndex &index) const
+{
+    Q_UNUSED(index)
+    editor->setGeometry(option.rect);
+}
+
+// TableView Implementation - SOLO PARA VISTA DISEÑO
+TableView::TableView(QWidget *parent) : QWidget(parent)
+{
+    // Inicializar variables
+    currentSelectedRow = -1;
+    isDarkTheme = false;
+    currentTableName = "Nueva Tabla";
     
-    try {
-        // Bloquear señales temporalmente
-        tableWidget->blockSignals(true);
+    // Crear la interfaz
+    createInterface();
+}
+
+void TableView::createInterface()
+{
+    // Layout principal
+    mainLayout = new QVBoxLayout(this);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
+    mainLayout->setSpacing(0);
+    
+    // Crear header
+    createHeader();
+    
+    // Crear splitter vertical (tabla arriba + propiedades abajo)
+    mainSplitter = new QSplitter(Qt::Vertical, this);
+    mainSplitter->setChildrenCollapsible(false); // Evitar que se colapsen completamente
+    mainSplitter->setHandleWidth(8); // Hacer el handle más grueso para fácil redimensionamiento
+    mainSplitter->setStyleSheet(
+        "QSplitter::handle {"
+        "background-color: #cbd5e1;"
+        "border: 1px solid #9ca3af;"
+        "}"
+        "QSplitter::handle:hover {"
+        "background-color: #9ca3af;"
+        "}"
+    );
+    mainLayout->addWidget(mainSplitter);
+    
+    // Crear área de tabla
+    createTableArea();
+    
+    // Crear área de propiedades
+    createPropertiesArea();
+    
+    // Agregar al splitter
+    mainSplitter->addWidget(tableArea);
+    mainSplitter->addWidget(propertiesArea);
+    
+    // Configurar tamaños del splitter (60% tabla, 40% propiedades) para dar más espacio a las propiedades
+    mainSplitter->setSizes({400, 300});
+    mainSplitter->setStretchFactor(0, 1); // La tabla puede estirarse
+    mainSplitter->setStretchFactor(1, 0); // Las propiedades mantienen su tamaño preferido
+    
+    // Configurar tabla inicial
+    setupDesignTable();
+}
+
+void TableView::createHeader()
+{
+    headerWidget = new QWidget();
+    headerWidget->setFixedHeight(60);
+    headerWidget->setStyleSheet(
+        "QWidget {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f8fafc, stop:1 #e2e8f0);"
+        "border-bottom: 1px solid #cbd5e1;"
+        "}"
+    );
+    
+    QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
+    headerLayout->setContentsMargins(20, 10, 20, 10);
+    
+    // Título de la tabla (solo el nombre)
+    tableNameLabel = new QLabel(currentTableName);
+    tableNameLabel->setFont(QFont("Arial", 18, QFont::Bold));
+    tableNameLabel->setStyleSheet("QLabel { color: #1e293b; }");
+    
+    headerLayout->addWidget(tableNameLabel);
+    headerLayout->addStretch();
+    
+    // Contenedor para los botones
+    QWidget *buttonContainer = new QWidget();
+    QHBoxLayout *buttonLayout = new QHBoxLayout(buttonContainer);
+    buttonLayout->setContentsMargins(0, 0, 0, 0);
+    buttonLayout->setSpacing(0);
+    
+    // Botón Vista Diseño (activo por defecto)
+    QPushButton *designViewBtn = new QPushButton("Vista Diseño");
+    designViewBtn->setFixedSize(120, 35);
+    designViewBtn->setStyleSheet(
+        "QPushButton {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b82f6, stop:1 #2563eb);"
+        "color: white;"
+        "border: none;"
+        "border-top-left-radius: 6px;"
+        "border-bottom-left-radius: 6px;"
+        "font-weight: bold;"
+        "font-size: 13px;"
+        "}"
+        "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2563eb, stop:1 #1d4ed8);"
+        "}"
+    );
+    
+    // Botón Vista Datos
+    dataViewBtn = new QPushButton("Vista Datos");
+    dataViewBtn->setFixedSize(120, 35);
+    dataViewBtn->setStyleSheet(
+        "QPushButton {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e5e7eb, stop:1 #d1d5db);"
+        "color: #374151;"
+        "border: none;"
+        "border-top-right-radius: 6px;"
+        "border-bottom-right-radius: 6px;"
+        "font-weight: bold;"
+        "font-size: 13px;"
+        "}"
+        "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #d1d5db, stop:1 #9ca3af);"
+        "}"
+    );
+    
+    // Agregar botones al contenedor
+    buttonLayout->addWidget(designViewBtn);
+    buttonLayout->addWidget(dataViewBtn);
+    
+    // Conectar señales para ambos botones
+    connect(dataViewBtn, &QPushButton::clicked, this, &TableView::onDataViewClicked);
+    connect(designViewBtn, &QPushButton::clicked, this, &TableView::onDesignViewClicked);
+    
+    headerLayout->addWidget(buttonContainer);
+    
+    mainLayout->addWidget(headerWidget);
+}
+
+void TableView::createTableArea()
+{
+    tableArea = new QWidget();
+    QVBoxLayout *tableLayout = new QVBoxLayout(tableArea);
+    tableLayout->setContentsMargins(10, 10, 10, 10);
+    
+    // Crear tabla
+    tableWidget = new QTableWidget();
+    tableWidget->setColumnCount(3);
+    tableWidget->setRowCount(1); // Solo una fila inicial
+    
+    // Headers
+    QStringList headers;
+    headers << "Nombre del Campo" << "Tipo de Datos" << "Descripción";
+    tableWidget->setHorizontalHeaderLabels(headers);
+    
+    // Configurar anchos - más compactos como TableData
+    tableWidget->setColumnWidth(0, 150);
+    tableWidget->setColumnWidth(1, 120);
+    // La columna de descripción se estirará para llenar el espacio restante
+    tableWidget->horizontalHeader()->setStretchLastSection(true);
+    
+    // Configurar altura de filas - más compacta como TableData
+    tableWidget->verticalHeader()->setDefaultSectionSize(35);
+    tableWidget->verticalHeader()->setMinimumSectionSize(35);
+    
+    // Estilo de la tabla
+    tableWidget->setStyleSheet(getTableStyle());
+    
+    // Configurar comportamiento
+    tableWidget->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    tableWidget->setAlternatingRowColors(true);
+    
+    // Conectar señales
+    connect(tableWidget, &QTableWidget::cellChanged, this, &TableView::onCellChanged);
+    connect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCellSelectionChanged);
+    
+    tableLayout->addWidget(tableWidget);
+}
+
+void TableView::createPropertiesArea()
+{
+    propertiesArea = new QWidget();
+    propertiesArea->setMinimumHeight(300); // Cambiar de setFixedHeight a setMinimumHeight para que sea redimensionable
+    propertiesArea->setStyleSheet(
+        "QWidget {"
+        "background-color: #f8fafc;"
+        "border-top: 1px solid #e2e8f0;"
+        "}"
+    );
+    
+    QHBoxLayout *propLayout = new QHBoxLayout(propertiesArea);
+    propLayout->setContentsMargins(10, 10, 10, 10); // Reducir márgenes para más espacio
+    propLayout->setSpacing(20);
+    
+    // Crear scroll area para el contenido
+    QScrollArea *scrollArea = new QScrollArea();
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setStyleSheet(
+        "QScrollArea {"
+        "background-color: transparent;"
+        "border: none;"
+        "}"
+        "QScrollBar:vertical {"
+        "background-color: #f1f5f9;"
+        "width: 12px;"
+        "border-radius: 6px;"
+        "}"
+        "QScrollBar::handle:vertical {"
+        "background-color: #cbd5e1;"
+        "border-radius: 6px;"
+        "min-height: 20px;"
+        "}"
+        "QScrollBar::handle:vertical:hover {"
+        "background-color: #9ca3af;"
+        "}"
+    );
+    
+    // Título y formulario en un contenedor que irá dentro del scroll area
+    QWidget *formContainer = new QWidget();
+    QVBoxLayout *formMainLayout = new QVBoxLayout(formContainer);
+    formMainLayout->setSpacing(15);
+    
+    // Título
+    QLabel *title = new QLabel("Propiedades del Campo");
+    title->setFont(QFont("Arial", 14, QFont::Bold));
+    title->setStyleSheet("QLabel { color: #1e293b; margin-bottom: 10px; }");
+    formMainLayout->addWidget(title);
+    
+    // Contenedor horizontal para los campos
+    QWidget *fieldsContainer = new QWidget();
+    QHBoxLayout *fieldsLayout = new QHBoxLayout(fieldsContainer);
+    fieldsLayout->setSpacing(30);
+    
+    // Columna izquierda
+    QVBoxLayout *leftColumn = new QVBoxLayout();
+    leftColumn->setSpacing(10);
+    
+    // Nombre del campo
+    QLabel *nameLabel = new QLabel("Nombre:");
+    nameLabel->setStyleSheet("QLabel { color: #475569; font-weight: bold; }");
+    leftColumn->addWidget(nameLabel);
+    
+    fieldNameEdit = new QLineEdit();
+    fieldNameEdit->setStyleSheet(getInputStyle());
+    fieldNameEdit->setPlaceholderText("Ingrese el nombre del campo");
+    leftColumn->addWidget(fieldNameEdit);
+    
+    // Tipo de datos
+    QLabel *typeLabel = new QLabel("Tipo de Datos:");
+    typeLabel->setStyleSheet("QLabel { color: #475569; font-weight: bold; }");
+    leftColumn->addWidget(typeLabel);
+    
+    dataTypeCombo = new QComboBox();
+    dataTypeCombo->addItems({"Entero", "Decimales", "Sí / No", "Texto corto (hasta N caracteres)", "Texto largo / Párrafo", "moneda", "fecha"});
+    dataTypeCombo->setStyleSheet(getComboStyle());
+    leftColumn->addWidget(dataTypeCombo);
+    
+    // Columna centro
+    QVBoxLayout *centerColumn = new QVBoxLayout();
+    centerColumn->setSpacing(10);
+    
+    // Valor por defecto
+    QLabel *defaultLabel = new QLabel("Valor por Defecto:");
+    defaultLabel->setStyleSheet("QLabel { color: #475569; font-weight: bold; }");
+    centerColumn->addWidget(defaultLabel);
+    
+    defaultValueEdit = new QLineEdit();
+    defaultValueEdit->setStyleSheet(getInputStyle());
+    defaultValueEdit->setPlaceholderText("Valor opcional por defecto");
+    centerColumn->addWidget(defaultValueEdit);
+    
+    // Campo requerido
+    requiredCheck = new QCheckBox("Campo Requerido");
+    requiredCheck->setStyleSheet(
+        "QCheckBox {"
+        "color: #475569;"
+        "font-weight: bold;"
+        "margin-top: 20px;"
+        "}"
+        "QCheckBox::indicator {"
+        "width: 18px;"
+        "height: 18px;"
+        "}"
+    );
+    centerColumn->addWidget(requiredCheck);
+    
+    // Columna derecha
+    QVBoxLayout *rightColumn = new QVBoxLayout();
+    rightColumn->setSpacing(10);
+    
+    // Descripción
+    QLabel *descLabel = new QLabel("Descripción:");
+    descLabel->setStyleSheet("QLabel { color: #475569; font-weight: bold; }");
+    rightColumn->addWidget(descLabel);
+    
+    descriptionEdit = new QTextEdit();
+    descriptionEdit->setMaximumHeight(100);
+    descriptionEdit->setStyleSheet(getTextEditStyle());
+    descriptionEdit->setPlaceholderText("Descripción del campo");
+    rightColumn->addWidget(descriptionEdit);
+    
+    // Agregar columnas al contenedor de campos
+    fieldsLayout->addLayout(leftColumn);
+    fieldsLayout->addLayout(centerColumn);
+    fieldsLayout->addLayout(rightColumn);
+    
+    formMainLayout->addWidget(fieldsContainer);
+    
+    // Crear widgets para propiedades específicas
+    createSpecificPropertiesWidgets();
+    formMainLayout->addWidget(specificPropertiesWidget);
+    
+    // Configurar el scroll area
+    scrollArea->setWidget(formContainer);
+    propLayout->addWidget(scrollArea);
+    
+    // Conectar señales
+    connect(fieldNameEdit, &QLineEdit::textChanged, this, &TableView::onFieldNameChanged);
+    connect(dataTypeCombo, &QComboBox::currentTextChanged, this, &TableView::onDataTypeChanged);
+    connect(defaultValueEdit, &QLineEdit::textChanged, this, &TableView::onDefaultValueChanged);
+    connect(requiredCheck, &QCheckBox::toggled, this, &TableView::onRequiredChanged);
+    connect(descriptionEdit, &QTextEdit::textChanged, this, &TableView::onDescriptionChanged);
+}
+
+void TableView::setupDesignTable()
+{
+    // Limpiar tabla
+    tableWidget->clearContents();
+    
+    // Crear delegates
+    fieldNameDelegate = new FieldNameDelegate(this);
+    dataTypeDelegate = new DataTypeDelegate(this);
+    descriptionDelegate = new DescriptionDelegate(this);
+    
+    tableWidget->setItemDelegateForColumn(0, fieldNameDelegate);
+    tableWidget->setItemDelegateForColumn(1, dataTypeDelegate);
+    tableWidget->setItemDelegateForColumn(2, descriptionDelegate);
+    
+    // Crear solo la primera fila con el campo ID
+    for (int col = 0; col < tableWidget->columnCount(); col++) {
+        QTableWidgetItem *item = new QTableWidgetItem("");
         
-        // PASO 1: LEER CAMPOS DEFINIDOS EN VISTA DE DISEÑO
-        QStringList fieldNames;
-        qDebug() << "DEBUG: Leyendo campos definidos en la tabla";
+        // Configurar fuente más grande para mejor legibilidad
+        QFont itemFont = item->font();
+        itemFont.setPointSize(14);
+        item->setFont(itemFont);
         
-        // Si la tabla tiene 3 columnas, estamos en modo diseño - leer campos
-        if (tableWidget->columnCount() == 3) {
-            // Leer campos fila por fila
-            for (int row = 0; row < tableWidget->rowCount(); row++) {
-                QTableWidgetItem *nameItem = tableWidget->item(row, 0);
-                if (nameItem && !nameItem->text().trimmed().isEmpty()) {
-                    fieldNames << nameItem->text().trimmed();
-                    qDebug() << "DEBUG: Campo encontrado:" << nameItem->text().trimmed();
-                }
-            }
+        // Todas las celdas son editables desde el inicio
+        item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+        
+        if (col == 0) {
+            item->setText("Id"); // Campo ID por defecto
+            item->setBackground(QBrush(QColor(255, 255, 255))); // Fondo blanco
+        } else if (col == 1) {
+            item->setText("Entero"); // Tipo por defecto para ID
+            item->setBackground(QBrush(QColor(255, 255, 255))); // Fondo blanco
         } else {
-            // Ya estamos en vista de datos, usar headers existentes
-            for (int col = 0; col < tableWidget->columnCount(); col++) {
-                QString header = tableWidget->horizontalHeaderItem(col) ? 
-                                tableWidget->horizontalHeaderItem(col)->text() : 
-                                QString("Campo_%1").arg(col + 1);
-                fieldNames << header;
-                qDebug() << "DEBUG: Header existente:" << header;
-            }
+            // Columna de descripción también habilitada
+            item->setBackground(QBrush(QColor(255, 255, 255))); // Fondo blanco
         }
         
-        // Si no hay campos, usar campo por defecto
-        if (fieldNames.isEmpty()) {
-            fieldNames << "Id";
-            qDebug() << "DEBUG: Usando campo por defecto: Id";
-        }
-        
-        qDebug() << "DEBUG: Total campos para vista de datos:" << fieldNames.size();
-        
-        // PASO 2: GUARDAR DATOS EXISTENTES (si hay filas de datos)
-        QList<QStringList> existingData;
-        if (tableWidget->columnCount() > 3) { // Solo si ya estamos en vista datos
-            for (int row = 0; row < tableWidget->rowCount(); row++) {
-                QStringList rowData;
-                for (int col = 0; col < qMin(tableWidget->columnCount(), fieldNames.size()); col++) {
-                    QTableWidgetItem *item = tableWidget->item(row, col);
-                    rowData << (item ? item->text() : "");
-                }
-                existingData << rowData;
-            }
-            qDebug() << "DEBUG: Guardados" << existingData.size() << "filas de datos existentes";
-        }
-        
-        // PASO 3: RECONFIGURAR TABLA PARA VISTA DE DATOS
-        qDebug() << "DEBUG: Reconfigurando tabla para vista de datos";
-        
-        // Establecer número de columnas basado en los campos
-        tableWidget->setColumnCount(fieldNames.size());
-        
-        // Establecer headers con nombres de campos
-        tableWidget->setHorizontalHeaderLabels(fieldNames);
-        
-        // PASO 4: RESTAURAR DATOS EXISTENTES DE MANERA DINÁMICA
-        int existingRows = existingData.size();
-        
-        // Solo configurar las filas que realmente tienen datos + UNA fila vacía
-        int initialRows = qMax(1, existingRows + 1); // Al menos 1 fila para empezar a escribir
-        
-        tableWidget->setRowCount(initialRows);
-        qDebug() << "DEBUG: Configuradas" << initialRows << "filas (" << existingRows << "con datos existentes)";
-        
-        // Restaurar datos existentes
-        for (int row = 0; row < existingRows && row < existingData.size(); row++) {
-            const QStringList &rowData = existingData[row];
-            for (int col = 0; col < qMin(rowData.size(), fieldNames.size()); col++) {
-                QTableWidgetItem *item = new QTableWidgetItem(rowData[col]);
-                item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-                tableWidget->setItem(row, col, item);
-            }
-        }
-        
-        // Crear solo UNA fila vacía para nuevos datos
-        for (int row = existingRows; row < initialRows; row++) {
-            for (int col = 0; col < fieldNames.size(); col++) {
-                QTableWidgetItem *item = new QTableWidgetItem("");
-                item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-                tableWidget->setItem(row, col, item);
-            }
-        }
-        
-        // Configurar headers verticales numerados
-        QStringList verticalHeaders;
-        for (int i = 0; i < initialRows; i++) {
-            verticalHeaders << QString::number(i + 1);
-        }
-        tableWidget->setVerticalHeaderLabels(verticalHeaders);
-        
-        // Ocultar área de propiedades en vista de datos
-        if (propertiesArea) {
-            propertiesArea->hide();
-        }
-        
-        // Configurar anchos de columna
-        for (int i = 0; i < fieldNames.size(); i++) {
-            int width = qMax(100, fieldNames[i].length() * 8 + 30);
-            tableWidget->setColumnWidth(i, width);
-        }
-        
-        // Reactivar señales con timer
-        QTimer::singleShot(100, this, [this]() {
-            tableWidget->blockSignals(false);
-            
-            // Reconectar señales específicas para vista de datos
-            disconnect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCellSelectionChanged);
-            connect(tableWidget, &QTableWidget::currentCellChanged, this, &TableView::onCurrentCellChanged);
-            
-            qDebug() << "DEBUG: setupDataView() completado - VISTA DE DATOS CONFIGURADA";
-        });
-        
-    } catch (...) {
-        qDebug() << "ERROR en setupDataView()";
+        tableWidget->setItem(0, col, item);
+    }
+    
+    // Conectar señal para habilitación progresiva
+    connect(tableWidget, &QTableWidget::itemChanged, this, &TableView::onFieldItemChanged);
+}
+
+// Event Handlers
+void TableView::onCellChanged(int row, int column)
+{
+    // Si se escribió en la primera columna, asegurar que hay filas vacías
+    if (column == 0) {
+        ensureEmptyRowExists();
     }
 }
 
-void TableView::onCurrentCellChanged(int currentRow, int currentColumn, int previousRow, int previousColumn)
+void TableView::onCellSelectionChanged()
 {
-    Q_UNUSED(previousRow)
-    Q_UNUSED(previousColumn)
+    currentSelectedRow = tableWidget->currentRow();
+    if (currentSelectedRow >= 0) {
+        updatePropertiesForRow(currentSelectedRow);
+    }
+}
+
+void TableView::updatePropertiesForRow(int row)
+{
+    // Bloquear señales
+    fieldNameEdit->blockSignals(true);
+    dataTypeCombo->blockSignals(true);
+    descriptionEdit->blockSignals(true);
+    defaultValueEdit->blockSignals(true);
+    requiredCheck->blockSignals(true);
     
-    // Solo manejar esto en vista de datos (cuando no hay area de propiedades visible)
-    if (propertiesArea && propertiesArea->isVisible()) {
-        return; // Estamos en vista de diseño
+    // Obtener datos de la fila
+    QTableWidgetItem *nameItem = tableWidget->item(row, 0);
+    QTableWidgetItem *typeItem = tableWidget->item(row, 1);
+    QTableWidgetItem *descItem = tableWidget->item(row, 2);
+    
+    // Actualizar propiedades
+    fieldNameEdit->setText(nameItem ? nameItem->text() : "");
+    
+    QString dataType = typeItem ? typeItem->text() : "TEXT";
+    int index = dataTypeCombo->findText(dataType);
+    if (index >= 0) {
+        dataTypeCombo->setCurrentIndex(index);
     }
     
-    // Si el usuario navega a una celda que no existe, crear la fila
-    if (currentRow >= 0 && currentColumn >= 0) {
-        // Si no hay filas o el usuario está navegando a una fila que requiere creación
-        if (tableWidget->rowCount() == 0 || currentRow >= tableWidget->rowCount()) {
-            
-            // Crear filas hasta la fila requerida + 1 fila extra
-            int targetRows = qMax(1, currentRow + 2); // Siempre tener al menos 1 fila extra
-            
-            qDebug() << "DEBUG: Creando filas automáticamente hasta fila" << targetRows;
-            
-            // Bloquear señales temporalmente para evitar recursión
-            tableWidget->blockSignals(true);
-            
-            int oldRowCount = tableWidget->rowCount();
-            tableWidget->setRowCount(targetRows);
-            
-            // Crear items para las nuevas filas
-            for (int row = oldRowCount; row < targetRows; row++) {
-                for (int col = 0; col < tableWidget->columnCount(); col++) {
-                    QTableWidgetItem *item = new QTableWidgetItem("");
-                    item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-                    tableWidget->setItem(row, col, item);
-                }
-            }
-            
-            // Actualizar headers verticales
-            QStringList verticalHeaders;
-            for (int i = 0; i < tableWidget->rowCount(); i++) {
-                verticalHeaders << QString::number(i + 1);
-            }
-            tableWidget->setVerticalHeaderLabels(verticalHeaders);
-            
-            // Reactivar señales
-            tableWidget->blockSignals(false);
-            
-            qDebug() << "DEBUG: Filas creadas exitosamente, total:" << tableWidget->rowCount();
-        }
-    }
+    descriptionEdit->setPlainText(descItem ? descItem->text() : "");
+    defaultValueEdit->setText("");
+    
+    // Campo requerido si es ID
+    QString fieldName = nameItem ? nameItem->text().toLower() : "";
+    requiredCheck->setChecked(fieldName == "id");
+    
+    // Actualizar propiedades específicas según el tipo de dato
+    updateSpecificProperties(dataType);
+    
+    // Reactivar señales
+    fieldNameEdit->blockSignals(false);
+    dataTypeCombo->blockSignals(false);
+    descriptionEdit->blockSignals(false);
+    defaultValueEdit->blockSignals(false);
+    requiredCheck->blockSignals(false);
+    
+    // Actualizar propiedades específicas según el tipo de dato seleccionado
+    updateSpecificProperties(dataType);
 }
 
 void TableView::onFieldNameChanged(const QString &text)
 {
-    int currentRow = tableWidget->currentRow();
-    if (currentRow >= 0 && currentRow < tableWidget->rowCount()) {
-        QTableWidgetItem *nameItem = tableWidget->item(currentRow, 0);
-        if (!nameItem) {
-            nameItem = new QTableWidgetItem();
-            tableWidget->setItem(currentRow, 0, nameItem);
+    if (currentSelectedRow >= 0) {
+        QTableWidgetItem *item = tableWidget->item(currentSelectedRow, 0);
+        if (item) {
+            item->setText(text);
         }
-        nameItem->setText(text);
+        ensureEmptyRowExists();
     }
 }
 
-void TableView::onDescriptionChanged(const QString &text)
+void TableView::onDataTypeChanged(const QString &dataType)
 {
-    int currentRow = tableWidget->currentRow();
-    if (currentRow >= 0 && currentRow < tableWidget->rowCount()) {
-        QTableWidgetItem *descItem = tableWidget->item(currentRow, 2);
-        if (!descItem) {
-            descItem = new QTableWidgetItem();
-            tableWidget->setItem(currentRow, 2, descItem);
+    if (currentSelectedRow >= 0) {
+        QTableWidgetItem *item = tableWidget->item(currentSelectedRow, 1);
+        if (item) {
+            item->setText(dataType);
         }
-        descItem->setText(text);
+    }
+    
+    // Actualizar propiedades específicas según el tipo seleccionado
+    updateSpecificProperties(dataType);
+    
+    // Actualizar ejemplos de datos
+    updateExampleData();
+}
+
+void TableView::onDescriptionChanged()
+{
+    if (currentSelectedRow >= 0) {
+        QTableWidgetItem *item = tableWidget->item(currentSelectedRow, 2);
+        if (item) {
+            item->setText(descriptionEdit->toPlainText());
+        }
     }
 }
 
-void TableView::onRequiredChanged(bool checked)
+void TableView::onDefaultValueChanged(const QString &value)
 {
-    int currentRow = tableWidget->currentRow();
-    if (currentRow >= 0 && currentRow < tableWidget->rowCount()) {
-        // Para el campo "Requerido", podríamos almacenar esta información
-        // en una propiedad personalizada del item o en una estructura de datos separada
-        QTableWidgetItem *nameItem = tableWidget->item(currentRow, 0);
-        if (nameItem) {
-            // Almacenar el estado de "requerido" como propiedad del item
-            nameItem->setData(Qt::UserRole, checked);
-            
-            // Opcional: cambiar el estilo visual para indicar que es requerido
-            if (checked) {
-                nameItem->setFont(QFont(nameItem->font().family(), nameItem->font().pointSize(), QFont::Bold));
-            } else {
-                nameItem->setFont(QFont(nameItem->font().family(), nameItem->font().pointSize(), QFont::Normal));
+    Q_UNUSED(value)
+    // Por ahora no guardamos el valor por defecto en la tabla
+}
+
+void TableView::onRequiredChanged(bool required)
+{
+    Q_UNUSED(required)
+    // Por ahora no mostramos si es requerido en la tabla
+}
+
+void TableView::onDataViewClicked()
+{
+    qDebug() << "DEBUG: Cambiando a Vista Datos";
+    emit switchToDataView();
+}
+
+void TableView::onDesignViewClicked()
+{
+    qDebug() << "DEBUG: Ya estoy en Vista Diseño";
+    // No necesita hacer nada ya que estamos en la vista de diseño
+}
+
+void TableView::onFieldItemChanged(QTableWidgetItem *item)
+{
+    if (!item) return;
+    
+    int row = item->row();
+    int col = item->column();
+    
+    qDebug() << "DEBUG: Campo cambiado en fila:" << row << "columna:" << col;
+    
+    // Si se escribió algo en una celda, habilitar la siguiente celda en la misma fila
+    if (!item->text().trimmed().isEmpty()) {
+        // Habilitar la siguiente columna en la misma fila
+        if (col + 1 < tableWidget->columnCount()) {
+            QTableWidgetItem *nextItem = tableWidget->item(row, col + 1);
+            if (nextItem) {
+                nextItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+                nextItem->setBackground(QBrush(QColor(255, 255, 255))); // Fondo blanco cuando se habilita
+                
+                // Configurar fuente más grande para mejor legibilidad
+                QFont itemFont = nextItem->font();
+                itemFont.setPointSize(14);
+                nextItem->setFont(itemFont);
+                
+                // Establecer valores por defecto según la columna
+                if (col == 0 && nextItem->text().isEmpty()) { // Si se escribió en "Nombre del Campo"
+                    nextItem->setText("Texto largo / Párrafo"); // Tipo de datos por defecto
+                }
+            }
+        }
+        
+        // Si completamos una fila, agregar una nueva fila
+        if (col == tableWidget->columnCount() - 1) { // Si es la última columna
+            addNewRow();
+        }
+    } else {
+        // Si se borró el contenido, deshabilitar las celdas siguientes en la misma fila
+        for (int nextCol = col + 1; nextCol < tableWidget->columnCount(); nextCol++) {
+            QTableWidgetItem *nextItem = tableWidget->item(row, nextCol);
+            if (nextItem) {
+                nextItem->setText(""); // Limpiar contenido
+                nextItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+                nextItem->setBackground(QBrush(QColor(245, 245, 245))); // Volver a gris
             }
         }
     }
+    
+    // Emitir señal de cambio de diseño de tabla
+    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+}
+
+void TableView::addNewRow()
+{
+    int newRow = tableWidget->rowCount();
+    tableWidget->setRowCount(newRow + 1);
+    
+    for (int col = 0; col < tableWidget->columnCount(); col++) {
+        QTableWidgetItem *item = new QTableWidgetItem("");
+        
+        // Configurar fuente más grande para mejor legibilidad
+        QFont itemFont = item->font();
+        itemFont.setPointSize(14);
+        item->setFont(itemFont);
+        
+        // Solo la primera columna está habilitada inicialmente
+        if (col == 0) {
+            item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+            item->setBackground(QBrush(QColor(255, 255, 255)));
+        } else {
+            item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+            item->setBackground(QBrush(QColor(245, 245, 245))); // Deshabilitada
+        }
+        
+        tableWidget->setItem(newRow, col, item);
+    }
+}
+
+void TableView::ensureEmptyRowExists()
+{
+    // Verificar si necesitamos más filas vacías
+    bool needNewRow = true;
+    for (int row = 0; row < tableWidget->rowCount(); row++) {
+        QTableWidgetItem *item = tableWidget->item(row, 0);
+        if (!item || item->text().trimmed().isEmpty()) {
+            needNewRow = false;
+            break;
+        }
+    }
+    
+    if (needNewRow) {
+        int newRow = tableWidget->rowCount();
+        tableWidget->setRowCount(newRow + 1);
+        
+        for (int col = 0; col < tableWidget->columnCount(); col++) {
+            QTableWidgetItem *item = new QTableWidgetItem("");
+            
+            // Configurar fuente más grande para mejor legibilidad
+            QFont itemFont = item->font();
+            itemFont.setPointSize(14);
+            item->setFont(itemFont);
+            
+            // Solo la primera columna está habilitada inicialmente
+            if (col == 0) {
+                item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+                item->setBackground(QBrush(QColor(255, 255, 255)));
+            } else {
+                item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+                item->setBackground(QBrush(QColor(245, 245, 245))); // Deshabilitada
+            }
+            
+            tableWidget->setItem(newRow, col, item);
+        }
+    }
+}
+
+// Utility Methods
+void TableView::setTableName(const QString &tableName)
+{
+    currentTableName = tableName;
+    if (tableNameLabel) {
+        tableNameLabel->setText(tableName);
+    }
+}
+
+void TableView::updateTheme(bool isDark)
+{
+    isDarkTheme = isDark;
+    // Actualizar estilos según el tema
+}
+
+// Style Methods
+QString TableView::getTableStyle()
+{
+    return "QTableWidget {"
+           "background-color: white;"
+           "gridline-color: #e2e8f0;"
+           "border: 1px solid #cbd5e1;"
+           "selection-background-color: #dbeafe;"
+           "font-size: 14px;"
+           "}"
+           "QTableWidget::item {"
+           "padding: 8px;"
+           "border-bottom: 1px solid #f1f5f9;"
+           "}"
+           "QTableWidget::item:selected {"
+           "background-color: #bfdbfe;"
+           "color: #1e40af;"
+           "}"
+           "QTableWidget::item:focus {"
+           "background-color: white;"
+           "border: 1px solid #1d4ed8;"
+           "outline: none;"
+           "}"
+           "QHeaderView::section {"
+           "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f1f5f9, stop:1 #e2e8f0);"
+           "color: #374151;"
+           "padding: 8px;"
+           "border: 1px solid #cbd5e1;"
+           "font-weight: bold;"
+           "font-size: 14px;"
+           "}";
+}
+
+QString TableView::getInputStyle()
+{
+    return "QLineEdit {"
+           "background-color: white;"
+           "border: 2px solid #e5e7eb;"
+           "border-radius: 6px;"
+           "padding: 8px 12px;"
+           "color: #111827;"
+           "font-size: 13px;"
+           "}"
+           "QLineEdit:focus {"
+           "border-color: #3b82f6;"
+           "}";
+}
+
+QString TableView::getComboStyle()
+{
+    return "QComboBox {"
+           "background-color: white;"
+           "border: 2px solid #e5e7eb;"
+           "border-radius: 6px;"
+           "padding: 8px 12px;"
+           "color: #111827;"
+           "font-size: 13px;"
+           "min-height: 20px;" // Altura mínima para evitar que se vea cortado
+           "}"
+           "QComboBox:focus {"
+           "border-color: #3b82f6;"
+           "}"
+           "QComboBox::drop-down {"
+           "border: none;"
+           "width: 20px;"
+           "}"
+           "QComboBox::down-arrow {"
+           "image: none;"
+           "border: 2px solid #6b7280;"
+           "width: 8px;"
+           "height: 8px;"
+           "border-top: none;"
+           "border-left: none;"
+           "margin-right: 5px;"
+           "transform: rotate(45deg);"
+           "}";
+}
+
+QString TableView::getTextEditStyle()
+{
+    return "QTextEdit {"
+           "background-color: white;"
+           "border: 2px solid #e5e7eb;"
+           "border-radius: 6px;"
+           "padding: 8px 12px;"
+           "color: #111827;"
+           "font-size: 13px;"
+           "}"
+           "QTextEdit:focus {"
+           "border-color: #3b82f6;"
+           "}";
+}
+
+QStringList TableView::getCurrentFieldNames() const
+{
+    QStringList fieldNames;
+    
+    // Verificar que la tabla existe y tiene filas
+    if (!tableWidget || tableWidget->rowCount() == 0) {
+        qDebug() << "DEBUG: TableWidget is null or has no rows";
+        return fieldNames;
+    }
+    
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *item = tableWidget->item(row, 0);
+        if (item && !item->text().trimmed().isEmpty()) {
+            QString fieldName = item->text().trimmed();
+            if (!fieldName.isEmpty()) {
+                fieldNames << fieldName;
+                qDebug() << "DEBUG: Added field name:" << fieldName;
+            }
+        }
+    }
+    
+    qDebug() << "DEBUG: getCurrentFieldNames() returning:" << fieldNames;
+    return fieldNames;
+}
+
+QStringList TableView::getCurrentFieldTypes() const
+{
+    QStringList fieldTypes;
+    
+    // Verificar que la tabla existe y tiene filas
+    if (!tableWidget || tableWidget->rowCount() == 0) {
+        qDebug() << "DEBUG: TableWidget is null or has no rows for field types";
+        return fieldTypes;
+    }
+    
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        // Verificar que ambas columnas existen
+        if (tableWidget->columnCount() < 2) {
+            qDebug() << "DEBUG: Table doesn't have enough columns";
+            continue;
+        }
+        
+        QTableWidgetItem *typeItem = tableWidget->item(row, 1);
+        QTableWidgetItem *nameItem = tableWidget->item(row, 0);
+        
+        if (typeItem && !typeItem->text().trimmed().isEmpty()) {
+            QString fieldType = typeItem->text().trimmed();
+            if (!fieldType.isEmpty()) {
+                fieldTypes << fieldType;
+                qDebug() << "DEBUG: Added field type:" << fieldType;
+            }
+        }
+    }
+    
+    qDebug() << "DEBUG: getCurrentFieldTypes() returning:" << fieldTypes;
+    return fieldTypes;
+}
+
+void TableView::createSpecificPropertiesWidgets()
+{
+    // Widget contenedor para propiedades específicas con mejor distribución
+    specificPropertiesWidget = new QWidget();
+    specificPropertiesWidget->setMinimumHeight(100); // Más altura para que no se corte
+    specificPropertiesLayout = new QVBoxLayout(specificPropertiesWidget);
+    specificPropertiesLayout->setContentsMargins(0, 15, 0, 15); // Más margen vertical
+    specificPropertiesLayout->setSpacing(15); // Más espaciado
+    
+    // Agregar título para las propiedades específicas
+    QLabel *specificTitle = new QLabel("Propiedades Específicas:");
+    specificTitle->setFont(QFont("Arial", 12, QFont::Bold));
+    specificTitle->setStyleSheet("QLabel { color: #374151; margin-bottom: 8px; }");
+    specificPropertiesLayout->addWidget(specificTitle);
+    
+    // Widget para propiedades de texto (char[N] y string)
+    textPropertiesWidget = new QWidget();
+    textPropertiesWidget->setMinimumHeight(70); // Más altura para acomodar la validación
+    QVBoxLayout *textMainLayout = new QVBoxLayout(textPropertiesWidget);
+    textMainLayout->setContentsMargins(0, 5, 0, 5);
+    textMainLayout->setSpacing(8);
+    
+    // Layout horizontal para el campo de tamaño
+    QWidget *textInputWidget = new QWidget();
+    QHBoxLayout *textLayout = new QHBoxLayout(textInputWidget);
+    textLayout->setContentsMargins(0, 0, 0, 0);
+    textLayout->setSpacing(15);
+    
+    QLabel *textSizeLabel = new QLabel("Tamaño del Campo:");
+    textSizeLabel->setStyleSheet("QLabel { color: #475569; font-weight: bold; }");
+    textSizeLabel->setMinimumWidth(120); // Ancho fijo para alineación
+    textLayout->addWidget(textSizeLabel);
+    
+    textSizeEdit = new QLineEdit();
+    textSizeEdit->setStyleSheet(getInputStyle());
+    textSizeEdit->setPlaceholderText("Máximo 255 caracteres");
+    textSizeEdit->setText("255");
+    textSizeEdit->setMaximumWidth(200); // Limitar ancho para mejor distribución
+    textLayout->addWidget(textSizeEdit);
+    textLayout->addStretch(); // Agregar stretch para ocupar espacio restante
+    
+    // Label para mostrar la validación
+    textValidationLabel = new QLabel("(Máx. 255 caracteres)");
+    textValidationLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
+    
+    textMainLayout->addWidget(textInputWidget);
+    textMainLayout->addWidget(textValidationLabel);
+    
+    // Widget para propiedades de número (int y float)
+    numberPropertiesWidget = new QWidget();
+    numberPropertiesWidget->setMinimumHeight(70); // Más altura para información adicional
+    QVBoxLayout *numberMainLayout = new QVBoxLayout(numberPropertiesWidget);
+    numberMainLayout->setContentsMargins(0, 5, 0, 5);
+    numberMainLayout->setSpacing(8);
+    
+    // Layout horizontal para el tipo de número
+    QWidget *numberInputWidget = new QWidget();
+    QHBoxLayout *numberLayout = new QHBoxLayout(numberInputWidget);
+    numberLayout->setContentsMargins(0, 0, 0, 0);
+    numberLayout->setSpacing(15);
+    
+    QLabel *numberTypeLabel = new QLabel("Tipo de Número:");
+    numberTypeLabel->setStyleSheet("QLabel { color: #475569; font-weight: bold; }");
+    numberTypeLabel->setMinimumWidth(120);
+    numberLayout->addWidget(numberTypeLabel);
+    
+    numberTypeCombo = new QComboBox();
+    numberTypeCombo->addItems({"Entero", "Decimal", "Doble", "Byte"});
+    numberTypeCombo->setStyleSheet(getComboStyle());
+    numberTypeCombo->setMaximumWidth(200);
+    numberTypeCombo->setMinimumHeight(35); // Altura mínima para el combo
+    numberLayout->addWidget(numberTypeCombo);
+    numberLayout->addStretch();
+    
+    // Label para mostrar información del tamaño del campo
+    numberSizeLabel = new QLabel("Tamaño: 32 bits (-2,147,483,648 a 2,147,483,647)");
+    numberSizeLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
+    numberSizeLabel->setWordWrap(true);
+    
+    numberMainLayout->addWidget(numberInputWidget);
+    numberMainLayout->addWidget(numberSizeLabel);
+    
+    // Widget para propiedades de moneda
+    currencyPropertiesWidget = new QWidget();
+    currencyPropertiesWidget->setMinimumHeight(40); // Altura mínima
+    QHBoxLayout *currencyLayout = new QHBoxLayout(currencyPropertiesWidget);
+    currencyLayout->setContentsMargins(0, 5, 0, 5); // Margen vertical
+    currencyLayout->setSpacing(15);
+    
+    QLabel *currencyFormatLabel = new QLabel("Formato de Moneda:");
+    currencyFormatLabel->setStyleSheet("QLabel { color: #475569; font-weight: bold; }");
+    currencyFormatLabel->setMinimumWidth(120);
+    currencyLayout->addWidget(currencyFormatLabel);
+    
+    currencyFormatCombo = new QComboBox();
+    currencyFormatCombo->addItems({"Lempiras (Lps)", "Dollar ($)", "Euros (€)", "Millares"});
+    currencyFormatCombo->setStyleSheet(getComboStyle());
+    currencyFormatCombo->setMaximumWidth(200);
+    currencyFormatCombo->setMinimumHeight(35); // Altura mínima para el combo
+    currencyLayout->addWidget(currencyFormatCombo);
+    currencyLayout->addStretch();
+    
+    // Widget para propiedades de fecha
+    datePropertiesWidget = new QWidget();
+    datePropertiesWidget->setMinimumHeight(40); // Altura mínima
+    QHBoxLayout *dateLayout = new QHBoxLayout(datePropertiesWidget);
+    dateLayout->setContentsMargins(0, 5, 0, 5); // Margen vertical
+    dateLayout->setSpacing(15);
+    
+    QLabel *dateFormatLabel = new QLabel("Formato de Fecha:");
+    dateFormatLabel->setStyleSheet("QLabel { color: #475569; font-weight: bold; }");
+    dateFormatLabel->setMinimumWidth(120);
+    dateLayout->addWidget(dateFormatLabel);
+    
+    dateFormatCombo = new QComboBox();
+    dateFormatCombo->addItems({"DD-MM-YY", "DD/MM/YY", "DD/MESTEXTO/YYYY"});
+    dateFormatCombo->setStyleSheet(getComboStyle());
+    dateFormatCombo->setMaximumWidth(200);
+    dateFormatCombo->setMinimumHeight(35); // Altura mínima para el combo
+    dateLayout->addWidget(dateFormatCombo);
+    dateLayout->addStretch();
+    
+    // Agregar todos los widgets al layout principal (inicialmente ocultos)
+    specificPropertiesLayout->addWidget(textPropertiesWidget);
+    specificPropertiesLayout->addWidget(numberPropertiesWidget);
+    specificPropertiesLayout->addWidget(currencyPropertiesWidget);
+    specificPropertiesLayout->addWidget(datePropertiesWidget);
+    specificPropertiesLayout->addStretch(); // Agregar stretch al final para mejor distribución
+    
+    // Ocultar todos inicialmente
+    textPropertiesWidget->hide();
+    numberPropertiesWidget->hide();
+    currencyPropertiesWidget->hide();
+    datePropertiesWidget->hide();
+    
+    // Conectar señales
+    connect(textSizeEdit, &QLineEdit::textChanged, this, &TableView::onTextSizeChanged);
+    connect(numberTypeCombo, &QComboBox::currentTextChanged, this, &TableView::onNumberTypeChanged);
+    connect(currencyFormatCombo, &QComboBox::currentTextChanged, this, &TableView::onCurrencyFormatChanged);
+    connect(dateFormatCombo, &QComboBox::currentTextChanged, this, &TableView::onDateFormatChanged);
+}
+
+void TableView::updateSpecificProperties(const QString &dataType)
+{
+    // Ocultar todos los widgets de propiedades específicas
+    textPropertiesWidget->hide();
+    numberPropertiesWidget->hide();
+    currencyPropertiesWidget->hide();
+    datePropertiesWidget->hide();
+    
+    // Mostrar el widget correspondiente según el tipo de dato
+    if (dataType == "Texto corto (hasta N caracteres)" || dataType == "Texto largo / Párrafo") {
+        textPropertiesWidget->show();
+        if (dataType == "Texto corto (hasta N caracteres)") {
+            textSizeEdit->setPlaceholderText("Máximo 255 caracteres (ej: 50)");
+            textSizeEdit->setText("50");
+            textValidationLabel->setText("(Máx. 255 caracteres)");
+            textValidationLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
+        } else {
+            textSizeEdit->setPlaceholderText("Tamaño ilimitado por defecto");
+            textSizeEdit->setText("Sin límite");
+            textValidationLabel->setText("(Texto de longitud ilimitada)");
+            textValidationLabel->setStyleSheet("QLabel { color: #10b981; font-size: 12px; font-style: italic; }");
+        }
+    } else if (dataType == "Entero" || dataType == "Decimales") {
+        numberPropertiesWidget->show();
+        if (dataType == "Entero") {
+            numberTypeCombo->setCurrentText("Entero");
+            numberSizeLabel->setText("Tamaño: 32 bits (-2,147,483,648 a 2,147,483,647)");
+        } else {
+            numberTypeCombo->setCurrentText("Decimal");
+            numberSizeLabel->setText("Tamaño: 64 bits (15-17 dígitos de precisión)");
+        }
+    } else if (dataType == "moneda") {
+        currencyPropertiesWidget->show();
+        currencyFormatCombo->setCurrentText("Lempiras (Lps)");
+    } else if (dataType == "fecha") {
+        datePropertiesWidget->show();
+        dateFormatCombo->setCurrentText("DD-MM-YY");
+    }
+}
+
+void TableView::onTextSizeChanged(const QString &text)
+{
+    if (text.isEmpty()) return;
+    
+    // Validar que el valor no sea mayor a 255 para campos de texto
+    bool ok;
+    int size = text.toInt(&ok);
+    
+    if (ok && size > 255) {
+        // Si el valor es mayor a 255, limitarlo a 255
+        textSizeEdit->blockSignals(true);
+        textSizeEdit->setText("255");
+        textSizeEdit->blockSignals(false);
+        
+        // Mostrar mensaje de error en el label de validación
+        textValidationLabel->setText("⚠️ Máximo permitido: 255 caracteres");
+        textValidationLabel->setStyleSheet("QLabel { color: #ef4444; font-size: 12px; font-weight: bold; }");
+        
+        // Cambiar el estilo del input
+        textSizeEdit->setStyleSheet(getInputStyle() + 
+            "QLineEdit { border: 2px solid #ef4444; background-color: #fef2f2; }");
+        
+        // Usar un timer para restaurar el estilo normal después de 3 segundos
+        QTimer::singleShot(3000, [this]() {
+            textSizeEdit->setStyleSheet(getInputStyle());
+            textValidationLabel->setText("(Máx. 255 caracteres)");
+            textValidationLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
+        });
+        
+        qDebug() << "DEBUG: Tamaño de texto limitado a 255 caracteres";
+    } else if (!ok && !text.contains("Sin límite") && !text.contains("ilimitado")) {
+        // Si no es un número válido y no es texto especial, mostrar error
+        textValidationLabel->setText("⚠️ Ingrese un número válido");
+        textValidationLabel->setStyleSheet("QLabel { color: #ef4444; font-size: 12px; font-weight: bold; }");
+        
+        textSizeEdit->setStyleSheet(getInputStyle() + 
+            "QLineEdit { border: 2px solid #ef4444; background-color: #fef2f2; }");
+        
+        QTimer::singleShot(3000, [this]() {
+            textSizeEdit->setStyleSheet(getInputStyle());
+            textValidationLabel->setText("(Máx. 255 caracteres)");
+            textValidationLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
+        });
+    } else {
+        // Restablecer estilo normal si todo está bien
+        textSizeEdit->setStyleSheet(getInputStyle());
+        if (ok && size <= 255) {
+            textValidationLabel->setText(QString("✅ Tamaño válido: %1 caracteres").arg(size));
+            textValidationLabel->setStyleSheet("QLabel { color: #10b981; font-size: 12px; font-weight: bold; }");
+            
+            // Restaurar texto normal después de 2 segundos
+            QTimer::singleShot(2000, [this]() {
+                textValidationLabel->setText("(Máx. 255 caracteres)");
+                textValidationLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
+            });
+        }
+        qDebug() << "DEBUG: Tamaño de texto cambiado a:" << text;
+    }
+    
+    // Actualizar ejemplos de datos
+    updateExampleData();
+}
+
+void TableView::onNumberTypeChanged(const QString &text)
+{
+    qDebug() << "DEBUG: Tipo de número cambiado a:" << text;
+    
+    // Mostrar información sobre los tamaños según el tipo seleccionado
+    QString sizeInfo = "";
+    if (text == "Entero") {
+        sizeInfo = "Tamaño: 32 bits (-2,147,483,648 a 2,147,483,647)";
+    } else if (text == "Decimal") {
+        sizeInfo = "Tamaño: 64 bits (15-17 dígitos de precisión)";
+    } else if (text == "Doble") {
+        sizeInfo = "Tamaño: 64 bits (15-17 dígitos de precisión, mayor rango)";
+    } else if (text == "Byte") {
+        sizeInfo = "Tamaño: 8 bits (0 a 255)";
+    }
+    
+    // Actualizar el label de información de tamaño
+    if (!sizeInfo.isEmpty() && numberSizeLabel) {
+        numberSizeLabel->setText(sizeInfo);
+        qDebug() << "DEBUG: Información de tamaño actualizada:" << sizeInfo;
+    }
+    
+    // También actualizar el tooltip del combo
+    if (!sizeInfo.isEmpty()) {
+        numberTypeCombo->setToolTip(sizeInfo);
+    }
+    
+    // Actualizar ejemplos de datos
+    updateExampleData();
+}
+
+void TableView::onCurrencyFormatChanged(const QString &text)
+{
+    qDebug() << "DEBUG: Formato de moneda cambiado a:" << text;
+    // Actualizar ejemplo de datos cuando cambie el formato de moneda
+    updateExampleData();
+}
+
+void TableView::onDateFormatChanged(const QString &text)
+{
+    qDebug() << "DEBUG: Formato de fecha cambiado a:" << text;
+    // Actualizar ejemplo de datos cuando cambie el formato de fecha
+    updateExampleData();
+}
+
+QString TableView::generateExampleData(const QString &dataType, int column)
+{
+    Q_UNUSED(column) // Por ahora no usamos la columna, pero puede ser útil en el futuro
+    
+    if (dataType == "Entero") {
+        QString numberType = numberTypeCombo ? numberTypeCombo->currentText() : "Entero";
+        if (numberType == "Byte") {
+            return "123";
+        } else if (numberType == "Entero") {
+            return "12345";
+        } else {
+            return "12345";
+        }
+    } else if (dataType == "Decimales") {
+        QString numberType = numberTypeCombo ? numberTypeCombo->currentText() : "Decimal";
+        if (numberType == "Decimal") {
+            return "123.45";
+        } else if (numberType == "Doble") {
+            return "123.456789";
+        } else {
+            return "123.45";
+        }
+    } else if (dataType == "Sí / No") {
+        return "Sí";
+    } else if (dataType == "Texto corto (hasta N caracteres)") {
+        QString size = textSizeEdit ? textSizeEdit->text() : "50";
+        if (size == "Sin límite" || size.contains("ilimitado")) {
+            return "Texto de ejemplo";
+        } else {
+            bool ok;
+            int maxSize = size.toInt(&ok);
+            if (ok && maxSize > 0) {
+                QString example = "Ejemplo de texto";
+                if (example.length() > maxSize) {
+                    return example.left(maxSize - 3) + "...";
+                }
+                return example;
+            }
+            return "Texto de ejemplo";
+        }
+    } else if (dataType == "Texto largo / Párrafo") {
+        return "Este es un ejemplo de texto largo que puede contener múltiples líneas...";
+    } else if (dataType == "moneda") {
+        QString format = currencyFormatCombo ? currencyFormatCombo->currentText() : "Lempiras (Lps)";
+        if (format.contains("Lempiras")) {
+            return "Lps 1,500.00";
+        } else if (format.contains("Dollar")) {
+            return "$1,500.00";
+        } else if (format.contains("Euros")) {
+            return "€1,500.00";
+        } else if (format.contains("Millares")) {
+            return "1,500";
+        } else {
+            return "Lps 1,500.00";
+        }
+    } else if (dataType == "fecha") {
+        QString format = dateFormatCombo ? dateFormatCombo->currentText() : "DD-MM-YY";
+        if (format == "DD-MM-YY") {
+            return "15-08-24";
+        } else if (format == "DD/MM/YY") {
+            return "15/08/24";
+        } else if (format == "DD/MESTEXTO/YYYY") {
+            return "15/Agosto/2024";
+        } else {
+            return "15-08-24";
+        }
+    }
+    
+    return "Ejemplo";
+}
+
+void TableView::updateExampleData()
+{
+    // Verificar que la tabla existe
+    if (!tableWidget) {
+        qDebug() << "DEBUG: TableWidget is null, cannot update example data";
+        return;
+    }
+    
+    // Bloquear señales para evitar bucles infinitos
+    tableWidget->blockSignals(true);
+    
+    // Solo actualizar si hay al menos una fila de campo definido en la tabla
+    if (tableWidget->rowCount() <= 1) {
+        qDebug() << "DEBUG: Not enough rows to create example data";
+        tableWidget->blockSignals(false);
+        return;
+    }
+    
+    // Buscar si ya existe una fila de ejemplo al principio
+    bool hasExampleRow = false;
+    if (tableWidget->rowCount() > 0) {
+        QTableWidgetItem *firstItem = tableWidget->item(0, 0);
+        if (firstItem && firstItem->toolTip().contains("Ejemplo")) {
+            hasExampleRow = true;
+        }
+    }
+    
+    // Si no hay fila de ejemplo, crear una
+    if (!hasExampleRow) {
+        // Insertar fila de ejemplo al principio
+        tableWidget->insertRow(0);
+        
+        // Crear items para la fila de ejemplo
+        for (int col = 0; col < 3; col++) { // 3 columnas: Nombre, Tipo, Descripción
+            QTableWidgetItem *exampleItem = new QTableWidgetItem("");
+            
+            // Configurar estilo para datos de ejemplo
+            QFont exampleFont = exampleItem->font();
+            exampleFont.setPointSize(14);
+            exampleFont.setItalic(true); // Cursiva para indicar que es ejemplo
+            exampleItem->setFont(exampleFont);
+            
+            // Color gris para indicar que es ejemplo
+            exampleItem->setForeground(QBrush(QColor(156, 163, 175))); // Color gris
+            exampleItem->setBackground(QBrush(QColor(249, 250, 251))); // Fondo gris muy claro
+            
+            // No editable
+            exampleItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+            
+            // Tooltip para identificar que es ejemplo
+            exampleItem->setToolTip("Fila de ejemplo - muestra cómo se verán los datos");
+            
+            tableWidget->setItem(0, col, exampleItem);
+        }
+    }
+    
+    // Buscar el primer campo real (no de ejemplo) para generar los ejemplos
+    int firstDataRow = hasExampleRow ? 1 : 0;
+    
+    // Actualizar el contenido de la fila de ejemplo basándose en el primer campo definido
+    for (int dataRow = firstDataRow; dataRow < tableWidget->rowCount(); dataRow++) {
+        QTableWidgetItem *fieldNameItem = tableWidget->item(dataRow, 0);
+        QTableWidgetItem *dataTypeItem = tableWidget->item(dataRow, 1);
+        
+        if (fieldNameItem && dataTypeItem && !dataTypeItem->text().isEmpty()) {
+            QString fieldName = fieldNameItem->text();
+            QString dataType = dataTypeItem->text();
+            
+            // Actualizar nombre del campo en la fila de ejemplo basado en el primer campo real
+            QTableWidgetItem *exampleNameItem = tableWidget->item(0, 0);
+            if (exampleNameItem) {
+                if (!fieldName.isEmpty()) {
+                    QString example = generateExampleData(dataType, 0);
+                    exampleNameItem->setText(example);
+                } else {
+                    exampleNameItem->setText("Ejemplo de dato");
+                }
+            }
+            
+            // Actualizar el tipo en la fila de ejemplo
+            QTableWidgetItem *exampleTypeItem = tableWidget->item(0, 1);
+            if (exampleTypeItem) {
+                exampleTypeItem->setText("(Ejemplo)");
+            }
+            
+            // Actualizar descripción en la fila de ejemplo
+            QTableWidgetItem *exampleDescItem = tableWidget->item(0, 2);
+            if (exampleDescItem) {
+                exampleDescItem->setText(QString("Vista previa de tipo: %1").arg(dataType));
+            }
+            
+            // Solo usamos el primer campo para generar el ejemplo, entonces salimos del bucle
+            break;
+        }
+    }
+    
+    // Si no se encontró ningún campo definido, mostrar texto genérico
+    bool foundDefinedField = false;
+    for (int dataRow = firstDataRow; dataRow < tableWidget->rowCount(); dataRow++) {
+        QTableWidgetItem *dataTypeItem = tableWidget->item(dataRow, 1);
+        if (dataTypeItem && !dataTypeItem->text().isEmpty()) {
+            foundDefinedField = true;
+            break;
+        }
+    }
+    
+    if (!foundDefinedField) {
+        QTableWidgetItem *exampleNameItem = tableWidget->item(0, 0);
+        if (exampleNameItem) {
+            exampleNameItem->setText("Ejemplo de dato");
+        }
+        
+        QTableWidgetItem *exampleTypeItem = tableWidget->item(0, 1);
+        if (exampleTypeItem) {
+            exampleTypeItem->setText("(Ejemplo)");
+        }
+        
+        QTableWidgetItem *exampleDescItem = tableWidget->item(0, 2);
+        if (exampleDescItem) {
+            exampleDescItem->setText("Vista previa de datos");
+        }
+    }
+    
+    // Restaurar señales
+    tableWidget->blockSignals(false);
 }

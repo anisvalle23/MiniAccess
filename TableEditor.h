@@ -20,7 +20,16 @@
 #include <QMouseEvent>
 #include <QPropertyAnimation>
 #include <QParallelAnimationGroup>
+#include <QMap>
 #include "TableView.h"
+#include "TableData.h"
+
+// Structure to store table design data
+struct TableDesignData {
+    QStringList fieldNames;
+    QStringList fieldTypes;
+    QStringList fieldDescriptions;
+};
 
 // Clickable widget class
 class ClickableWidget : public QWidget
@@ -50,7 +59,10 @@ public:
     void updateTheme(bool isDark);
 
 private slots:
+    void onCreateTableClicked();
     void onNewTableClicked();
+    void onTableSelected();
+    void animateCreateTablePanel();
     void onCancelClicked();
     void onSaveClicked();
     void onDeleteColumnClicked();
@@ -59,15 +71,20 @@ private:
     void setupUI();
     void createLeftPanel();
     void createRightPanel();
-    void createToolbar();
-    void createTableList();
-    void createMainTableArea();
     void createTableCreationPanel();
+    void styleComponents();
+    void addTableToSidebar(const QString &tableName);
+    void updateTableList();
+    void createMainTableArea();
+    void showWelcomeContent();
     void showCreateTablePanel();
     void hideCreateTablePanel();
     void showTableView(const QString &tableName);
-    void addTableToSidebar(const QString &tableName);
-    void styleComponents();
+    void showTableDataView(const QString &tableName);
+    void switchToDataView();
+    void switchToDesignView();
+    void syncTableDesignData();
+    void applyTableDesignData();
     void updateLeftPanelTheme(bool isDark);
     void updateRightPanelTheme(bool isDark);
     void updateToolbarTheme(bool isDark);
@@ -115,6 +132,12 @@ private:
     
     // Theme variables
     bool isDarkTheme;
+    
+    // Table instances and data
+    TableView *currentTableView;
+    TableData *currentTableData;
+    QMap<QString, TableDesignData> tableDesigns;
+    QString currentTableName;
 };
 
 #endif // TABLEEDITOR_H

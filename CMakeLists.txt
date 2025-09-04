@@ -32,6 +32,8 @@ set(PROJECT_SOURCES
         TableEditor.h
         TableView.cpp
         TableView.h
+        TableData.cpp
+        TableData.h
         mainwindow.ui
 )
 

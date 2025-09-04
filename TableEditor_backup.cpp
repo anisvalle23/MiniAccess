@@ -81,7 +81,7 @@ void TableEditor::createLeftPanel()
     leftPanelLayout->addWidget(newTableBtn);
     
     // Table list section
-    updateTableList();
+    createTableList();
     
     leftPanelLayout->addStretch();
     
@@ -89,7 +89,7 @@ void TableEditor::createLeftPanel()
     connect(newTableBtn, &QPushButton::clicked, this, &TableEditor::onNewTableClicked);
 }
 
-void TableEditor::updateTableList()
+void TableEditor::createTableList()
 {
     tableListSection = new QWidget();
     QVBoxLayout *tableListLayout = new QVBoxLayout(tableListSection);
@@ -555,6 +555,7 @@ void TableEditor::onCancelClicked()
 
 void TableEditor::onSaveClicked()
 {
+    QLineEdit *tableNameInput = createTablePanel->findChild<QLineEdit*>("tableNameInput");
     if (!tableNameInput || tableNameInput->text().trimmed().isEmpty()) {
         // Show error message
         QMessageBox::warning(this, "Error", "Por favor ingresa un nombre para la tabla.");
@@ -596,6 +597,7 @@ void TableEditor::showCreateTablePanel()
     
     connect(animation, &QPropertyAnimation::finished, [this]() {
         // Focus on table name input after animation
+        QLineEdit *tableNameInput = createTablePanel->findChild<QLineEdit*>("tableNameInput");
         if (tableNameInput) {
             tableNameInput->setFocus();
         }
@@ -629,57 +631,23 @@ void TableEditor::hideCreateTablePanel()
 
 void TableEditor::showTableView(const QString &tableName)
 {
-    // Store current table name
-    currentTableName = tableName;
-    
-    // If this is a new table or the first time, create both views
-    if (!currentTableView || currentTableView->property("tableName").toString() != tableName) {
-        // Clear the main content area
-        QLayoutItem *child;
-        while ((child = mainContentLayout->takeAt(0)) != nullptr) {
-            delete child->widget();
-            delete child;
-        }
-        
-        // Create table view
-        currentTableView = new TableView(this);
-        currentTableView->setTableName(tableName);
-        currentTableView->updateTheme(isDarkTheme);
-        currentTableView->setProperty("tableName", tableName);
-        
-        // Create table data view (but don't show it yet)
-        currentTableData = new TableData(this);
-        currentTableData->setTableName(tableName);
-        currentTableData->setProperty("tableName", tableName);
-        
-        // Connect signals for switching between views
-        connect(currentTableView, &TableView::switchToDataView, this, [this]() {
-            switchToDataView();
-        });
-        connect(currentTableData, &TableData::switchToDesignView, this, [this]() {
-            switchToDesignView();
-        });
-        // --- Sincronización automática de campos ---
-        connect(currentTableView, &TableView::tableDesignChanged, this, [this](const QStringList &fieldNames, const QStringList &fieldTypes) {
-            if (currentTableData) {
-                currentTableData->setupDataView(fieldNames, fieldTypes);
-            }
-        });
-        
-        // Add table to sidebar list
-        addTableToSidebar(tableName);
+    // Clear the main content area
+    QLayoutItem *child;
+    while ((child = mainContentLayout->takeAt(0)) != nullptr) {
+        delete child->widget();
+        delete child;
     }
     
-    // Show design view and hide data view
-    if (currentTableData && mainContentLayout->indexOf(currentTableData) != -1) {
-        mainContentLayout->removeWidget(currentTableData);
-        currentTableData->hide();
-    }
+    // Create table view and add to main content
+    TableView *newTableView = new TableView(this);
+    newTableView->setTableName(tableName);
+    newTableView->updateTheme(isDarkTheme);
     
-    if (mainContentLayout->indexOf(currentTableView) == -1) {
-        mainContentLayout->addWidget(currentTableView);
-    }
-    currentTableView->show();
+    // Add the table view to main content layout
+    mainContentLayout->addWidget(newTableView);
+    
+    // Add table to sidebar list
+    addTableToSidebar(tableName);
 }
 
 void TableEditor::addTableToSidebar(const QString &tableName)
@@ -698,106 +666,9 @@ void TableEditor::addTableToSidebar(const QString &tableName)
     });
 }
 
-void TableEditor::showTableDataView(const QString &tableName)
-{
-    // Store current table name
-    currentTableName = tableName;
-    
-    // If this is a new table or the first time, create both views
-    if (!currentTableData || currentTableData->property("tableName").toString() != tableName) {
-        // Clear the main content area only if we're switching tables
-        QLayoutItem *child;
-        while ((child = mainContentLayout->takeAt(0)) != nullptr) {
-            delete child->widget();
-            delete child;
-        }
-        
-        // Create table view (but don't show it yet)
-        currentTableView = new TableView(this);
-        currentTableView->setTableName(tableName);
-        currentTableView->updateTheme(isDarkTheme);
-        currentTableView->setProperty("tableName", tableName);
-        
-        // Create table data view
-        currentTableData = new TableData(this);
-        currentTableData->setTableName(tableName);
-        currentTableData->setProperty("tableName", tableName);
-        
-        // Connect signals for switching between views
-        connect(currentTableView, &TableView::switchToDataView, this, [this]() {
-            switchToDataView();
-        });
-        
-        connect(currentTableData, &TableData::switchToDesignView, this, [this]() {
-            switchToDesignView();
-        });
-    }
-    
-    // Show data view and hide design view
-    if (currentTableView && mainContentLayout->indexOf(currentTableView) != -1) {
-        mainContentLayout->removeWidget(currentTableView);
-        currentTableView->hide();
-    }
-    
-    if (mainContentLayout->indexOf(currentTableData) == -1) {
-        mainContentLayout->addWidget(currentTableData);
-    }
-    currentTableData->show();
-}
-
 void TableEditor::onDeleteColumnClicked()
 {
     // This function is called from the delete button in createColumnRow
     // The actual deletion is handled in the lambda in createColumnRow
     qDebug() << "Column delete requested";
-}
-
-void TableEditor::onTableSelected()
-{
-    qDebug() << "Table selected";
-    // Implementación básica para evitar error de linking
-}
-
-void TableEditor::onCreateTableClicked()
-{
-    qDebug() << "Create table clicked";
-    // Implementación básica para evitar error de linking
-}
-
-void TableEditor::animateCreateTablePanel()
-{
-    qDebug() << "Animate create table panel";
-    // Implementación básica para evitar error de linking
-}
-
-void TableEditor::switchToDataView()
-{
-    if (!currentTableView || !currentTableData) return;
-    
-    // Hide design view and show data view
-    if (mainContentLayout->indexOf(currentTableView) != -1) {
-        mainContentLayout->removeWidget(currentTableView);
-        currentTableView->hide();
-    }
-    
-    if (mainContentLayout->indexOf(currentTableData) == -1) {
-        mainContentLayout->addWidget(currentTableData);
-    }
-    currentTableData->show();
-}
-
-void TableEditor::switchToDesignView()
-{
-    if (!currentTableView || !currentTableData) return;
-    
-    // Hide data view and show design view
-    if (mainContentLayout->indexOf(currentTableData) != -1) {
-        mainContentLayout->removeWidget(currentTableData);
-        currentTableData->hide();
-    }
-    
-    if (mainContentLayout->indexOf(currentTableView) == -1) {
-        mainContentLayout->addWidget(currentTableView);
-    }
-    currentTableView->show();
 }
