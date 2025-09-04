@@ -714,6 +714,9 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
                                 "Los nombres de los campos deben ser únicos (sin importar mayúsculas/minúsculas).")
                                 .arg(existingName));
                     
+
+
+                                
                     // Limpiar el campo duplicado usando blockSignals del widget table
                     tableWidget->blockSignals(true);
                     item->setText("");
