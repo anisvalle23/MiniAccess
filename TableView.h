@@ -86,10 +86,12 @@ public:
     // Obtener campos actuales del diseño
     QStringList getCurrentFieldNames() const;
     QStringList getCurrentFieldTypes() const;
+    QStringList getCurrentCurrencyFormats() const;
 
 signals:
     void switchToDataView();
     void tableDesignChanged(const QStringList &fieldNames, const QStringList &fieldTypes);
+    void tableDesignChangedWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats);
 
 private slots:
     void onCellChanged(int row, int column);
@@ -179,6 +181,9 @@ private:
     QString currentTableName;
     bool isDarkTheme;
     int currentSelectedRow;
+    
+    // Almacenar formatos de moneda por campo
+    QStringList fieldCurrencyFormats;
 };
 
 #endif // TABLEVIEW_H

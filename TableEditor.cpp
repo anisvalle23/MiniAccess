@@ -648,6 +648,19 @@ void TableEditor::showTableView(const QString &tableName)
                     }
                 }, Qt::UniqueConnection);
 
+        // Conectar señal específica para formatos de moneda
+        connect(view, &TableView::tableDesignChangedWithFormats, this,
+                [this, tableName](const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats) {
+                    // Guardar diseño en "arreglos" por tabla
+                    TableDesignData &d = tableDesigns[tableName];
+                    d.fieldNames = fieldNames;
+                    d.fieldTypes = fieldTypes;
+                    // Si existe su TableData, sincronizar con formatos de moneda
+                    if (tableDatas.contains(tableName) && tableDatas.value(tableName)) {
+                        tableDatas.value(tableName)->setupDataViewWithFormats(fieldNames, fieldTypes, currencyFormats);
+                    }
+                }, Qt::UniqueConnection);
+
         tableViews.insert(tableName, view);
     }
 
@@ -770,6 +783,24 @@ void TableEditor::switchToDataView()
     if (!tableDatas.contains(currentTableName)) return;
     TableData *data = tableDatas.value(currentTableName);
     if (!data) return;
+
+    // Obtener formatos de moneda actualizados de la vista de diseño antes de mostrar vista de datos
+    if (tableViews.contains(currentTableName)) {
+        TableView *view = tableViews.value(currentTableName);
+        if (view) {
+            QStringList fieldNames = view->getCurrentFieldNames();
+            QStringList fieldTypes = view->getCurrentFieldTypes();
+            QStringList currencyFormats = view->getCurrentCurrencyFormats();
+            
+            qDebug() << "DEBUG: switchToDataView - Actualizando con formatos:";
+            qDebug() << "DEBUG: fieldNames:" << fieldNames;
+            qDebug() << "DEBUG: fieldTypes:" << fieldTypes;
+            qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
+            
+            // Actualizar la vista de datos con los formatos más recientes
+            data->setupDataViewWithFormats(fieldNames, fieldTypes, currencyFormats);
+        }
+    }
 
     while (QLayoutItem *child = mainContentLayout->takeAt(0)) {
         if (auto *w = child->widget()) {

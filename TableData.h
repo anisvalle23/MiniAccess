@@ -42,6 +42,7 @@ public:
 
     // Configurar la vista de datos basada en campos de diseño
     void setupDataView(const QStringList &fieldNames, const QStringList &fieldTypes);
+    void setupDataViewWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats);
     
     // Configurar nombre de tabla
     void setTableName(const QString &tableName);
@@ -57,6 +58,8 @@ public:
     bool isValueValidForType(const QString& type, const QString& value) const;
     void showSoftWarning(int row, int col, const QString& msg) const;
     QString formatCurrency(const QString& raw) const;
+    QString formatCurrencyWithFormat(const QString& raw, const QString& format) const; // Formatear con formato específico
+    QString getCurrencyFormatForColumn(int column) const; // Obtener formato para columna específica
 
 
 public slots:
@@ -81,6 +84,7 @@ private:
     QString getTableStyle();
     void updateExampleData();
     QString generateExampleData(const QString &dataType, int column);
+    void applyCurrencyFormats(); // Aplicar formatos de moneda específicos
     
     // UI Components
     QVBoxLayout *mainLayout;
@@ -92,6 +96,7 @@ private:
     // Data storage
     QStringList savedFieldNames;
     QStringList savedFieldTypes;
+    QStringList savedCurrencyFormats; // Formatos de moneda para cada campo
     QString currentTableName;
     int nextPersonId;
     

@@ -205,6 +205,9 @@ TableView::TableView(QWidget *parent) : QWidget(parent)
     isDarkTheme = false;
     currentTableName = "Nueva Tabla";
     
+    // Inicializar lista de formatos de moneda
+    fieldCurrencyFormats.clear();
+    
     // Crear la interfaz
     createInterface();
 }
@@ -714,9 +717,6 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
                                 "Los nombres de los campos deben ser únicos (sin importar mayúsculas/minúsculas).")
                                 .arg(existingName));
                     
-
-
-                                
                     // Limpiar el campo duplicado usando blockSignals del widget table
                     tableWidget->blockSignals(true);
                     item->setText("");
@@ -1004,6 +1004,54 @@ QStringList TableView::getCurrentFieldTypes() const
     return fieldTypes;
 }
 
+QStringList TableView::getCurrentCurrencyFormats() const
+{
+    QStringList currencyFormats;
+    
+    qDebug() << "DEBUG: getCurrentCurrencyFormats() - Lista guardada:" << fieldCurrencyFormats;
+    
+    // Verificar que la tabla existe y tiene filas
+    if (!tableWidget || tableWidget->rowCount() == 0) {
+        qDebug() << "DEBUG: TableWidget is null or has no rows for currency formats";
+        return currencyFormats;
+    }
+    
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        // Verificar que ambas columnas existen
+        if (tableWidget->columnCount() < 2) {
+            qDebug() << "DEBUG: Table doesn't have enough columns for currency formats";
+            continue;
+        }
+        
+        QTableWidgetItem *typeItem = tableWidget->item(row, 1);
+        QTableWidgetItem *nameItem = tableWidget->item(row, 0);
+        
+        if (typeItem && !typeItem->text().trimmed().isEmpty()) {
+            QString fieldType = typeItem->text().trimmed();
+            if (!fieldType.isEmpty()) {
+                // Si es un campo de moneda, obtener el formato guardado
+                if (fieldType == "moneda") {
+                    QString format = "Lempiras (Lps)"; // Valor por defecto
+                    
+                    // Usar el formato guardado si existe
+                    if (row < fieldCurrencyFormats.size() && !fieldCurrencyFormats[row].isEmpty()) {
+                        format = fieldCurrencyFormats[row];
+                    }
+                    
+                    currencyFormats << format;
+                    qDebug() << "DEBUG: Added currency format:" << format << "for row:" << row;
+                } else {
+                    // Para campos que no son moneda, agregar cadena vacía para mantener índices
+                    currencyFormats << "";
+                }
+            }
+        }
+    }
+    
+    qDebug() << "DEBUG: getCurrentCurrencyFormats() returning:" << currencyFormats;
+    return currencyFormats;
+}
+
 void TableView::createSpecificPropertiesWidgets()
 {
     // Widget contenedor para propiedades específicas con mejor distribución
@@ -1179,7 +1227,30 @@ void TableView::updateSpecificProperties(const QString &dataType)
         }
     } else if (dataType == "moneda") {
         currencyPropertiesWidget->show();
-        currencyFormatCombo->setCurrentText("Lempiras (Lps)");
+        
+        // Asegurar que la lista tenga el tamaño correcto
+        while (fieldCurrencyFormats.size() <= currentSelectedRow) {
+            fieldCurrencyFormats.append("Lempiras (Lps)");
+        }
+        
+        // Bloquear señales para evitar ciclos
+        currencyFormatCombo->blockSignals(true);
+        
+        // Cargar el formato guardado para esta fila
+        if (currentSelectedRow >= 0 && currentSelectedRow < fieldCurrencyFormats.size()) {
+            QString savedFormat = fieldCurrencyFormats[currentSelectedRow];
+            if (!savedFormat.isEmpty()) {
+                currencyFormatCombo->setCurrentText(savedFormat);
+            } else {
+                currencyFormatCombo->setCurrentText("Lempiras (Lps)");
+                fieldCurrencyFormats[currentSelectedRow] = "Lempiras (Lps)";
+            }
+        } else {
+            currencyFormatCombo->setCurrentText("Lempiras (Lps)");
+        }
+        
+        // Reactivar señales
+        currencyFormatCombo->blockSignals(false);
     } else if (dataType == "fecha") {
         datePropertiesWidget->show();
         dateFormatCombo->setCurrentText("DD-MM-YY");
@@ -1283,8 +1354,25 @@ void TableView::onNumberTypeChanged(const QString &text)
 void TableView::onCurrencyFormatChanged(const QString &text)
 {
     qDebug() << "DEBUG: Formato de moneda cambiado a:" << text;
+    qDebug() << "DEBUG: Fila actual seleccionada:" << currentSelectedRow;
+    
+    // Guardar el formato para el campo actual
+    if (currentSelectedRow >= 0) {
+        // Asegurar que la lista tenga el tamaño correcto
+        while (fieldCurrencyFormats.size() <= currentSelectedRow) {
+            fieldCurrencyFormats.append("Lempiras (Lps)");
+        }
+        
+        // Guardar el formato seleccionado para esta fila
+        fieldCurrencyFormats[currentSelectedRow] = text;
+        qDebug() << "DEBUG: Guardado formato" << text << "para fila" << currentSelectedRow;
+        qDebug() << "DEBUG: Lista completa de formatos:" << fieldCurrencyFormats;
+    }
+    
     // Emitir señal para actualizar vista de datos
     emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+    // Emitir señal específica con formatos de moneda
+    emit tableDesignChangedWithFormats(getCurrentFieldNames(), getCurrentFieldTypes(), getCurrentCurrencyFormats());
 }
 
 void TableView::onDateFormatChanged(const QString &text)

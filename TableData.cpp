@@ -3,6 +3,7 @@
 #include <QIntValidator>
 #include <QDoubleValidator>
 #include <QRegularExpressionValidator>
+#include <QRegularExpression>
 #include <QDate>
 #include <QDateEdit>
 #include <QCalendarWidget>
@@ -199,7 +200,22 @@ void DataFieldDelegate::setEditorData(QWidget *editor, const QModelIndex &index)
     }
 
     if (auto *line = qobject_cast<QLineEdit*>(editor)) {
-        line->setText(index.model()->data(index, Qt::EditRole).toString());
+        QString currentText = index.model()->data(index, Qt::EditRole).toString();
+        
+        // Si es un campo de moneda, extraer solo el número para edición
+        const TableData *owner = qobject_cast<const TableData*>(this->parent());
+        const QString type = owner ? owner->fieldTypeForColumn(index.column()) : QString();
+        
+        if (type == "moneda" && !currentText.isEmpty()) {
+            // Extraer solo el número del texto formateado (quitar prefijos como "Lps ", "$", etc.)
+            QString cleanText = currentText;
+            cleanText.remove(QRegularExpression("^(Lps|\\$|€)\\s*"));  // Quitar prefijos
+            cleanText.remove(QRegularExpression("[,\\s]"));  // Quitar comas y espacios
+            qDebug() << "DEBUG: Texto original:" << currentText << "-> Texto limpio para editar:" << cleanText;
+            line->setText(cleanText);
+        } else {
+            line->setText(currentText);
+        }
     }
 }
 
@@ -249,7 +265,10 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
             bool ok=false; newText.toDouble(&ok);
             if (!ok) return softReject("Moneda inválida. Ingresa un número.");
             // >>> formateo visual aquí <<<
-            if (owner) newText = owner->formatCurrency(newText);
+            if (owner) {
+                QString format = owner->getCurrencyFormatForColumn(index.column());
+                newText = owner->formatCurrencyWithFormat(newText, format);
+            }
         } else if (type == "fecha") {
             if (!owner->isValueValidForType(type, newText)) {
                 return softReject("Fecha inválida. Usa dd-MM-aaaa o dd/MM/aaaa.");
@@ -553,7 +572,10 @@ void TableData::setupDataView(const QStringList &fieldNames, const QStringList &
                 if (first && first->toolTip().contains("Ejemplo")) continue;
 
                 const QString t = it->text().trimmed();
-                if (!t.isEmpty()) it->setText(formatCurrency(t));
+                if (!t.isEmpty()) {
+                    QString format = getCurrencyFormatForColumn(col);
+                    it->setText(formatCurrencyWithFormat(t, format));
+                }
             }
             dataTable->blockSignals(false);
         }
@@ -586,6 +608,64 @@ void TableData::configureColumnWidths()
             }
         }
     }
+}
+
+void TableData::setupDataViewWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats)
+{
+    qDebug() << "DEBUG: setupDataViewWithFormats llamado con:";
+    qDebug() << "DEBUG: fieldNames:" << fieldNames;
+    qDebug() << "DEBUG: fieldTypes:" << fieldTypes;
+    qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
+    
+    // Guardar los formatos de moneda
+    savedCurrencyFormats = currencyFormats;
+    qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
+    
+    // Llamar al método base para hacer la configuración normal
+    setupDataView(fieldNames, fieldTypes);
+    
+    // Aplicar formatos específicos de moneda después de la configuración básica
+    applyCurrencyFormats();
+}
+
+void TableData::applyCurrencyFormats()
+{
+    qDebug() << "DEBUG: Aplicando formatos de moneda específicos";
+    
+    if (savedCurrencyFormats.isEmpty() || savedFieldTypes.isEmpty()) {
+        qDebug() << "DEBUG: No hay formatos de moneda o tipos de campo guardados";
+        return;
+    }
+    
+    for (int col = 0; col < savedFieldTypes.size() && col < savedCurrencyFormats.size(); ++col) {
+        if (savedFieldTypes.at(col) == "moneda") {
+            QString format = savedCurrencyFormats.at(col);
+            qDebug() << "DEBUG: Aplicando formato de moneda" << format << "a columna" << col;
+            
+            dataTable->blockSignals(true);
+            for (int row = 0; row < dataTable->rowCount(); ++row) {
+                QTableWidgetItem *item = dataTable->item(row, col);
+                if (!item) continue;
+                
+                // Saltar fila de ejemplo
+                QTableWidgetItem *firstItem = dataTable->item(row, 0);
+                if (firstItem && firstItem->toolTip().contains("Ejemplo")) continue;
+
+                const QString text = item->text().trimmed();
+                if (!text.isEmpty()) {
+                    // Aplicar formato específico según la selección
+                    QString formattedValue = formatCurrencyWithFormat(text, format);
+                    item->setText(formattedValue);
+                }
+            }
+            dataTable->blockSignals(false);
+        }
+    }
+    
+    // Forzar actualización visual de la tabla
+    qDebug() << "DEBUG: Forzando actualización visual de la tabla";
+    dataTable->viewport()->update();
+    dataTable->repaint();
 }
 
 void TableData::addPersonRow(const QStringList &personData)
@@ -671,30 +751,78 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
         return;
     }
     
-    // Aplicar formato automático para campos de moneda
-    /*if (col < savedFieldTypes.size() && col < savedFieldNames.size() && savedFieldTypes.at(col) == "moneda") {
+    // Aplicar formato automático para campos de moneda con formato dinámico
+    if (col < savedFieldTypes.size() && col < savedFieldNames.size() && savedFieldTypes.at(col) == "moneda") {
         QString text = item->text().trimmed();
-        if (!text.isEmpty() && !text.startsWith("Lps ") && !text.startsWith("$") && !text.startsWith("€")) {
-            // Bloquear señales para evitar bucle infinito
-            dataTable->blockSignals(true);
+        if (!text.isEmpty()) {
+            // Verificar si el texto ya tiene formato de moneda
+            bool alreadyFormatted = text.startsWith("Lps ") || 
+                                   text.startsWith("$") || 
+                                   text.startsWith("€") ||
+                                   text.contains("Lps") ||
+                                   text.contains("$") ||
+                                   text.contains("€");
             
-            // Extraer solo los números y puntos decimales
-            QString cleanNumber = "";
-            for (int i = 0; i < text.length(); i++) {
-                QChar c = text.at(i);
-                if (c.isDigit() || c == '.' || c == ',') {
-                    cleanNumber += c;
+            qDebug() << "DEBUG: Texto a verificar:" << text << "- Ya formateado:" << alreadyFormatted;
+            
+            // Obtener el formato correspondiente para esta columna
+            QString format = "Lempiras (Lps)"; // Formato por defecto
+            if (col < savedCurrencyFormats.size() && !savedCurrencyFormats.at(col).isEmpty()) {
+                format = savedCurrencyFormats.at(col);
+                qDebug() << "DEBUG: Usando formato guardado:" << format;
+            } else {
+                qDebug() << "DEBUG: Usando formato por defecto:" << format;
+            }
+            
+            // Si ya está formateado, verificar si está en el formato correcto
+            if (alreadyFormatted) {
+                bool correctFormat = false;
+                if (format.contains("Lempiras") || format.contains("Lps")) {
+                    correctFormat = text.startsWith("Lps ") || text.contains("Lps");
+                } else if (format.contains("Dollar") || format.contains("$")) {
+                    correctFormat = text.startsWith("$");
+                } else if (format.contains("Euros") || format.contains("€")) {
+                    correctFormat = text.startsWith("€");
                 }
+                
+                qDebug() << "DEBUG: Formato correcto aplicado:" << correctFormat;
+                
+                // Si no está en el formato correcto, reformatear
+                if (!correctFormat) {
+                    // Extraer el número y reformatear
+                    QString cleanNumber = text;
+                    cleanNumber.remove(QRegularExpression("^(Lps|\\$|€)\\s*"));
+                    cleanNumber.remove(QRegularExpression("[,\\s]"));
+                    
+                    qDebug() << "DEBUG: Reformateando de" << text << "a formato" << format << "con número limpio:" << cleanNumber;
+                    
+                    dataTable->blockSignals(true);
+                    QString formattedText = formatCurrencyWithFormat(cleanNumber, format);
+                    item->setText(formattedText);
+                    dataTable->blockSignals(false);
+                    
+                    qDebug() << "DEBUG: Texto reformateado:" << formattedText;
+                    
+                    // Forzar actualización visual inmediata
+                    dataTable->viewport()->update();
+                }
+            } else {
+                // Texto sin formato - aplicar formato por primera vez
+                qDebug() << "DEBUG: Aplicando formato por primera vez a:" << text;
+                
+                dataTable->blockSignals(true);
+                QString formattedText = formatCurrencyWithFormat(text, format);
+                qDebug() << "DEBUG: Texto original:" << text << "-> Texto formateado:" << formattedText;
+                if (!formattedText.isEmpty()) {
+                    item->setText(formattedText);
+                }
+                dataTable->blockSignals(false);
+                
+                // Forzar actualización visual inmediata
+                dataTable->viewport()->update();
             }
-            
-            if (!cleanNumber.isEmpty()) {
-                item->setText("Lps " + cleanNumber);
-            }
-            
-            dataTable->blockSignals(false);
         }
     }
-    */
 
     // Solo agregar nueva fila si estamos escribiendo en la última fila y hay contenido real
     if (row == dataTable->rowCount() - 1 && !item->text().trimmed().isEmpty()) {
@@ -809,8 +937,6 @@ QString TableData::getTableStyle()
 
 QString TableData::generateExampleData(const QString &dataType, int column)
 {
-    Q_UNUSED(column) // Por ahora no usamos la columna, pero puede ser útil en el futuro
-    
     if (dataType == "Entero") {
         return "12345";
     } else if (dataType == "Decimales") {
@@ -822,7 +948,24 @@ QString TableData::generateExampleData(const QString &dataType, int column)
     } else if (dataType == "Texto largo / Párrafo") {
         return "Este es un ejemplo de texto largo...";
     } else if (dataType == "moneda") {
-        return "Lps 1,500.00";
+        // Usar el formato correspondiente para esta columna si está disponible
+        QString format = "Lempiras (Lps)"; // Formato por defecto
+        if (column < savedCurrencyFormats.size() && !savedCurrencyFormats.at(column).isEmpty()) {
+            format = savedCurrencyFormats.at(column);
+        }
+        
+        // Generar ejemplo con el formato correcto
+        if (format.contains("Lempiras") || format.contains("Lps")) {
+            return "Lps 1,500.00";
+        } else if (format.contains("Dollar") || format.contains("$")) {
+            return "$1,500.00";
+        } else if (format.contains("Euros") || format.contains("€")) {
+            return "€1,500.00";
+        } else if (format.contains("Millares")) {
+            return "1,500";
+        } else {
+            return "Lps 1,500.00"; // Formato por defecto
+        }
     } else if (dataType == "fecha") {
         return "15-08-24";
     }
@@ -940,6 +1083,62 @@ QString TableData::formatCurrency(const QString& raw) const {
     return QStringLiteral("Lps %1").arg(loc.toString(v, 'f', 2));
 }
 
+QString TableData::formatCurrencyWithFormat(const QString& raw, const QString& format) const {
+    // Extrae dígitos, separadores y signo para poder parsear
+    QString cleaned;
+    cleaned.reserve(raw.size());
+    for (QChar c : raw) {
+        if (c.isDigit() || c == '.' || c == ',' || c == '-') cleaned.append(c);
+    }
+    if (cleaned.isEmpty()) return QString();
+
+    // Normaliza decimal a punto para parseo
+    QString normalized = cleaned;
+    normalized.replace(',', '.');
+
+    bool ok = false;
+    const double v = normalized.toDouble(&ok);
+    if (!ok) return raw; // Si no se pudo parsear, deja el texto tal cual
+
+    // Formatea según el formato especificado
+    QLocale loc(QLocale::Spanish, QLocale::Honduras);
+    QString formattedNumber = loc.toString(v, 'f', 2);
+    
+    if (format.contains("Lempiras") || format.contains("Lps")) {
+        return QStringLiteral("Lps %1").arg(formattedNumber);
+    } else if (format.contains("Dollar") || format.contains("$")) {
+        return QStringLiteral("$%1").arg(formattedNumber);
+    } else if (format.contains("Euros") || format.contains("€")) {
+        return QStringLiteral("€%1").arg(formattedNumber);
+    } else if (format.contains("Millares")) {
+        // Solo mostrar la parte entera con separadores de miles
+        int integerPart = static_cast<int>(v);
+        QString integerFormatted = loc.toString(integerPart);
+        return integerFormatted;
+    } else {
+        // Formato por defecto (Lempiras)
+        return QStringLiteral("Lps %1").arg(formattedNumber);
+    }
+}
+
+QString TableData::getCurrencyFormatForColumn(int column) const {
+    qDebug() << "DEBUG: getCurrencyFormatForColumn llamado para columna:" << column;
+    qDebug() << "DEBUG: savedCurrencyFormats disponibles:" << savedCurrencyFormats;
+    
+    // Verificar que la columna existe en los formatos guardados
+    if (column >= 0 && column < savedCurrencyFormats.size()) {
+        QString format = savedCurrencyFormats.at(column);
+        if (!format.isEmpty()) {
+            qDebug() << "DEBUG: Formato encontrado para columna" << column << ":" << format;
+            return format;
+        }
+    }
+    
+    // Valor por defecto
+    qDebug() << "DEBUG: Usando formato por defecto para columna:" << column;
+    return "Lempiras (Lps)";
+}
+
 void TableData::showSoftWarning(int row, int col, const QString& msg) const {
     if (!dataTable) return;
     // marcar rojo suave
@@ -987,54 +1186,25 @@ void DataFieldDelegate::initStyleOption(QStyleOptionViewItem *option,
     if (raw.isEmpty())
         return;
 
-    // Si ya viene con prefijo, no doble formatees
-    if (raw.startsWith("Lps ", Qt::CaseInsensitive)) {
+    // Obtener el formato específico para esta columna
+    QString format = owner ? owner->getCurrencyFormatForColumn(index.column()) : "Lempiras (Lps)";
+    qDebug() << "DEBUG: initStyleOption - Formato para columna" << index.column() << ":" << format;
+
+    // Si ya viene formateado correctamente, no hacer nada
+    if ((format.contains("Dollar") && raw.startsWith("$")) ||
+        (format.contains("Euros") && raw.startsWith("€")) ||
+        (format.contains("Lempiras") && raw.startsWith("Lps"))) {
         option->text = raw;
+        qDebug() << "DEBUG: initStyleOption - Ya formateado correctamente:" << raw;
         return;
     }
 
-    // === Formateo rápido aquí (si ya tienes TableData::formatCurrency, úsala) ===
-    auto formatCurrencyInline = [](const QString& src)->QString {
-        // limpiar: dígitos, . , y signo
-        QString cleaned; cleaned.reserve(src.size());
-        bool neg = false;
-        for (QChar c : src) {
-            if (c == '-') { neg = !neg; continue; }
-            if (c.isDigit() || c == '.' || c == ',') cleaned.append(c);
-        }
-        if (cleaned.isEmpty()) return src;
-
-        // el último separador visto es decimal
-        int lastDot = cleaned.lastIndexOf('.');
-        int lastCom = cleaned.lastIndexOf(',');
-        QChar dec = (lastDot > lastCom ? QChar('.') : (lastCom > -1 ? QChar(',') : QChar()));
-        QString norm;
-        for (QChar c : cleaned) {
-            if (c.isDigit()) norm.append(c);
-            else if (!dec.isNull() && c == dec) norm.append('.');
-        }
-        bool ok=false;
-        double v = norm.toDouble(&ok);
-        if (!ok) return src;
-        if (neg) v = -v;
-
-        // miles con ',', 2 decimales
-        const bool isNeg = v < 0;
-        v = std::abs(v);
-        qint64 entero = static_cast<qint64>(std::floor(v));
-        int cents = static_cast<int>(qRound64((v - entero)*100.0));
-        QString entStr = QString::number(entero);
-        for (int pos = entStr.size() - 3; pos > 0; pos -= 3) entStr.insert(pos, ',');
-
-        QString decStr = QString("%1").arg(cents, 2, 10, QLatin1Char('0'));
-        QString out = QString("Lps %1.%2").arg(entStr, decStr);
-        if (isNeg) out.prepend('-');
-        return out;
-    };
-
-    // Si tienes TableData::formatCurrency, prefierela:
-    // raw = owner ? owner->formatCurrency(raw) : formatCurrencyInline(raw);
-    raw = formatCurrencyInline(raw);
-
-    option->text = raw;
+    // Aplicar formato usando el método de TableData
+    if (owner) {
+        QString formattedText = owner->formatCurrencyWithFormat(raw, format);
+        option->text = formattedText;
+        qDebug() << "DEBUG: initStyleOption - Texto formateado:" << raw << "->" << formattedText;
+    } else {
+        option->text = raw;
+    }
 }
