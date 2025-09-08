@@ -1,5 +1,7 @@
 #include "TableView.h"
 #include <QDebug>
+#include <QMessageBox>
+#include <QTimer>
 
 // DataTypeDelegate Implementation
 DataTypeDelegate::DataTypeDelegate(QObject *parent) : QStyledItemDelegate(parent)
@@ -202,6 +204,7 @@ TableView::TableView(QWidget *parent) : QWidget(parent)
 {
     // Inicializar variables
     currentSelectedRow = -1;
+    primaryKeyRow = -1; // No hay llave primaria inicialmente
     isDarkTheme = false;
     currentTableName = "Nueva Tabla";
     
@@ -578,6 +581,10 @@ void TableView::onCellChanged(int row, int column)
 void TableView::onCellSelectionChanged()
 {
     currentSelectedRow = tableWidget->currentRow();
+    
+    // Validar integridad de llave primaria
+    validatePrimaryKeyIntegrity();
+    
     if (currentSelectedRow >= 0) {
         updatePropertiesForRow(currentSelectedRow);
     }
@@ -597,8 +604,12 @@ void TableView::updatePropertiesForRow(int row)
     QTableWidgetItem *typeItem = tableWidget->item(row, 1);
     QTableWidgetItem *descItem = tableWidget->item(row, 2);
     
-    // Actualizar propiedades
-    fieldNameEdit->setText(nameItem ? nameItem->text() : "");
+    // Actualizar propiedades - remover icono de llave del nombre para mostrar en el campo de edición
+    QString displayName = nameItem ? nameItem->text() : "";
+    if (displayName.startsWith("🔑 ")) {
+        displayName = displayName.mid(3); // Remover icono para mostrar nombre limpio
+    }
+    fieldNameEdit->setText(displayName);
     
     QString dataType = typeItem ? typeItem->text() : "TEXT";
     int index = dataTypeCombo->findText(dataType);
@@ -609,9 +620,9 @@ void TableView::updatePropertiesForRow(int row)
     descriptionEdit->setPlainText(descItem ? descItem->text() : "");
     defaultValueEdit->setText("");
     
-    // Campo requerido si es ID
-    QString fieldName = nameItem ? nameItem->text().toLower() : "";
-    requiredCheck->setChecked(fieldName == "id");
+    // Verificar si esta fila es la llave primaria
+    bool isPrimaryKey = (primaryKeyRow == row);
+    requiredCheck->setChecked(isPrimaryKey);
     
     // Actualizar propiedades específicas según el tipo de dato
     updateSpecificProperties(dataType);
@@ -632,7 +643,14 @@ void TableView::onFieldNameChanged(const QString &text)
     if (currentSelectedRow >= 0) {
         QTableWidgetItem *item = tableWidget->item(currentSelectedRow, 0);
         if (item) {
-            item->setText(text);
+            // Si este campo es llave primaria, agregar el icono
+            if (primaryKeyRow == currentSelectedRow && !text.isEmpty()) {
+                item->setText("🔑 " + text);
+                item->setToolTip("Campo Llave Primaria - Requerido y único");
+            } else {
+                item->setText(text);
+                item->setToolTip("");
+            }
         }
         ensureEmptyRowExists();
     }
@@ -672,8 +690,70 @@ void TableView::onDefaultValueChanged(const QString &value)
 
 void TableView::onRequiredChanged(bool required)
 {
-    Q_UNUSED(required)
-    // Por ahora no mostramos si es requerido en la tabla
+    if (currentSelectedRow < 0) return;
+    
+    if (required) {
+        // Si se está intentando marcar como requerido (llave primaria)
+        if (primaryKeyRow != -1 && primaryKeyRow != currentSelectedRow) {
+            // Ya existe otra llave primaria
+            QTableWidgetItem *existingPrimaryKeyItem = tableWidget->item(primaryKeyRow, 0);
+            QString existingFieldName = existingPrimaryKeyItem ? existingPrimaryKeyItem->text() : QString("Fila %1").arg(primaryKeyRow + 1);
+            
+            // Remover icono de llave del nombre para mostrar mensaje más limpio
+            if (existingFieldName.startsWith("🔑 ")) {
+                existingFieldName = existingFieldName.mid(3);
+            }
+            
+            QMessageBox::warning(this, "Llave Primaria Duplicada", 
+                QString("Ya existe una llave primaria en el campo '%1'.\n"
+                        "Solo puede haber una llave primaria por tabla.\n"
+                        "Desmarque primero el campo existente si desea cambiar la llave primaria.")
+                        .arg(existingFieldName));
+            
+            // Desmarcar el checkbox sin activar la señal
+            requiredCheck->blockSignals(true);
+            requiredCheck->setChecked(false);
+            requiredCheck->blockSignals(false);
+            return;
+        }
+        
+        // Marcar este campo como llave primaria
+        primaryKeyRow = currentSelectedRow;
+        
+        // Agregar el icono de llave al nombre del campo en la tabla
+        QTableWidgetItem *fieldNameItem = tableWidget->item(currentSelectedRow, 0);
+        if (fieldNameItem) {
+            QString fieldName = fieldNameItem->text();
+            // Remover cualquier icono de llave existente primero
+            if (fieldName.startsWith("🔑 ")) {
+                fieldName = fieldName.mid(3); // Remover "🔑 "
+            }
+            // Agregar el icono de llave
+            fieldNameItem->setText("🔑 " + fieldName);
+            fieldNameItem->setToolTip("Campo Llave Primaria - Requerido y único");
+            
+            qDebug() << "DEBUG: Campo marcado como llave primaria:" << fieldName << "en fila:" << currentSelectedRow;
+        }
+        
+    } else {
+        // Si se está desmarcando como requerido
+        if (primaryKeyRow == currentSelectedRow) {
+            // Remover la llave primaria
+            primaryKeyRow = -1;
+            
+            // Remover el icono de llave del nombre del campo
+            QTableWidgetItem *fieldNameItem = tableWidget->item(currentSelectedRow, 0);
+            if (fieldNameItem) {
+                QString fieldName = fieldNameItem->text();
+                if (fieldName.startsWith("🔑 ")) {
+                    fieldName = fieldName.mid(3); // Remover "🔑 "
+                    fieldNameItem->setText(fieldName);
+                    fieldNameItem->setToolTip("");
+                }
+                qDebug() << "DEBUG: Llave primaria removida del campo:" << fieldName;
+            }
+        }
+    }
 }
 
 void TableView::onDataViewClicked()
@@ -701,6 +781,12 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
     if (col == 0 && !item->text().trimmed().isEmpty()) {
         QString fieldName = item->text().trimmed();
         
+        // Si este campo tiene el icono de llave primaria, removerlo temporalmente para la comparación
+        QString cleanFieldName = fieldName;
+        if (cleanFieldName.startsWith("🔑 ")) {
+            cleanFieldName = cleanFieldName.mid(3);
+        }
+        
         // Buscar duplicados (sin importar mayúsculas/minúsculas)
         for (int checkRow = 0; checkRow < tableWidget->rowCount(); checkRow++) {
             if (checkRow == row) continue; // Saltar la fila actual
@@ -709,8 +795,13 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
             if (checkItem && !checkItem->text().trimmed().isEmpty()) {
                 QString existingName = checkItem->text().trimmed();
                 
+                // Remover icono de llave si existe para comparación
+                if (existingName.startsWith("🔑 ")) {
+                    existingName = existingName.mid(3);
+                }
+                
                 // Comparación sin considerar mayúsculas/minúsculas
-                if (fieldName.toLower() == existingName.toLower()) {
+                if (cleanFieldName.toLower() == existingName.toLower()) {
                     // Mostrar mensaje de error
                     QMessageBox::warning(this, "Campo Duplicado", 
                         QString("Ya existe un campo con el nombre '%1'.\n"
@@ -726,9 +817,17 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
                     tableWidget->setCurrentItem(item);
                     tableWidget->editItem(item);
                     
-                    qDebug() << "DEBUG: Campo duplicado detectado:" << fieldName << "vs" << existingName;
+                    qDebug() << "DEBUG: Campo duplicado detectado:" << cleanFieldName << "vs" << existingName;
                     return; // Salir sin procesar más
                 }
+            }
+        }
+        
+        // Si llegamos aquí, no hay duplicados. Restaurar el icono de llave si este es el campo llave primaria
+        if (primaryKeyRow == row) {
+            if (!cleanFieldName.isEmpty() && !fieldName.startsWith("🔑 ")) {
+                item->setText("🔑 " + cleanFieldName);
+                item->setToolTip("Campo Llave Primaria - Requerido y único");
             }
         }
     }
@@ -802,6 +901,9 @@ void TableView::addNewRow()
 
 void TableView::ensureEmptyRowExists()
 {
+    // Validar integridad de llave primaria antes de manipular filas
+    validatePrimaryKeyIntegrity();
+    
     // Verificar si necesitamos más filas vacías
     bool needNewRow = true;
     for (int row = 0; row < tableWidget->rowCount(); row++) {
@@ -960,6 +1062,12 @@ QStringList TableView::getCurrentFieldNames() const
         QTableWidgetItem *item = tableWidget->item(row, 0);
         if (item && !item->text().trimmed().isEmpty()) {
             QString fieldName = item->text().trimmed();
+            
+            // Remover el icono de llave si existe
+            if (fieldName.startsWith("🔑 ")) {
+                fieldName = fieldName.mid(3);
+            }
+            
             if (!fieldName.isEmpty()) {
                 fieldNames << fieldName;
                 qDebug() << "DEBUG: Added field name:" << fieldName;
@@ -1578,4 +1686,41 @@ void TableView::updateExampleData()
     
     // Restaurar señales
     tableWidget->blockSignals(false);
+}
+
+void TableView::validatePrimaryKeyIntegrity()
+{
+    // Si no hay llave primaria definida, no hay nada que validar
+    if (primaryKeyRow == -1) {
+        return;
+    }
+    
+    // Verificar que la fila de llave primaria aún existe y tiene datos válidos
+    if (primaryKeyRow >= tableWidget->rowCount()) {
+        // La fila de llave primaria fue eliminada
+        qDebug() << "DEBUG: Llave primaria fue eliminada. Reseteando primaryKeyRow.";
+        primaryKeyRow = -1;
+        return;
+    }
+    
+    // Verificar que el item de llave primaria aún existe y no está vacío
+    QTableWidgetItem *primaryKeyItem = tableWidget->item(primaryKeyRow, 0);
+    if (!primaryKeyItem || primaryKeyItem->text().trimmed().isEmpty()) {
+        // El campo de llave primaria está vacío
+        qDebug() << "DEBUG: Campo de llave primaria está vacío. Reseteando primaryKeyRow.";
+        primaryKeyRow = -1;
+        return;
+    }
+    
+    // Si llegamos aquí, la llave primaria es válida
+    QString fieldName = primaryKeyItem->text();
+    if (!fieldName.startsWith("🔑 ")) {
+        // Restaurar el icono de llave si fue removido accidentalmente
+        if (fieldName.startsWith("🔑 ")) {
+            fieldName = fieldName.mid(3);
+        }
+        primaryKeyItem->setText("🔑 " + fieldName);
+        primaryKeyItem->setToolTip("Campo Llave Primaria - Requerido y único");
+        qDebug() << "DEBUG: Icono de llave primaria restaurado para:" << fieldName;
+    }
 }

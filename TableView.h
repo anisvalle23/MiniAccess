@@ -134,6 +134,9 @@ private:
     QString getComboStyle();
     QString getTextEditStyle();
     
+    // Método para validar integridad de llave primaria
+    void validatePrimaryKeyIntegrity();
+    
     // UI Components
     QVBoxLayout *mainLayout;
     QWidget *headerWidget;
@@ -181,6 +184,7 @@ private:
     QString currentTableName;
     bool isDarkTheme;
     int currentSelectedRow;
+    int primaryKeyRow; // Fila que contiene la llave primaria (-1 si no hay)
     
     // Almacenar formatos de moneda por campo
     QStringList fieldCurrencyFormats;
