@@ -351,16 +351,16 @@ void TableData::createUI()
 void TableData::createHeader()
 {
     headerWidget = new QWidget();
-    headerWidget->setFixedHeight(60);
+    headerWidget->setFixedHeight(70);
     headerWidget->setStyleSheet(
         "QWidget {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f8fafc, stop:1 #e2e8f0);"
-        "border-bottom: 1px solid #cbd5e1;"
+        "border-bottom: 2px solid #cbd5e1;"
         "}"
     );
     
     QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(20, 10, 20, 10);
+    headerLayout->setContentsMargins(25, 15, 25, 15);
     
     // Título de la tabla (solo el nombre)
     tableNameLabel = new QLabel(currentTableName);
@@ -370,45 +370,66 @@ void TableData::createHeader()
     headerLayout->addWidget(tableNameLabel);
     headerLayout->addStretch();
     
-    // Contenedor para los botones
+    // Contenedor para los botones de vista
     QWidget *buttonContainer = new QWidget();
+    buttonContainer->setStyleSheet(
+        "QWidget {"
+        "background: transparent;"
+        "border: 1px solid #cbd5e1;"
+        "border-radius: 8px;"
+        "}"
+    );
     QHBoxLayout *buttonLayout = new QHBoxLayout(buttonContainer);
     buttonLayout->setContentsMargins(0, 0, 0, 0);
     buttonLayout->setSpacing(0);
     
     // Botón Vista Diseño (inactivo)
-    designViewBtn = new QPushButton("Vista Diseño");
-    designViewBtn->setFixedSize(120, 35);
+    designViewBtn = new QPushButton("🎨 Vista Diseño");
+    designViewBtn->setFixedSize(135, 38);
+    designViewBtn->setCursor(Qt::PointingHandCursor);
     designViewBtn->setStyleSheet(
         "QPushButton {"
-        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e5e7eb, stop:1 #d1d5db);"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f3f4f6, stop:1 #e5e7eb);"
         "color: #374151;"
-        "border: none;"
-        "border-top-left-radius: 6px;"
-        "border-bottom-left-radius: 6px;"
+        "border: 1px solid #d1d5db;"
+        "border-top-left-radius: 8px;"
+        "border-bottom-left-radius: 8px;"
+        "border-top-right-radius: 0px;"
+        "border-bottom-right-radius: 0px;"
         "font-weight: bold;"
         "font-size: 13px;"
+        "padding: 8px 12px;"
         "}"
         "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e5e7eb, stop:1 #d1d5db);"
+        "color: #1f2937;"
+        "box-shadow: 0 2px 4px rgba(107, 114, 128, 0.2);"
+        "}"
+        "QPushButton:pressed {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #d1d5db, stop:1 #9ca3af);"
         "}"
     );
     
     // Botón Vista Datos (activo)
-    QPushButton *dataViewBtn = new QPushButton("Vista Datos");
-    dataViewBtn->setFixedSize(120, 35);
+    QPushButton *dataViewBtn = new QPushButton("📊 Vista Datos");
+    dataViewBtn->setFixedSize(135, 38);
+    dataViewBtn->setCursor(Qt::PointingHandCursor);
     dataViewBtn->setStyleSheet(
         "QPushButton {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b82f6, stop:1 #2563eb);"
         "color: white;"
-        "border: none;"
-        "border-top-right-radius: 6px;"
-        "border-bottom-right-radius: 6px;"
+        "border: 1px solid #1d4ed8;"
+        "border-top-left-radius: 0px;"
+        "border-bottom-left-radius: 0px;"
+        "border-top-right-radius: 8px;"
+        "border-bottom-right-radius: 8px;"
         "font-weight: bold;"
         "font-size: 13px;"
+        "padding: 8px 12px;"
         "}"
         "QPushButton:hover {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2563eb, stop:1 #1d4ed8);"
+        "box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);"
         "}"
     );
     
@@ -416,10 +437,92 @@ void TableData::createHeader()
     buttonLayout->addWidget(designViewBtn);
     buttonLayout->addWidget(dataViewBtn);
     
-    // Conectar señales
+    // Conectar señales para ambos botones
     connect(designViewBtn, &QPushButton::clicked, this, &TableData::onDesignViewClicked);
     
     headerLayout->addWidget(buttonContainer);
+    
+    // Agregar espacio entre botones de vista y botones de fila
+    headerLayout->addSpacing(30);
+    
+    // Contenedor para botones de agregar/eliminar fila
+    QWidget *rowButtonContainer = new QWidget();
+    rowButtonContainer->setStyleSheet(
+        "QWidget {"
+        "background: transparent;"
+        "}"
+    );
+    QHBoxLayout *rowButtonLayout = new QHBoxLayout(rowButtonContainer);
+    rowButtonLayout->setContentsMargins(0, 0, 0, 0);
+    rowButtonLayout->setSpacing(10);
+    
+    // Botón Agregar Fila
+    QPushButton *addRowBtn = new QPushButton("➕ Agregar Fila");
+    addRowBtn->setFixedSize(130, 38);
+    addRowBtn->setCursor(Qt::PointingHandCursor);
+    addRowBtn->setStyleSheet(
+        "QPushButton {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #10b981, stop:1 #059669);"
+        "color: white;"
+        "border: 1px solid #047857;"
+        "border-radius: 8px;"
+        "font-weight: bold;"
+        "font-size: 13px;"
+        "padding: 8px 12px;"
+        "text-align: left;"
+        "}"
+        "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #059669, stop:1 #047857);"
+        "border: 1px solid #065f46;"
+        "transform: translateY(-1px);"
+        "box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);"
+        "}"
+        "QPushButton:pressed {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #047857, stop:1 #065f46);"
+        "transform: translateY(1px);"
+        "box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);"
+        "}"
+    );
+    addRowBtn->setToolTip("Agregar una nueva fila después de la seleccionada");
+    
+    // Botón Eliminar Fila
+    QPushButton *deleteRowBtn = new QPushButton("🗑️ Eliminar Fila");
+    deleteRowBtn->setFixedSize(130, 38);
+    deleteRowBtn->setCursor(Qt::PointingHandCursor);
+    deleteRowBtn->setStyleSheet(
+        "QPushButton {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ef4444, stop:1 #dc2626);"
+        "color: white;"
+        "border: 1px solid #b91c1c;"
+        "border-radius: 8px;"
+        "font-weight: bold;"
+        "font-size: 13px;"
+        "padding: 8px 12px;"
+        "text-align: left;"
+        "}"
+        "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #dc2626, stop:1 #b91c1c);"
+        "border: 1px solid #991b1b;"
+        "transform: translateY(-1px);"
+        "box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);"
+        "}"
+        "QPushButton:pressed {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #b91c1c, stop:1 #991b1b);"
+        "transform: translateY(1px);"
+        "box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);"
+        "}"
+    );
+    deleteRowBtn->setToolTip("Eliminar la fila seleccionada");
+    
+    // Agregar botones al contenedor
+    rowButtonLayout->addWidget(addRowBtn);
+    rowButtonLayout->addWidget(deleteRowBtn);
+    
+    // Conectar señales
+    connect(addRowBtn, &QPushButton::clicked, this, &TableData::addNewRow);
+    connect(deleteRowBtn, &QPushButton::clicked, this, &TableData::deleteSelectedRow);
+    
+    headerLayout->addWidget(rowButtonContainer);
     
     mainLayout->addWidget(headerWidget);
 }
@@ -1207,4 +1310,175 @@ void DataFieldDelegate::initStyleOption(QStyleOptionViewItem *option,
     } else {
         option->text = raw;
     }
+}
+
+void TableData::addNewRow()
+{
+    if (!dataTable) return;
+    
+    int newRowIndex = dataTable->rowCount();
+    dataTable->insertRow(newRowIndex);
+    
+    // Configurar la nueva fila
+    for (int col = 0; col < dataTable->columnCount(); ++col) {
+        QTableWidgetItem *item = new QTableWidgetItem("");
+        item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        dataTable->setItem(newRowIndex, col, item);
+    }
+    
+    // Seleccionar la nueva fila y enfocar la primera celda
+    dataTable->setCurrentCell(newRowIndex, 0);
+    dataTable->edit(dataTable->currentIndex());
+    
+    qDebug() << "DEBUG: Nueva fila agregada en posición" << newRowIndex;
+}
+
+void TableData::deleteSelectedRow()
+{
+    if (!dataTable) return;
+    
+    int currentRow = dataTable->currentRow();
+    
+    if (currentRow < 0) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Información");
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setText("Por favor selecciona una fila para eliminar.");
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        
+        // Estilo para botones visibles
+        msgBox.setStyleSheet(
+            "QMessageBox {"
+            "background-color: white;"
+            "color: #1f2937;"
+            "}"
+            "QPushButton {"
+            "background-color: #f3f4f6;"
+            "color: #1f2937;"
+            "border: 2px solid #d1d5db;"
+            "border-radius: 6px;"
+            "padding: 8px 16px;"
+            "font-weight: bold;"
+            "min-width: 80px;"
+            "}"
+            "QPushButton:hover {"
+            "background-color: #e5e7eb;"
+            "border-color: #9ca3af;"
+            "}"
+            "QPushButton:pressed {"
+            "background-color: #d1d5db;"
+            "border-color: #6b7280;"
+            "}"
+        );
+        
+        msgBox.exec();
+        return;
+    }
+    
+    // Verificar si es una fila de ejemplo
+    QTableWidgetItem *firstItem = dataTable->item(currentRow, 0);
+    if (firstItem && firstItem->toolTip().contains("Ejemplo")) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("No se puede eliminar");
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setText("No se puede eliminar la fila de ejemplo.");
+        msgBox.setInformativeText("Esta fila muestra cómo se verán los datos y no se puede eliminar.");
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        
+        // Estilo para botones visibles
+        msgBox.setStyleSheet(
+            "QMessageBox {"
+            "background-color: white;"
+            "color: #1f2937;"
+            "}"
+            "QPushButton {"
+            "background-color: #f3f4f6;"
+            "color: #1f2937;"
+            "border: 2px solid #d1d5db;"
+            "border-radius: 6px;"
+            "padding: 8px 16px;"
+            "font-weight: bold;"
+            "min-width: 80px;"
+            "}"
+            "QPushButton:hover {"
+            "background-color: #e5e7eb;"
+            "border-color: #9ca3af;"
+            "}"
+            "QPushButton:pressed {"
+            "background-color: #d1d5db;"
+            "border-color: #6b7280;"
+            "}"
+        );
+        
+        msgBox.exec();
+        return;
+    }
+    
+    // Verificar si la fila tiene datos
+    bool hasData = false;
+    for (int col = 0; col < dataTable->columnCount(); ++col) {
+        QTableWidgetItem *item = dataTable->item(currentRow, col);
+        if (item && !item->text().trimmed().isEmpty()) {
+            hasData = true;
+            break;
+        }
+    }
+    
+    // Mostrar confirmación para filas con datos o sin datos
+    QString message = hasData ? 
+        "¿Estás seguro de que deseas eliminar esta fila con datos? Esta acción no se puede deshacer." :
+        "¿Estás seguro de que deseas eliminar esta fila vacía?";
+    
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Confirmar eliminación");
+    msgBox.setIcon(hasData ? QMessageBox::Question : QMessageBox::Information);
+    msgBox.setText(message);
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setDefaultButton(QMessageBox::No);
+    
+    // Cambiar texto de botones
+    msgBox.button(QMessageBox::Yes)->setText("Sí, Eliminar");
+    msgBox.button(QMessageBox::No)->setText("Cancelar");
+    
+    // Estilo para botones visibles
+    msgBox.setStyleSheet(
+        "QMessageBox {"
+        "background-color: white;"
+        "color: #1f2937;"
+        "}"
+        "QPushButton {"
+        "background-color: #f3f4f6;"
+        "color: #1f2937;"
+        "border: 2px solid #d1d5db;"
+        "border-radius: 6px;"
+        "padding: 8px 16px;"
+        "font-weight: bold;"
+        "min-width: 80px;"
+        "}"
+        "QPushButton:hover {"
+        "background-color: #e5e7eb;"
+        "border-color: #9ca3af;"
+        "}"
+        "QPushButton:pressed {"
+        "background-color: #d1d5db;"
+        "border-color: #6b7280;"
+        "}"
+    );
+    
+    if (msgBox.exec() != QMessageBox::Yes) {
+        return;
+    }
+    
+    dataTable->removeRow(currentRow);
+    
+    // Si hay filas restantes, seleccionar la siguiente o la anterior
+    if (dataTable->rowCount() > 0) {
+        int newRow = (currentRow < dataTable->rowCount()) ? currentRow : currentRow - 1;
+        if (newRow >= 0) {
+            dataTable->setCurrentCell(newRow, 0);
+        }
+    }
+    
+    qDebug() << "DEBUG: Fila eliminada en posición" << currentRow;
+    emit personDataChanged();
 }

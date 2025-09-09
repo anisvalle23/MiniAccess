@@ -69,6 +69,8 @@ private slots:
     void addNewPersonRow();
     void removeEmptyRows();
     void onDesignViewClicked();
+    void addNewRow();
+    void deleteSelectedRow();
 
 signals:
     void switchToDesignView();

@@ -19,6 +19,7 @@
 #include <QScrollArea>
 #include <QFrame>
 #include <QMessageBox>
+#include <QMessageBox>
 #include <QTimer>
 #include <QStyledItemDelegate>
 #include <QPainter>
@@ -104,6 +105,8 @@ private slots:
     void onDataViewClicked();
     void onDesignViewClicked();
     void onFieldItemChanged(QTableWidgetItem *item);
+    void onAddRowClicked();
+    void onDeleteRowClicked();
     
     // Slots para propiedades específicas
     void onTextSizeChanged(const QString &text);

@@ -262,16 +262,16 @@ void TableView::createInterface()
 void TableView::createHeader()
 {
     headerWidget = new QWidget();
-    headerWidget->setFixedHeight(60);
+    headerWidget->setFixedHeight(70);
     headerWidget->setStyleSheet(
         "QWidget {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f8fafc, stop:1 #e2e8f0);"
-        "border-bottom: 1px solid #cbd5e1;"
+        "border-bottom: 2px solid #cbd5e1;"
         "}"
     );
     
     QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(20, 10, 20, 10);
+    headerLayout->setContentsMargins(25, 15, 25, 15);
     
     // Título de la tabla (solo el nombre)
     tableNameLabel = new QLabel(currentTableName);
@@ -283,42 +283,63 @@ void TableView::createHeader()
     
     // Contenedor para los botones
     QWidget *buttonContainer = new QWidget();
+    buttonContainer->setStyleSheet(
+        "QWidget {"
+        "background: transparent;"
+        "border: 1px solid #cbd5e1;"
+        "border-radius: 8px;"
+        "}"
+    );
     QHBoxLayout *buttonLayout = new QHBoxLayout(buttonContainer);
     buttonLayout->setContentsMargins(0, 0, 0, 0);
     buttonLayout->setSpacing(0);
     
     // Botón Vista Diseño (activo por defecto)
-    QPushButton *designViewBtn = new QPushButton("Vista Diseño");
-    designViewBtn->setFixedSize(120, 35);
+    QPushButton *designViewBtn = new QPushButton("🎨 Vista Diseño");
+    designViewBtn->setFixedSize(135, 38);
+    designViewBtn->setCursor(Qt::PointingHandCursor);
     designViewBtn->setStyleSheet(
         "QPushButton {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b82f6, stop:1 #2563eb);"
         "color: white;"
-        "border: none;"
-        "border-top-left-radius: 6px;"
-        "border-bottom-left-radius: 6px;"
+        "border: 1px solid #1d4ed8;"
+        "border-top-left-radius: 8px;"
+        "border-bottom-left-radius: 8px;"
+        "border-top-right-radius: 0px;"
+        "border-bottom-right-radius: 0px;"
         "font-weight: bold;"
         "font-size: 13px;"
+        "padding: 8px 12px;"
         "}"
         "QPushButton:hover {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2563eb, stop:1 #1d4ed8);"
+        "box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);"
         "}"
     );
     
     // Botón Vista Datos
-    dataViewBtn = new QPushButton("Vista Datos");
-    dataViewBtn->setFixedSize(120, 35);
+    dataViewBtn = new QPushButton("📊 Vista Datos");
+    dataViewBtn->setFixedSize(135, 38);
+    dataViewBtn->setCursor(Qt::PointingHandCursor);
     dataViewBtn->setStyleSheet(
         "QPushButton {"
-        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e5e7eb, stop:1 #d1d5db);"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f3f4f6, stop:1 #e5e7eb);"
         "color: #374151;"
-        "border: none;"
-        "border-top-right-radius: 6px;"
-        "border-bottom-right-radius: 6px;"
+        "border: 1px solid #d1d5db;"
+        "border-top-left-radius: 0px;"
+        "border-bottom-left-radius: 0px;"
+        "border-top-right-radius: 8px;"
+        "border-bottom-right-radius: 8px;"
         "font-weight: bold;"
         "font-size: 13px;"
+        "padding: 8px 12px;"
         "}"
         "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e5e7eb, stop:1 #d1d5db);"
+        "color: #1f2937;"
+        "box-shadow: 0 2px 4px rgba(107, 114, 128, 0.2);"
+        "}"
+        "QPushButton:pressed {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #d1d5db, stop:1 #9ca3af);"
         "}"
     );
@@ -332,6 +353,88 @@ void TableView::createHeader()
     connect(designViewBtn, &QPushButton::clicked, this, &TableView::onDesignViewClicked);
     
     headerLayout->addWidget(buttonContainer);
+    
+    // Agregar espacio entre botones de vista y botones de fila
+    headerLayout->addSpacing(30);
+    
+    // Contenedor para botones de agregar/eliminar fila
+    QWidget *rowButtonContainer = new QWidget();
+    rowButtonContainer->setStyleSheet(
+        "QWidget {"
+        "background: transparent;"
+        "}"
+    );
+    QHBoxLayout *rowButtonLayout = new QHBoxLayout(rowButtonContainer);
+    rowButtonLayout->setContentsMargins(0, 0, 0, 0);
+    rowButtonLayout->setSpacing(10);
+    
+    // Botón Agregar Fila
+    QPushButton *addRowBtn = new QPushButton("➕ Agregar Fila");
+    addRowBtn->setFixedSize(130, 38);
+    addRowBtn->setCursor(Qt::PointingHandCursor);
+    addRowBtn->setStyleSheet(
+        "QPushButton {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #10b981, stop:1 #059669);"
+        "color: white;"
+        "border: 1px solid #047857;"
+        "border-radius: 8px;"
+        "font-weight: bold;"
+        "font-size: 13px;"
+        "padding: 8px 12px;"
+        "text-align: left;"
+        "}"
+        "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #059669, stop:1 #047857);"
+        "border: 1px solid #065f46;"
+        "transform: translateY(-1px);"
+        "box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);"
+        "}"
+        "QPushButton:pressed {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #047857, stop:1 #065f46);"
+        "transform: translateY(1px);"
+        "box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);"
+        "}"
+    );
+    addRowBtn->setToolTip("Agregar una nueva fila después de la seleccionada");
+    
+    // Botón Eliminar Fila
+    QPushButton *deleteRowBtn = new QPushButton("🗑️ Eliminar Fila");
+    deleteRowBtn->setFixedSize(130, 38);
+    deleteRowBtn->setCursor(Qt::PointingHandCursor);
+    deleteRowBtn->setStyleSheet(
+        "QPushButton {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ef4444, stop:1 #dc2626);"
+        "color: white;"
+        "border: 1px solid #b91c1c;"
+        "border-radius: 8px;"
+        "font-weight: bold;"
+        "font-size: 13px;"
+        "padding: 8px 12px;"
+        "text-align: left;"
+        "}"
+        "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #dc2626, stop:1 #b91c1c);"
+        "border: 1px solid #991b1b;"
+        "transform: translateY(-1px);"
+        "box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);"
+        "}"
+        "QPushButton:pressed {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #b91c1c, stop:1 #991b1b);"
+        "transform: translateY(1px);"
+        "box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);"
+        "}"
+    );
+    deleteRowBtn->setToolTip("Eliminar la fila seleccionada");
+    
+    // Agregar botones al contenedor
+    rowButtonLayout->addWidget(addRowBtn);
+    rowButtonLayout->addWidget(deleteRowBtn);
+    
+    // Conectar señales
+    connect(addRowBtn, &QPushButton::clicked, this, &TableView::onAddRowClicked);
+    connect(deleteRowBtn, &QPushButton::clicked, this, &TableView::onDeleteRowClicked);
+    
+    headerLayout->addWidget(rowButtonContainer);
     
     mainLayout->addWidget(headerWidget);
 }
@@ -704,11 +807,43 @@ void TableView::onRequiredChanged(bool required)
                 existingFieldName = existingFieldName.mid(3);
             }
             
-            QMessageBox::warning(this, "Llave Primaria Duplicada", 
-                QString("Ya existe una llave primaria en el campo '%1'.\n"
-                        "Solo puede haber una llave primaria por tabla.\n"
-                        "Desmarque primero el campo existente si desea cambiar la llave primaria.")
-                        .arg(existingFieldName));
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("🔑 Llave Primaria Duplicada");
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setText(QString("<h3>Solo Una Llave Primaria</h3>"));
+            msgBox.setInformativeText(QString("Ya existe una llave primaria en el campo <b>'%1'</b>.<br><br>"
+                                             "⚠️ <b>Restricción:</b> Solo puede haber una llave primaria por tabla.<br><br>"
+                                             "Para cambiar la llave primaria, primero desmarque el campo existente.")
+                                             .arg(existingFieldName));
+            msgBox.setStandardButtons(QMessageBox::Ok);
+            msgBox.button(QMessageBox::Ok)->setText("Entendido");
+            
+            // Estilo para botones visibles
+            msgBox.setStyleSheet(
+                "QMessageBox {"
+                "background-color: white;"
+                "color: #1f2937;"
+                "}"
+                "QPushButton {"
+                "background-color: #f3f4f6;"
+                "color: #1f2937;"
+                "border: 2px solid #d1d5db;"
+                "border-radius: 6px;"
+                "padding: 8px 16px;"
+                "font-weight: bold;"
+                "min-width: 80px;"
+                "}"
+                "QPushButton:hover {"
+                "background-color: #e5e7eb;"
+                "border-color: #9ca3af;"
+                "}"
+                "QPushButton:pressed {"
+                "background-color: #d1d5db;"
+                "border-color: #6b7280;"
+                "}"
+            );
+            
+            msgBox.exec();
             
             // Desmarcar el checkbox sin activar la señal
             requiredCheck->blockSignals(true);
@@ -768,6 +903,260 @@ void TableView::onDesignViewClicked()
     // No necesita hacer nada ya que estamos en la vista de diseño
 }
 
+void TableView::onAddRowClicked()
+{
+    qDebug() << "DEBUG: Agregar fila después de la seleccionada";
+    
+    int selectedRow = tableWidget->currentRow();
+    int insertRow;
+    
+    if (selectedRow == -1) {
+        // Si no hay fila seleccionada, agregar al final
+        insertRow = tableWidget->rowCount();
+        qDebug() << "DEBUG: No hay fila seleccionada, agregando al final en posición:" << insertRow;
+    } else {
+        // Agregar después de la fila seleccionada
+        insertRow = selectedRow + 1;
+        qDebug() << "DEBUG: Fila seleccionada:" << selectedRow << ", insertando en posición:" << insertRow;
+    }
+    
+    // Insertar nueva fila
+    tableWidget->insertRow(insertRow);
+    
+    // Ajustar primaryKeyRow si es necesario
+    if (primaryKeyRow != -1 && primaryKeyRow >= insertRow) {
+        primaryKeyRow++;
+        qDebug() << "DEBUG: Ajustando primaryKeyRow a:" << primaryKeyRow;
+    }
+    
+    // Crear items para la nueva fila
+    for (int col = 0; col < tableWidget->columnCount(); col++) {
+        QTableWidgetItem *item = new QTableWidgetItem("");
+        
+        // Configurar fuente más grande para mejor legibilidad
+        QFont itemFont = item->font();
+        itemFont.setPointSize(14);
+        item->setFont(itemFont);
+        
+        // Solo la primera columna está habilitada inicialmente
+        if (col == 0) {
+            item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+            item->setBackground(QBrush(QColor(255, 255, 255)));
+        } else {
+            item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+            item->setBackground(QBrush(QColor(245, 245, 245))); // Deshabilitada
+        }
+        
+        tableWidget->setItem(insertRow, col, item);
+    }
+    
+    // Seleccionar la nueva fila
+    tableWidget->setCurrentCell(insertRow, 0);
+    
+    // Emitir señal para actualizar vista de datos
+    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+    
+    qDebug() << "DEBUG: Fila agregada exitosamente en posición:" << insertRow;
+}
+
+void TableView::onDeleteRowClicked()
+{
+    qDebug() << "DEBUG: Eliminar fila seleccionada";
+    
+    int selectedRow = tableWidget->currentRow();
+    
+    if (selectedRow == -1) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Eliminar Fila");
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setText(QString("<h3>Ninguna Fila Seleccionada</h3>"));
+        msgBox.setInformativeText("Por favor seleccione una fila para eliminar.");
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.button(QMessageBox::Ok)->setText("Entendido");
+        
+        // Estilo para botones visibles
+        msgBox.setStyleSheet(
+            "QMessageBox {"
+            "background-color: white;"
+            "color: #1f2937;"
+            "}"
+            "QPushButton {"
+            "background-color: #f3f4f6;"
+            "color: #1f2937;"
+            "border: 2px solid #d1d5db;"
+            "border-radius: 6px;"
+            "padding: 8px 16px;"
+            "font-weight: bold;"
+            "min-width: 80px;"
+            "}"
+            "QPushButton:hover {"
+            "background-color: #e5e7eb;"
+            "border-color: #9ca3af;"
+            "}"
+            "QPushButton:pressed {"
+            "background-color: #d1d5db;"
+            "border-color: #6b7280;"
+            "}"
+        );
+        
+        msgBox.exec();
+        return;
+    }
+    
+    // Verificar que hay al menos una fila con datos para mantener
+    QTableWidgetItem *firstItem = tableWidget->item(selectedRow, 0);
+    bool isEmptyRow = !firstItem || firstItem->text().trimmed().isEmpty();
+    
+    // Verificar si la fila a eliminar es la llave primaria
+    if (primaryKeyRow == selectedRow && !isEmptyRow) {
+        QString fieldName = firstItem->text();
+        if (fieldName.startsWith("🔑 ")) {
+            fieldName = fieldName.mid(3);
+        }
+        
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("🔑 Eliminar Llave Primaria");
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setText(QString("<h3>Eliminar Campo Llave Primaria</h3>"));
+        msgBox.setInformativeText(QString("Está a punto de eliminar el campo llave primaria <b>'%1'</b>.<br><br>"
+                                         "⚠️ <b>Advertencia:</b> Este campo es único e irrecuperable.<br>"
+                                         "¿Está seguro de que desea continuar?")
+                                         .arg(fieldName));
+        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        msgBox.setDefaultButton(QMessageBox::No);
+        
+        // Cambiar texto de botones
+        msgBox.button(QMessageBox::Yes)->setText("Sí, Eliminar");
+        msgBox.button(QMessageBox::No)->setText("No, Cancelar");
+        
+        // Estilo para botones visibles
+        msgBox.setStyleSheet(
+            "QMessageBox {"
+            "background-color: white;"
+            "color: #1f2937;"
+            "}"
+            "QPushButton {"
+            "background-color: #f3f4f6;"
+            "color: #1f2937;"
+            "border: 2px solid #d1d5db;"
+            "border-radius: 6px;"
+            "padding: 8px 16px;"
+            "font-weight: bold;"
+            "min-width: 80px;"
+            "}"
+            "QPushButton:hover {"
+            "background-color: #e5e7eb;"
+            "border-color: #9ca3af;"
+            "}"
+            "QPushButton:pressed {"
+            "background-color: #d1d5db;"
+            "border-color: #6b7280;"
+            "}"
+        );
+        
+        if (msgBox.exec() == QMessageBox::No) {
+            return;
+        }
+        
+        // Resetear llave primaria
+        primaryKeyRow = -1;
+        qDebug() << "DEBUG: Llave primaria eliminada";
+    }
+    
+    // Confirmar eliminación - diferente mensaje para filas vacías vs filas con datos
+    QString fieldName = firstItem ? firstItem->text() : "";
+    if (fieldName.startsWith("🔑 ")) {
+        fieldName = fieldName.mid(3);
+    }
+    
+    QString message, title;
+    if (isEmptyRow) {
+        title = "Eliminar Fila Vacía";
+        message = "¿Está seguro de que desea eliminar esta fila vacía?";
+    } else {
+        title = "Confirmar Eliminación";
+        message = QString("¿Está seguro de que desea eliminar el campo <b>'%1'</b>?<br><br>"
+                         "Esta acción no se puede deshacer.")
+                         .arg(fieldName.isEmpty() ? QString("Fila %1").arg(selectedRow + 1) : fieldName);
+    }
+    
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle(title);
+    msgBox.setIcon(isEmptyRow ? QMessageBox::Information : QMessageBox::Question);
+    msgBox.setText(isEmptyRow ? message : QString("<h3>Eliminar Campo</h3>"));
+    if (!isEmptyRow) {
+        msgBox.setInformativeText(message);
+    } else {
+        msgBox.setText(message);
+    }
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setDefaultButton(QMessageBox::No);
+    
+    // Cambiar texto de botones
+    msgBox.button(QMessageBox::Yes)->setText("Sí, Eliminar");
+    msgBox.button(QMessageBox::No)->setText("Cancelar");
+    
+    // Estilo para botones visibles
+    msgBox.setStyleSheet(
+        "QMessageBox {"
+        "background-color: white;"
+        "color: #1f2937;"
+        "}"
+        "QPushButton {"
+        "background-color: #f3f4f6;"
+        "color: #1f2937;"
+        "border: 2px solid #d1d5db;"
+        "border-radius: 6px;"
+        "padding: 8px 16px;"
+        "font-weight: bold;"
+        "min-width: 80px;"
+        "}"
+        "QPushButton:hover {"
+        "background-color: #e5e7eb;"
+        "border-color: #9ca3af;"
+        "}"
+        "QPushButton:pressed {"
+        "background-color: #d1d5db;"
+        "border-color: #6b7280;"
+        "}"
+    );
+    
+    if (msgBox.exec() == QMessageBox::No) {
+        return;
+    }
+    
+    // Ajustar primaryKeyRow si es necesario
+    if (primaryKeyRow != -1) {
+        if (primaryKeyRow > selectedRow) {
+            primaryKeyRow--;
+            qDebug() << "DEBUG: Ajustando primaryKeyRow a:" << primaryKeyRow;
+        } else if (primaryKeyRow == selectedRow) {
+            primaryKeyRow = -1; // Se eliminó la fila de llave primaria
+        }
+    }
+    
+    // Eliminar la fila
+    tableWidget->removeRow(selectedRow);
+    
+    // Asegurar que siempre haya una fila vacía al final
+    ensureEmptyRowExists();
+    
+    // Seleccionar la fila anterior o la primera si eliminamos la primera
+    int newSelection = selectedRow;
+    if (newSelection >= tableWidget->rowCount()) {
+        newSelection = tableWidget->rowCount() - 1;
+    }
+    if (newSelection >= 0) {
+        tableWidget->setCurrentCell(newSelection, 0);
+        updatePropertiesForRow(newSelection);
+    }
+    
+    // Emitir señal para actualizar vista de datos
+    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+    
+    qDebug() << "DEBUG: Fila eliminada exitosamente. Nueva selección:" << newSelection;
+}
+
 void TableView::onFieldItemChanged(QTableWidgetItem *item)
 {
     if (!item) return;
@@ -802,11 +1191,45 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
                 
                 // Comparación sin considerar mayúsculas/minúsculas
                 if (cleanFieldName.toLower() == existingName.toLower()) {
-                    // Mostrar mensaje de error
-                    QMessageBox::warning(this, "Campo Duplicado", 
-                        QString("Ya existe un campo con el nombre '%1'.\n"
-                                "Los nombres de los campos deben ser únicos (sin importar mayúsculas/minúsculas).")
-                                .arg(existingName));
+                    // Mostrar mensaje de error mejorado
+                    QMessageBox msgBox(this);
+                    msgBox.setWindowTitle("❌ Campo Duplicado");
+                    msgBox.setIcon(QMessageBox::Warning);
+                    msgBox.setText(QString("<h3>Nombre de Campo Duplicado</h3>"));
+                    msgBox.setInformativeText(QString("Ya existe un campo con el nombre <b>'%1'</b>.<br><br>"
+                                                     "⚠️ <b>Restricción:</b> Los nombres de los campos deben ser únicos<br>"
+                                                     "(sin importar mayúsculas/minúsculas).<br><br>"
+                                                     "Por favor elija un nombre diferente.")
+                                                     .arg(existingName));
+                    msgBox.setStandardButtons(QMessageBox::Ok);
+                    msgBox.button(QMessageBox::Ok)->setText("Entendido");
+                    
+                    // Estilo para botones visibles
+                    msgBox.setStyleSheet(
+                        "QMessageBox {"
+                        "background-color: white;"
+                        "color: #1f2937;"
+                        "}"
+                        "QPushButton {"
+                        "background-color: #f3f4f6;"
+                        "color: #1f2937;"
+                        "border: 2px solid #d1d5db;"
+                        "border-radius: 6px;"
+                        "padding: 8px 16px;"
+                        "font-weight: bold;"
+                        "min-width: 80px;"
+                        "}"
+                        "QPushButton:hover {"
+                        "background-color: #e5e7eb;"
+                        "border-color: #9ca3af;"
+                        "}"
+                        "QPushButton:pressed {"
+                        "background-color: #d1d5db;"
+                        "border-color: #6b7280;"
+                        "}"
+                    );
+                    
+                    msgBox.exec();
                     
                     // Limpiar el campo duplicado usando blockSignals del widget table
                     tableWidget->blockSignals(true);
