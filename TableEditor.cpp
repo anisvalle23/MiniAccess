@@ -305,7 +305,7 @@ void TableEditor::createTableCreationPanel()
     bottomLayout->setSpacing(12);
     
     cancelBtn = new QPushButton("Cancelar");
-    cancelBtn->setFont(QFont("Inter", 14, QFont::Medium));
+    cancelBtn->setFont(QFont("Inter", 10, QFont::Medium));
     cancelBtn->setStyleSheet(
         "QPushButton {"
             "background-color: #F3F4F6;"
@@ -320,7 +320,7 @@ void TableEditor::createTableCreationPanel()
     );
     
     saveBtn = new QPushButton("Guardar");
-    saveBtn->setFont(QFont("Inter", 14, QFont::Medium));
+    saveBtn->setFont(QFont("Inter", 10, QFont::Medium));
     saveBtn->setStyleSheet(
         "QPushButton {"
             "background-color: #059669;"

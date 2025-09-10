@@ -3,6 +3,9 @@
 #include "ThemeTokens.h"
 #include "TableEditor.h"
 #include "RelationshipsView.h"
+#include "CreateProject.h"
+#include <QTimer>
+#include <QDebug>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), sidebarExpanded(false), currentViewIndex(0)
@@ -142,17 +145,21 @@ void MainWindow::createSidebar()
 {
     // Sidebar overlay container (positioned absolutely)
     sidebarOverlay = new QWidget(centralWidget);
-    sidebarOverlay->setGeometry(0, 40, 72, 750 - 40); // Iniciar después del header
+    sidebarOverlay->setGeometry(0, 40, 72, 710); // Altura ajustada: 750 - 40 (header) = 710
     sidebarOverlay->setStyleSheet("background-color: transparent;");
     sidebarOverlay->raise(); // Ensure it's above main content
     
     // Actual sidebar widget
     sidebarWidget = new QWidget(sidebarOverlay);
-    sidebarWidget->setFixedSize(72, 750 - 40); // Tamaño sin cubrir header inicialmente
+    sidebarWidget->setFixedSize(72, 710); // Mismo tamaño que el overlay
     sidebarWidget->setStyleSheet(
         "QWidget {"
             "background: #A4373A;"  // Burgundy background
-            "border-right: 1px solid #8B2635;"
+            "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+                "stop:0 #A4373A, stop:1 #8B2635);"  // Gradient burgundy background
+            "border-right: 2px solid #6D1D29;"
+            "border-top-right-radius: 0px;"
+            "border-bottom-right-radius: 0px;"
         "}"
     );
     
@@ -169,17 +176,17 @@ void MainWindow::createSidebar()
     sidebarWidget->installEventFilter(this);
     
     sidebarLayout = new QVBoxLayout(sidebarWidget);
-    sidebarLayout->setContentsMargins(12, 0, 12, 16); // Sin margen superior ya que el widget está posicionado correctamente
-    sidebarLayout->setSpacing(8);
+    sidebarLayout->setContentsMargins(8, 25, 8, 25); // Márgenes más equilibrados
+    sidebarLayout->setSpacing(15); // Espaciado más amplio entre elementos
     
     // Sidebar items - MiniAccess Database Manager
-    QStringList sidebarIcons = {"🏠", "📋", "🗄️", "🔗", "📝", "🔍", "📊", "⚙️"};
-    QStringList sidebarLabels = {"Vista General", "Editor de Tablas", "Base de Datos", "Relaciones", "Registros", "Consultas", "Reportes", "Configuración"};
+    QStringList sidebarIcons = {"🏠", "📋", "🔗", "🚪"};
+    QStringList sidebarLabels = {"Vista General", "Editor de Tablas", "Relaciones", "Salir"};
     
     for (int i = 0; i < sidebarIcons.size(); ++i) {
         // Create container for each sidebar item
         QWidget *itemContainer = new QWidget();
-        itemContainer->setFixedHeight(48);
+        itemContainer->setFixedHeight(60); // Altura mayor para mejor visualización
         
         QHBoxLayout *itemLayout = new QHBoxLayout(itemContainer);
         itemLayout->setContentsMargins(0, 0, 0, 0);
@@ -187,7 +194,7 @@ void MainWindow::createSidebar()
         
         // Icon button
         QPushButton *btn = new QPushButton(sidebarIcons[i]);
-        btn->setFixedSize(48, 48);
+        btn->setFixedSize(56, 56); // Botones un poco más grandes para mejor proporción
         btn->setProperty("labelText", sidebarLabels[i]);
         btn->setProperty("iconText", sidebarIcons[i]);
         
@@ -195,34 +202,49 @@ void MainWindow::createSidebar()
             "QPushButton {"
                 "background: transparent;"
                 "border: none;"
-                "border-radius: 8px;"
-                "font-size: 20px;"
+                "border-radius: 14px;" // Radio más grande para mejor apariencia
+                "font-size: 20px;" // Tamaño de fuente un poco mayor
                 "color: #FFFFFF;"  // White icons on burgundy
                 "text-align: center;"
                 "font-weight: 500;"
-                "padding: 2px;"
+                "padding: 8px;" // Padding mayor
+                "margin: 0px;" // Sin margen para mejor control
             "}"
             "QPushButton:hover {"
                 "background: rgba(255, 255, 255, 0.15);"  // White hover effect
                 "color: #FFFFFF;"
-                "border-radius: 8px;"
+                "border-radius: 14px;"
+                "transform: translateY(-2px);" // Efecto hover más pronunciado
+                "box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);"
+            "}"
+            "QPushButton:pressed {"
+                "transform: translateY(0px);"
+                "background: rgba(255, 255, 255, 0.1);"
             "}";
         
         // First button (Inicio) is active
         if (i == 0) {
             buttonStyle = 
                 "QPushButton {"
-                    "background: rgba(255, 255, 255, 0.2);"  // More prominent white background
+                    "background: rgba(255, 255, 255, 0.25);"  // More prominent white background
                     "border: none;"
-                    "border-radius: 8px;"
+                    "border-radius: 14px;"
                     "font-size: 20px;"
                     "color: #FFFFFF;"
                     "text-align: center;"
                     "font-weight: 600;"
-                    "padding: 2px;"
+                    "padding: 8px;"
+                    "margin: 0px;"
+                    "box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);"
                 "}"
                 "QPushButton:hover {"
-                    "background: rgba(255, 255, 255, 0.25);"
+                    "background: rgba(255, 255, 255, 0.35);"
+                    "transform: translateY(-2px);"
+                    "box-shadow: 0 5px 16px rgba(0, 0, 0, 0.3);"
+                "}"
+                "QPushButton:pressed {"
+                    "transform: translateY(0px);"
+                    "background: rgba(255, 255, 255, 0.2);"
                 "}";
         }
         
@@ -236,20 +258,22 @@ void MainWindow::createSidebar()
         
         // Label (initially hidden)
         QLabel *label = new QLabel(sidebarLabels[i]);
-        label->setFont(QFont("Inter", 14, QFont::Medium));
+        label->setFont(QFont("Inter", 16, QFont::Medium)); // Fuente más grande
         label->setStyleSheet(
             "QLabel {"
                 "color: #FFFFFF;"  // White text on burgundy
-                "font-weight: 500;"
-                "padding: 0;"
+                "font-weight: 600;" // Más bold
+                "padding: 0px 20px 0px 8px;" // Mejor padding
                 "margin: 0;"
+                "qproperty-alignment: AlignCenter;" // Centrado
+                "letter-spacing: -0.3px;" // Mejor espaciado
             "}"
         );
         label->setVisible(false);
         
         itemLayout->addWidget(btn);
         itemLayout->addWidget(label);
-        itemLayout->addStretch();
+        // No addStretch() here - let labels extend to full width
         
         sidebarButtons.append(btn);
         sidebarLabelsWidgets.append(label);
@@ -274,7 +298,7 @@ void MainWindow::createMainContent()
     );
     
     mainContainerLayout = new QVBoxLayout(mainContainer);
-    mainContainerLayout->setContentsMargins(72, 0, 0, 0); // Left margin ajustado al ancho del sidebar (72px)
+    mainContainerLayout->setContentsMargins(88, 8, 8, 8); // Ajustar margen cuando sidebar se expande
     mainContainerLayout->setSpacing(0);
     
     // Create stacked widget for different views
@@ -304,8 +328,8 @@ void MainWindow::createHomeView()
 {
     homeView = new QWidget();
     homeViewLayout = new QVBoxLayout(homeView);
-    homeViewLayout->setContentsMargins(40, 40, 40, 40);
-    homeViewLayout->setSpacing(32);
+    homeViewLayout->setContentsMargins(24, 24, 24, 24); // Márgenes más equilibrados
+    homeViewLayout->setSpacing(24); // Espaciado más compacto
     
     createWelcomeSection();
     createDatabaseSection();
@@ -538,8 +562,8 @@ void MainWindow::onSidebarEnter()
     if (sidebarExpanded) return;
     
     // Expand sidebar width
-    sidebarOverlay->setGeometry(0, 40, 240, 750 - 40); // Ajustado para header de 40px
-    sidebarWidget->setFixedWidth(240);
+    sidebarOverlay->setGeometry(0, 40, 260, 710); // Ancho un poco mayor para mejor visualización
+    sidebarWidget->setFixedWidth(260);
     sidebarShadowEffect->setEnabled(true);
     
     // Show labels
@@ -555,7 +579,7 @@ void MainWindow::onSidebarLeave()
     if (!sidebarExpanded) return;
     
     // Collapse sidebar width
-    sidebarOverlay->setGeometry(0, 40, 72, 750 - 40); // Ajustado para header de 40px
+    sidebarOverlay->setGeometry(0, 40, 72, 710); // Altura consistente
     sidebarWidget->setFixedWidth(72);
     sidebarShadowEffect->setEnabled(false);
     
@@ -574,14 +598,19 @@ void MainWindow::onSidebarItemClicked()
 
 void MainWindow::updateSidebarTheme(bool isDark)
 {
-    // Sidebar always uses burgundy but with different shades
-    QString sidebarBackground = isDark ? "#8B2635" : "#A4373A";  // Darker burgundy for dark theme
-    QString borderColor = isDark ? "#6D1D29" : "#8B2635";
+    // Sidebar always uses burgundy but with different shades and gradients
+    QString sidebarBackground = isDark ? 
+        "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #8B2635, stop:1 #6D1D29)" :
+        "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #A4373A, stop:1 #8B2635)";
+    
+    QString borderColor = isDark ? "#4A1419" : "#6D1D29";
     
     sidebarWidget->setStyleSheet(QString(
         "QWidget {"
             "background: %1;"
-            "border-right: 1px solid %2;"
+            "border-right: 2px solid %2;"
+            "border-top-right-radius: 0px;"
+            "border-bottom-right-radius: 0px;"
         "}"
     ).arg(sidebarBackground, borderColor));
     
@@ -595,37 +624,52 @@ void MainWindow::updateSidebarTheme(bool isDark)
             "QPushButton {"
                 "background: transparent;"
                 "border: none;"
-                "border-radius: 8px;"
-                "font-size: 20px;"
+                "border-radius: 12px;"
+                "font-size: 18px;"
                 "color: %1;"
                 "text-align: center;"
                 "font-weight: 500;"
-                "padding: 2px;"
+                "padding: 6px;"
+                "margin: 2px;"
             "}"
             "QPushButton:hover {"
                 "background: %2;"
                 "color: #FFFFFF;"
-                "border-radius: 8px;"
+                "border-radius: 12px;"
+                "transform: translateY(-1px);"
+                "box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);"
+            "}"
+            "QPushButton:pressed {"
+                "transform: translateY(0px);"
+                "background: rgba(255, 255, 255, 0.1);"
             "}"
         ).arg(iconColor, hoverBg);
         
-        // First button (Inicio) is active
+        // First button (Inicio) is active by default
         if (i == 0) {
-            QString activeBg = isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.2)";
+            QString activeBg = isDark ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.25)";
             
             buttonStyle = QString(
                 "QPushButton {"
                     "background: %1;"
                     "border: none;"
-                    "border-radius: 8px;"
-                    "font-size: 20px;"
+                    "border-radius: 12px;"
+                    "font-size: 18px;"
                     "color: #FFFFFF;"
                     "text-align: center;"
                     "font-weight: 600;"
-                    "padding: 2px;"
+                    "padding: 6px;"
+                    "margin: 2px;"
+                    "box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);"
                 "}"
                 "QPushButton:hover {"
                     "background: %2;"
+                    "transform: translateY(-1px);"
+                    "box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);"
+                "}"
+                "QPushButton:pressed {"
+                    "transform: translateY(0px);"
+                    "background: rgba(255, 255, 255, 0.2);"
                 "}"
             ).arg(activeBg, hoverBg);
         }
@@ -638,9 +682,11 @@ void MainWindow::updateSidebarTheme(bool isDark)
         label->setStyleSheet(
             "QLabel {"
                 "color: #FFFFFF;"  // Always white text on burgundy
-                "font-weight: 500;"
-                "padding: 0;"
+                "font-weight: 600;" // Más bold
+                "padding: 0px 20px 0px 8px;" // Mejor padding
                 "margin: 0;"
+                "qproperty-alignment: AlignCenter;" // Centrado
+                "letter-spacing: -0.3px;" // Mejor espaciado
             "}"
         );
     }
@@ -720,14 +766,33 @@ void MainWindow::switchToView(int viewIndex)
             tableEditorView->updateTheme(ThemeManager::instance().isDark());
             break;
         case 2:
-            // Relationships view (skip "Base de Datos" - index 2 in sidebar is actually "Relaciones" - index 3)
-            stackedWidget->setCurrentIndex(0);
-            break;
-        case 3:
             // Relationships view
             stackedWidget->setCurrentIndex(2);
             // Update relationships view theme if needed
             relationshipsView->updateTheme(ThemeManager::instance().isDark());
+            break;
+        case 3:
+            // Salir - Volver a CreateProject
+            {
+                qDebug() << "DEBUG: Salir clickeado - volviendo a CreateProject";
+                
+                try {
+                    // Crear ventana CreateProject
+                    CreateProject *createProjectWindow = new CreateProject(nullptr);
+                    createProjectWindow->show();
+                    
+                    // Cerrar la ventana actual con un pequeño delay
+                    QTimer::singleShot(100, this, [this]() {
+                        qDebug() << "DEBUG: Cerrando MainWindow";
+                        this->close();
+                    });
+                    
+                } catch (const std::exception& e) {
+                    qDebug() << "DEBUG: Excepción al volver a CreateProject:" << e.what();
+                } catch (...) {
+                    qDebug() << "DEBUG: Excepción desconocida al volver a CreateProject";
+                }
+            }
             break;
         default:
             // For now, other views will show home
@@ -750,21 +815,29 @@ void MainWindow::updateSidebarSelection(int selectedIndex)
         
         if (i == selectedIndex) {
             // Selected button style
-            QString activeBg = isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(255, 255, 255, 0.2)";
+            QString activeBg = isDark ? "rgba(255, 255, 255, 0.2)" : "rgba(255, 255, 255, 0.25)";
             
             buttonStyle = QString(
                 "QPushButton {"
                     "background: %1;"
                     "border: none;"
-                    "border-radius: 8px;"
-                    "font-size: 20px;"
+                    "border-radius: 12px;"
+                    "font-size: 18px;"
                     "color: #FFFFFF;"
                     "text-align: center;"
                     "font-weight: 600;"
-                    "padding: 2px;"
+                    "padding: 6px;"
+                    "margin: 2px;"
+                    "box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);"
                 "}"
                 "QPushButton:hover {"
                     "background: %2;"
+                    "transform: translateY(-1px);"
+                    "box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);"
+                "}"
+                "QPushButton:pressed {"
+                    "transform: translateY(0px);"
+                    "background: rgba(255, 255, 255, 0.2);"
                 "}"
             ).arg(activeBg, hoverBg);
         } else {
@@ -773,17 +846,24 @@ void MainWindow::updateSidebarSelection(int selectedIndex)
                 "QPushButton {"
                     "background: transparent;"
                     "border: none;"
-                    "border-radius: 8px;"
-                    "font-size: 20px;"
+                    "border-radius: 12px;"
+                    "font-size: 18px;"
                     "color: %1;"
                     "text-align: center;"
                     "font-weight: 500;"
-                    "padding: 2px;"
+                    "padding: 6px;"
+                    "margin: 2px;"
                 "}"
                 "QPushButton:hover {"
                     "background: %2;"
                     "color: #FFFFFF;"
-                    "border-radius: 8px;"
+                    "border-radius: 12px;"
+                    "transform: translateY(-1px);"
+                    "box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);"
+                "}"
+                "QPushButton:pressed {"
+                    "transform: translateY(0px);"
+                    "background: rgba(255, 255, 255, 0.1);"
                 "}"
             ).arg(iconColor, hoverBg);
         }
