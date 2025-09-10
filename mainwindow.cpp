@@ -154,7 +154,6 @@ void MainWindow::createSidebar()
     sidebarWidget->setFixedSize(72, 710); // Mismo tamaño que el overlay
     sidebarWidget->setStyleSheet(
         "QWidget {"
-            "background: #A4373A;"  // Burgundy background
             "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
                 "stop:0 #A4373A, stop:1 #8B2635);"  // Gradient burgundy background
             "border-right: 2px solid #6D1D29;"
