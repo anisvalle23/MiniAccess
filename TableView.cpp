@@ -1537,6 +1537,33 @@ QStringList TableView::getCurrentFieldNames() const
     return fieldNames;
 }
 
+QStringList TableView::getAllFieldNames() const
+{
+    QStringList fieldNames;
+    
+    // Verificar que la tabla existe y tiene filas
+    if (!tableWidget || tableWidget->rowCount() == 0) {
+        qDebug() << "DEBUG: TableWidget is null or has no rows";
+        return fieldNames;
+    }
+    
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *item = tableWidget->item(row, 0);
+        if (item && !item->text().trimmed().isEmpty()) {
+            QString fieldName = item->text().trimmed();
+            
+            // NO remover el icono de llave, mantenerlo para mostrar en relaciones
+            if (!fieldName.isEmpty()) {
+                fieldNames << fieldName;
+                qDebug() << "DEBUG: Added field name with key:" << fieldName;
+            }
+        }
+    }
+    
+    qDebug() << "DEBUG: getAllFieldNames() returning:" << fieldNames;
+    return fieldNames;
+}
+
 QStringList TableView::getCurrentFieldTypes() const
 {
     QStringList fieldTypes;

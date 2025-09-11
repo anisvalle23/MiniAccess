@@ -312,6 +312,18 @@ void MainWindow::createMainContent()
     // Create relationships view
     relationshipsView = new RelationshipsView();
     
+    // Set table editor reference in relationships view
+    relationshipsView->setTableEditor(tableEditorView);
+    
+    // Connect signals to auto-update relationships view when tables change
+    connect(tableEditorView, &TableEditor::tableCreated, 
+            relationshipsView, &RelationshipsView::refreshTableList);
+    connect(tableEditorView, &TableEditor::tableDeleted,
+            relationshipsView, &RelationshipsView::refreshTableList);
+    // Connect field changes for real-time updates
+    connect(tableEditorView, &TableEditor::tableFieldsChanged,
+            relationshipsView, &RelationshipsView::onTableFieldsChanged);
+    
     // Add views to stacked widget
     stackedWidget->addWidget(homeView);     // Index 0
     stackedWidget->addWidget(tableEditorView); // Index 1
