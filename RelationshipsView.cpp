@@ -683,6 +683,11 @@ void RelationshipsView::createRelationshipBetweenTables(const QString &table1, c
     if (source && target) {
         RelationshipLine *relationshipLine = new RelationshipLine(source, target, relationship_type);
         relationshipLine->updateTheme(isDarkTheme);
+        
+        // Connect double click signal to delete relationship
+        connect(relationshipLine, &RelationshipLine::doubleClicked,
+                this, &RelationshipsView::onRelationshipLineDoubleClicked);
+        
         designerScene->addItem(relationshipLine);
         relationshipLines.append(relationshipLine);
     }
@@ -1282,6 +1287,58 @@ void RelationshipsView::onRelationshipDoubleClicked(QListWidgetItem *item)
     qDebug() << "DEBUG: Relación visualizada correctamente en el diseñador";
 }
 
+void RelationshipsView::onRelationshipLineDoubleClicked(RelationshipLine* line)
+{
+    if (!line) return;
+    
+    // Get the table names and relationship type from the line
+    QString sourceTable = line->getSourceTable()->getTableName();
+    QString targetTable = line->getTargetTable()->getTableName();
+    QString relationshipType = line->getRelationshipType();
+    
+    qDebug() << "DEBUG: Doble clic en línea de relación -" << "Source:" << sourceTable << "Target:" << targetTable << "Type:" << relationshipType;
+    
+    // Find and remove the relationship from the list
+    QString relationshipDesc = QString("%1 → %2 (%3)").arg(sourceTable, targetTable, relationshipType);
+    
+    for (int i = 0; i < relationshipsListWidget->count(); ++i) {
+        QListWidgetItem *item = relationshipsListWidget->item(i);
+        if (item && item->text() == relationshipDesc) {
+            delete relationshipsListWidget->takeItem(i);
+            break;
+        }
+    }
+    
+    // Remove the visual line from the scene
+    designerScene->removeItem(line);
+    relationshipLines.removeAll(line);
+    delete line;
+    
+    // Show confirmation message
+    QMessageBox msgBox;
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setWindowTitle("🗑️ Relación Eliminada");
+    msgBox.setText("<h3>Relación Eliminada</h3>");
+    msgBox.setInformativeText(
+        QString("La relación '%1' ha sido eliminada exitosamente.\n\n"
+               "✅ La línea de conexión fue removida del diseñador.\n"
+               "✅ La relación fue eliminada de la lista.\n"
+               "✅ Las tablas permanecen intactas en el diseñador.")
+               .arg(relationshipDesc)
+    );
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.button(QMessageBox::Ok)->setText("Entendido");
+    msgBox.setStyleSheet(
+        "QMessageBox { background-color: white; min-width: 400px; min-height: 200px; }"
+        "QMessageBox QLabel { color: black; font-size: 14px; }"
+        "QPushButton { background-color: #4CAF50; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+        "QPushButton:hover { background-color: #45A049; }"
+    );
+    msgBox.exec();
+    
+    qDebug() << "DEBUG: Relación eliminada - Las tablas permanecen en el diseñador";
+}
+
 void RelationshipsView::onTableFieldsChanged(const QString &tableName)
 {
     if (!tableEditor) return;
@@ -1738,6 +1795,12 @@ void RelationshipLine::paint(QPainter *painter, const QStyleOptionGraphicsItem *
     brush.setStyle(Qt::SolidPattern);
     painter->setBrush(brush);
     painter->drawPolygon(arrowHead);
+}
+
+void RelationshipLine::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
+{
+    Q_UNUSED(event)
+    emit doubleClicked(this);
 }
 
 // Custom QGraphicsView class for drag and drop

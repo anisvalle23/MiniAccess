@@ -79,6 +79,7 @@ private slots:
     void onTableSelectionChanged();
     void onRelationshipSelectionChanged();
     void onRelationshipDoubleClicked(QListWidgetItem *item);
+    void onRelationshipLineDoubleClicked(RelationshipLine* line);
     void showTableDetails(const QString &tableName);
     void addTableToDesigner(const QString &tableName, const QPoint &position);
 
@@ -199,8 +200,10 @@ private:
     bool isDarkTheme;
 };
 
-class RelationshipLine : public QGraphicsLineItem
+class RelationshipLine : public QObject, public QGraphicsLineItem
 {
+    Q_OBJECT
+    
 public:
     RelationshipLine(TableGraphicsItem *source, TableGraphicsItem *target, 
                      const QString &relationshipType, QGraphicsItem *parent = nullptr);
@@ -211,8 +214,12 @@ public:
     TableGraphicsItem* getTargetTable() const;
     void updateTheme(bool isDark);
     
+signals:
+    void doubleClicked(RelationshipLine* line);
+    
 protected:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+    void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event) override;
     
 private:
     TableGraphicsItem *sourceTable;
