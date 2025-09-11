@@ -266,8 +266,8 @@ void RelationshipsView::createRelationshipDesigner()
     QWidget *instructionCard = new QWidget();
     instructionCard->setStyleSheet(
         "QWidget {"
-            "background: #E8F5E8;"
-            "border: 1px solid #C8E6C9;"
+            "background: #FFF5F5;"
+            "border: 1px solid #FFCDD2;"
             "border-radius: 6px;"
             "padding: 8px;"
         "}"
@@ -276,7 +276,7 @@ void RelationshipsView::createRelationshipDesigner()
     cardLayout->setMargin(8);
     
     QLabel *instructionText = new QLabel("💡 Arrastra tablas desde la lista izquierda aquí para conectarlas");
-    instructionText->setStyleSheet("color: #2E7D32; font-size: 11px; font-weight: 500;");
+    instructionText->setStyleSheet("color: #C62828; font-size: 11px; font-weight: 500;");
     instructionText->setWordWrap(true);
     
     cardLayout->addWidget(instructionText);
@@ -333,16 +333,16 @@ void RelationshipsView::createPropertiesPanel()
     propertiesGroup->setStyleSheet(
         "QGroupBox {"
             "font-weight: bold;"
-            "border: 1px solid #E8F5E8;"
+            "border: 1px solid #FFEBEE;"
             "border-radius: 8px;"
             "margin-top: 12px;"
-            "background: #F9FFF9;"
+            "background: #FFFAFA;"
         "}"
         "QGroupBox::title {"
             "subcontrol-origin: margin;"
             "left: 12px;"
             "padding: 0 6px;"
-            "color: #2E7D32;"
+            "color: #C62828;"
             "background: white;"
         "}"
     );
