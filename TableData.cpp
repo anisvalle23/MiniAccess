@@ -1336,46 +1336,49 @@ void TableData::addNewRow()
 void TableData::deleteSelectedRow()
 {
     if (!dataTable) return;
-    
+
     int currentRow = dataTable->currentRow();
-    
+
     if (currentRow < 0) {
         QMessageBox msgBox(this);
         msgBox.setWindowTitle("Información");
         msgBox.setIcon(QMessageBox::Information);
         msgBox.setText("Por favor selecciona una fila para eliminar.");
         msgBox.setStandardButtons(QMessageBox::Ok);
-        
-        // Estilo mucho más simple y visible
+
         msgBox.setStyleSheet(
             "QMessageBox {"
-                "background-color: white;"
-                "min-width: 400px;"
-                "min-height: 200px;"
+            "background-color: white;"
+            "min-width: 400px;"
+            "min-height: 200px;"
             "}"
             "QMessageBox QLabel {"
-                "color: black;"
-                "font-size: 16px;"
+            "color: black;"
+            "font-size: 16px;"
             "}"
             "QPushButton {"
-                "background-color: blue;"
-                "color: white;"
-                "font-size: 16px;"
-                "font-weight: bold;"
-                "min-width: 120px;"
-                "min-height: 50px;"
-                "border: none;"
-                "padding: 10px;"
+            "background-color: #2563eb;"   /* azul */
+            "color: white;"
+            "font-size: 16px;"
+            "font-weight: bold;"
+            "min-width: 120px;"
+            "min-height: 44px;"
+            "border: none;"
+            "padding: 10px 16px;"
+            "border-radius: 6px;"
             "}"
             "QPushButton:hover {"
-                "background-color: darkblue;"
+            "background-color: #1e40af;"   /* azul oscuro */
             "}"
-        );
-        
+            "QPushButton:pressed {"
+            "background-color: #1d4ed8;"
+            "}"
+            );
+
         msgBox.exec();
         return;
     }
-    
+
     // Verificar si es una fila de ejemplo
     QTableWidgetItem *firstItem = dataTable->item(currentRow, 0);
     if (firstItem && firstItem->toolTip().contains("Ejemplo")) {
@@ -1385,37 +1388,37 @@ void TableData::deleteSelectedRow()
         msgBox.setText("No se puede eliminar la fila de ejemplo.");
         msgBox.setInformativeText("Esta fila muestra cómo se verán los datos y no se puede eliminar.");
         msgBox.setStandardButtons(QMessageBox::Ok);
-        
-        // Estilo simple y visible
+
         msgBox.setStyleSheet(
             "QMessageBox {"
-                "background-color: white;"
-                "min-width: 400px;"
-                "min-height: 200px;"
+            "background-color: white;"
+            "min-width: 420px;"
+            "min-height: 200px;"
             "}"
             "QMessageBox QLabel {"
-                "color: black;"
-                "font-size: 16px;"
+            "color: #111827;"
+            "font-size: 16px;"
             "}"
             "QPushButton {"
-                "background-color: orange;"
-                "color: black;"
-                "font-size: 16px;"
-                "font-weight: bold;"
-                "min-width: 120px;"
-                "min-height: 50px;"
-                "border: 2px solid black;"
-                "padding: 10px;"
+            "background-color: #f59e0b;"   /* naranja */
+            "color: #111827;"
+            "font-size: 16px;"
+            "font-weight: 600;"
+            "min-width: 120px;"
+            "min-height: 44px;"
+            "border: 2px solid #111827;"
+            "padding: 10px 16px;"
+            "border-radius: 6px;"
             "}"
             "QPushButton:hover {"
-                "background-color: darkorange;"
+            "background-color: #d97706;"   /* naranja oscuro */
             "}"
-        );
-        
+            );
+
         msgBox.exec();
         return;
     }
-    
+
     // Verificar si la fila tiene datos
     bool hasData = false;
     for (int col = 0; col < dataTable->columnCount(); ++col) {
@@ -1425,72 +1428,115 @@ void TableData::deleteSelectedRow()
             break;
         }
     }
-    
-    // Mostrar confirmación para filas con datos o sin datos
-    QString message = hasData ? 
-        "¿Estás seguro de que deseas eliminar esta fila con datos? Esta acción no se puede deshacer." :
-        "¿Estás seguro de que deseas eliminar esta fila vacía?";
-    
+
+    // Mensaje
+    const QString message = hasData
+                                ? "¿Estás seguro de que deseas eliminar esta fila con datos? Esta acción no se puede deshacer."
+                                : "¿Estás seguro de que deseas eliminar esta fila vacía?";
+
     QMessageBox msgBox(this);
     msgBox.setWindowTitle("Confirmar eliminación");
     msgBox.setIcon(hasData ? QMessageBox::Question : QMessageBox::Information);
     msgBox.setText(message);
     msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
     msgBox.setDefaultButton(QMessageBox::No);
-    
-    // Cambiar texto de botones
-    msgBox.button(QMessageBox::Yes)->setText("Sí, Eliminar");
-    msgBox.button(QMessageBox::No)->setText("Cancelar");
-    
-    // Estilo simple y muy visible
+
+    // Estilo general del cuadro
     msgBox.setStyleSheet(
         "QMessageBox {"
-            "background-color: white;"
-            "min-width: 500px;"
-            "min-height: 250px;"
+        "background-color: white;"
+        "min-width: 520px;"
+        "min-height: 260px;"
         "}"
         "QMessageBox QLabel {"
-            "color: black;"
-            "font-size: 18px;"
-            "font-weight: bold;"
+        "color: #111827;"
+        "font-size: 18px;"
+        "font-weight: 600;"
         "}"
+        /* Estilo base por si no asignamos estilos por-botón */
         "QPushButton {"
-            "background-color: red;"
+        "font-size: 18px;"
+        "font-weight: bold;"
+        "min-width: 150px;"
+        "min-height: 56px;"
+        "border: 3px solid #111827;"
+        "padding: 14px 18px;"
+        "margin: 10px;"
+        "border-radius: 8px;"
+        "background-color: #e5e7eb;" /* gris claro */
+        "color: #111827;"
+        "}"
+        "QPushButton:hover {"
+        "background-color: #d1d5db;"
+        "}"
+        );
+
+    // Obtener y personalizar botones (texto y color sólido)
+    QAbstractButton *yesBtn = msgBox.button(QMessageBox::Yes);
+    QAbstractButton *noBtn  = msgBox.button(QMessageBox::No);
+
+    if (yesBtn) {
+        yesBtn->setText("Sí, Eliminar");
+        yesBtn->setStyleSheet(
+            "QPushButton {"
+            "background-color: #dc2626;"  /* rojo */
             "color: white;"
             "font-size: 18px;"
             "font-weight: bold;"
             "min-width: 150px;"
-            "min-height: 60px;"
-            "border: 3px solid black;"
-            "padding: 15px;"
+            "min-height: 56px;"
+            "border: 3px solid #111827;"
+            "padding: 14px 18px;"
             "margin: 10px;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: darkred;"
-        "}"
-        "QPushButton[text='Cancelar'] {"
-            "background-color: green;"
+            "border-radius: 8px;"
+            "}"
+            "QPushButton:hover {"
+            "background-color: #b91c1c;"  /* rojo oscuro */
+            "}"
+            "QPushButton:pressed {"
+            "background-color: #991b1b;"
+            "}"
+            );
+    }
+
+    if (noBtn) {
+        noBtn->setText("Cancelar");
+        noBtn->setStyleSheet(
+            "QPushButton {"
+            "background-color: #16a34a;"  /* verde */
             "color: white;"
-        "}"
-        "QPushButton[text='Cancelar']:hover {"
-            "background-color: darkgreen;"
-        "}"
-    );
-    
+            "font-size: 18px;"
+            "font-weight: bold;"
+            "min-width: 150px;"
+            "min-height: 56px;"
+            "border: 3px solid #111827;"
+            "padding: 14px 18px;"
+            "margin: 10px;"
+            "border-radius: 8px;"
+            "}"
+            "QPushButton:hover {"
+            "background-color: #15803d;"  /* verde oscuro */
+            "}"
+            "QPushButton:pressed {"
+            "background-color: #166534;"
+            "}"
+            );
+    }
+
     if (msgBox.exec() != QMessageBox::Yes) {
         return;
     }
-    
+
     dataTable->removeRow(currentRow);
-    
-    // Si hay filas restantes, seleccionar la siguiente o la anterior
+
+    // Seleccionar la siguiente o la anterior
     if (dataTable->rowCount() > 0) {
         int newRow = (currentRow < dataTable->rowCount()) ? currentRow : currentRow - 1;
         if (newRow >= 0) {
             dataTable->setCurrentCell(newRow, 0);
         }
     }
-    
+
     qDebug() << "DEBUG: Fila eliminada en posición" << currentRow;
     emit personDataChanged();
 }

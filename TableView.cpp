@@ -963,232 +963,256 @@ void TableView::onAddRowClicked()
 void TableView::onDeleteRowClicked()
 {
     qDebug() << "DEBUG: Eliminar fila seleccionada";
-    
+
     int selectedRow = tableWidget->currentRow();
-    
+
+    // --- Caso: no hay selección ---
     if (selectedRow == -1) {
-        QMessageBox msgBox(this);
-        msgBox.setWindowTitle("Eliminar Fila");
-        msgBox.setIcon(QMessageBox::Information);
-        msgBox.setText(QString("<h3>Ninguna Fila Seleccionada</h3>"));
-        msgBox.setInformativeText("Por favor seleccione una fila para eliminar.");
-        msgBox.setStandardButtons(QMessageBox::Ok);
-        msgBox.button(QMessageBox::Ok)->setText("Entendido");
-        
-        // Estilo simple y muy visible
-        msgBox.setStyleSheet(
+        QMessageBox box(this);
+        box.setWindowTitle("Eliminar Fila");
+        box.setIcon(QMessageBox::Information);
+        box.setText("<h3>Ninguna Fila Seleccionada</h3>");
+        box.setInformativeText("Por favor seleccione una fila para eliminar.");
+        box.setStandardButtons(QMessageBox::Ok);
+
+        // Estilo general (como tu captura)
+        box.setStyleSheet(
             "QMessageBox {"
-                "background-color: white;"
-                "min-width: 400px;"
-                "min-height: 200px;"
+            "background-color: white;"
+            "min-width: 420px;"
+            "min-height: 160px;"
             "}"
             "QMessageBox QLabel {"
-                "color: black;"
-                "font-size: 16px;"
+            "color: #0b0f19;"
+            "font-size: 14px;"
             "}"
-            "QPushButton {"
-                "background-color: blue;"
+            );
+
+        if (QAbstractButton* okBtn = box.button(QMessageBox::Ok)) {
+            okBtn->setText("Entendido");
+            okBtn->setStyleSheet(
+                "QPushButton {"
+                "background-color: #2563eb;"
                 "color: white;"
-                "font-size: 16px;"
-                "font-weight: bold;"
+                "font-size: 14px;"
+                "font-weight: 600;"
                 "min-width: 120px;"
-                "min-height: 50px;"
-                "border: 2px solid black;"
-                "padding: 10px;"
-            "}"
-            "QPushButton:hover {"
-                "background-color: darkblue;"
-            "}"
-        );
-        
-        msgBox.exec();
+                "min-height: 36px;"
+                "padding: 6px 12px;"
+                "border-radius: 10px;"
+                "border: 2px solid #1e40af;"
+                "}"
+                "QPushButton:hover {"
+                "background-color: #1e40af;"
+                "border-color: #1e3a8a;"
+                "}"
+                "QPushButton:pressed {"
+                "background-color: #1d4ed8;"
+                "}"
+                );
+        }
+
+        box.exec();
         return;
     }
-    
-    // Verificar que hay al menos una fila con datos para mantener
-    QTableWidgetItem *firstItem = tableWidget->item(selectedRow, 0);
+
+    // --- ¿Fila vacía? ---
+    QTableWidgetItem* firstItem = tableWidget->item(selectedRow, 0);
     bool isEmptyRow = !firstItem || firstItem->text().trimmed().isEmpty();
-    
-    // Verificar si la fila a eliminar es la llave primaria
+
+    // --- Confirmación especial si es la llave primaria y no está vacía ---
     if (primaryKeyRow == selectedRow && !isEmptyRow) {
         QString fieldName = firstItem->text();
-        if (fieldName.startsWith("🔑 ")) {
-            fieldName = fieldName.mid(3);
-        }
-        
-        QMessageBox msgBox(this);
-        msgBox.setWindowTitle("🔑 Eliminar Llave Primaria");
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setText(QString("<h3>Eliminar Campo Llave Primaria</h3>"));
-        msgBox.setInformativeText(QString("Está a punto de eliminar el campo llave primaria <b>'%1'</b>.<br><br>"
-                                         "⚠️ <b>Advertencia:</b> Este campo es único e irrecuperable.<br>"
-                                         "¿Está seguro de que desea continuar?")
-                                         .arg(fieldName));
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setDefaultButton(QMessageBox::No);
-        
-        // Cambiar texto de botones
-        msgBox.button(QMessageBox::Yes)->setText("Sí, Eliminar");
-        msgBox.button(QMessageBox::No)->setText("No, Cancelar");
-        
-        // Estilo simple y muy visible
-        msgBox.setStyleSheet(
+        if (fieldName.startsWith("🔑 ")) fieldName = fieldName.mid(3);
+
+        QMessageBox box(this);
+        box.setWindowTitle("🔑 Eliminar Llave Primaria");
+        box.setIcon(QMessageBox::Warning);
+        box.setText("<h3>Eliminar Campo Llave Primaria</h3>");
+        box.setInformativeText(QString(
+                                   "Está a punto de eliminar el campo llave primaria <b>'%1'</b>.<br><br>"
+                                   "⚠️ <b>Advertencia:</b> Este campo es único e irrecuperable.<br>"
+                                   "¿Está seguro de que desea continuar?")
+                                   .arg(fieldName));
+        box.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        box.setDefaultButton(QMessageBox::No);
+
+        // Estilo general (texto como tu UI)
+        box.setStyleSheet(
             "QMessageBox {"
-                "background-color: white;"
-                "min-width: 500px;"
-                "min-height: 250px;"
+            "background-color: white;"
+            "min-width: 460px;"
+            "min-height: 180px;"
             "}"
             "QMessageBox QLabel {"
-                "color: black;"
-                "font-size: 18px;"
-                "font-weight: bold;"
+            "color: #0b0f19;"
+            "font-size: 14px;"
             "}"
-            "QPushButton {"
-                "background-color: red;"
+            );
+
+        // Botón Sí (rojo compacto)
+        if (QAbstractButton* yesBtn = box.button(QMessageBox::Yes)) {
+            yesBtn->setText("Sí, Eliminar");
+            yesBtn->setStyleSheet(
+                "QPushButton {"
+                "background-color: #dc2626;"
                 "color: white;"
-                "font-size: 18px;"
-                "font-weight: bold;"
-                "min-width: 150px;"
-                "min-height: 60px;"
-                "border: 3px solid black;"
-                "padding: 15px;"
-                "margin: 10px;"
-            "}"
-            "QPushButton:hover {"
-                "background-color: darkred;"
-            "}"
-            "QPushButton[text='No, Cancelar'] {"
-                "background-color: green;"
-                "color: white;"
-            "}"
-            "QPushButton[text='No, Cancelar']:hover {"
-                "background-color: darkgreen;"
-            "}"
-        );
-        
-        if (msgBox.exec() == QMessageBox::No) {
-            return;
+                "font-size: 14px;"
+                "font-weight: 600;"
+                "min-width: 120px;"
+                "min-height: 36px;"
+                "padding: 6px 12px;"
+                "border-radius: 10px;"
+                "border: 2px solid #991b1b;"
+                "}"
+                "QPushButton:hover {"
+                "background-color: #b91c1c;"
+                "border-color: #7f1d1d;"
+                "}"
+                "QPushButton:pressed {"
+                "background-color: #991b1b;"
+                "}"
+                );
         }
-        
-        // Resetear llave primaria
+        // Botón No (verde compacto)
+        if (QAbstractButton* noBtn = box.button(QMessageBox::No)) {
+            noBtn->setText("No, Cancelar");
+            noBtn->setStyleSheet(
+                "QPushButton {"
+                "background-color: #16a34a;"
+                "color: white;"
+                "font-size: 14px;"
+                "font-weight: 600;"
+                "min-width: 120px;"
+                "min-height: 36px;"
+                "padding: 6px 12px;"
+                "border-radius: 10px;"
+                "border: 2px solid #15803d;"
+                "}"
+                "QPushButton:hover {"
+                "background-color: #15803d;"
+                "border-color: #166534;"
+                "}"
+                "QPushButton:pressed {"
+                "background-color: #166534;"
+                "}"
+                );
+        }
+
+        if (box.exec() == QMessageBox::No) return;
+
         primaryKeyRow = -1;
         qDebug() << "DEBUG: Llave primaria eliminada";
     }
-    
-    // Confirmar eliminación - diferente mensaje para filas vacías vs filas con datos
+
+    // --- Confirmación de eliminación (manteniendo tu estilo de mensaje) ---
     QString fieldName = firstItem ? firstItem->text() : "";
-    if (fieldName.startsWith("🔑 ")) {
-        fieldName = fieldName.mid(3);
-    }
-    
-    QString message, title;
+    if (fieldName.startsWith("🔑 ")) fieldName = fieldName.mid(3);
+
+    QString title, message;
     if (isEmptyRow) {
         title = "Eliminar Fila Vacía";
         message = "¿Está seguro de que desea eliminar esta fila vacía?";
     } else {
         title = "Confirmar Eliminación";
         message = QString("¿Está seguro de que desea eliminar el campo <b>'%1'</b>?<br><br>"
-                         "Esta acción no se puede deshacer.")
-                         .arg(fieldName.isEmpty() ? QString("Fila %1").arg(selectedRow + 1) : fieldName);
+                          "Esta acción no se puede deshacer.")
+                      .arg(fieldName.isEmpty() ? QString("Fila %1").arg(selectedRow + 1) : fieldName);
     }
-    
-    QMessageBox msgBox(this);
-    msgBox.setWindowTitle(title);
-    msgBox.setIcon(isEmptyRow ? QMessageBox::Information : QMessageBox::Question);
-    msgBox.setText(isEmptyRow ? message : QString("<h3>Eliminar Campo</h3>"));
-    if (!isEmptyRow) {
-        msgBox.setInformativeText(message);
+
+    QMessageBox box(this);
+    box.setWindowTitle(title);
+    box.setIcon(isEmptyRow ? QMessageBox::Information : QMessageBox::Question);
+    if (isEmptyRow) {
+        box.setText(message);
     } else {
-        msgBox.setText(message);
+        box.setText("<h3>Eliminar Campo</h3>");
+        box.setInformativeText(message);
     }
-    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-    msgBox.setDefaultButton(QMessageBox::No);
-    
-    // Cambiar texto de botones
-    msgBox.button(QMessageBox::Yes)->setText("Sí, Eliminar");
-    msgBox.button(QMessageBox::No)->setText("Cancelar");
-    
-    // Estilo para botones visibles
-    msgBox.setStyleSheet(
+    box.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    box.setDefaultButton(QMessageBox::No);
+
+    // Estilo general (igual look)
+    box.setStyleSheet(
         "QMessageBox {"
-            "background-color: white;"
-            "color: black;"
-            "font-size: 14px;"
-            "min-width: 450px;"
-            "min-height: 180px;"
+        "background-color: white;"
+        "min-width: 460px;"
+        "min-height: 180px;"
         "}"
         "QMessageBox QLabel {"
-            "color: black;"
-            "font-size: 14px;"
-            "font-weight: normal;"
+        "color: #0b0f19;"
+        "font-size: 14px;"
         "}"
-        "QPushButton {"
-            "background-color: #e5e7eb;"
-            "color: black;"
-            "border: 2px solid #9ca3af;"
-            "border-radius: 8px;"
-            "padding: 12px 24px;"
-            "font-weight: bold;"
-            "font-size: 14px;"
-            "min-width: 120px;"
-            "min-height: 40px;"
-            "margin: 5px;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: #d1d5db;"
-            "border-color: #6b7280;"
-            "color: black;"
-        "}"
-        "QPushButton:pressed {"
-            "background-color: #9ca3af;"
-            "border-color: #4b5563;"
-            "color: black;"
-        "}"
-        "QPushButton[text='Sí, Eliminar'] {"
+        );
+
+    // Botones compactos (sólidos, sin transparencia)
+    if (QAbstractButton* yesBtn = box.button(QMessageBox::Yes)) {
+        yesBtn->setText("Sí, Eliminar");
+        yesBtn->setStyleSheet(
+            "QPushButton {"
             "background-color: #dc2626;"
             "color: white;"
-            "border-color: #dc2626;"
-        "}"
-        "QPushButton[text='Sí, Eliminar']:hover {"
+            "font-size: 14px;"
+            "font-weight: 600;"
+            "min-width: 120px;"
+            "min-height: 36px;"
+            "padding: 6px 12px;"
+            "border-radius: 10px;"
+            "border: 2px solid #991b1b;"
+            "}"
+            "QPushButton:hover {"
             "background-color: #b91c1c;"
-            "border-color: #b91c1c;"
+            "border-color: #7f1d1d;"
+            "}"
+            "QPushButton:pressed {"
+            "background-color: #991b1b;"
+            "}"
+            );
+    }
+    if (QAbstractButton* noBtn = box.button(QMessageBox::No)) {
+        noBtn->setText("Cancelar");
+        noBtn->setStyleSheet(
+            "QPushButton {"
+            "background-color: #16a34a;"
             "color: white;"
-        "}"
-    );
-    
-    if (msgBox.exec() == QMessageBox::No) {
-        return;
+            "font-size: 14px;"
+            "font-weight: 600;"
+            "min-width: 120px;"
+            "min-height: 36px;"
+            "padding: 6px 12px;"
+            "border-radius: 10px;"
+            "border: 2px solid #15803d;"
+            "}"
+            "QPushButton:hover {"
+            "background-color: #15803d;"
+            "border-color: #166534;"
+            "}"
+            "QPushButton:pressed {"
+            "background-color: #166534;"
+            "}"
+            );
     }
-    
-    // Ajustar primaryKeyRow si es necesario
+
+    if (box.exec() == QMessageBox::No) return;
+
+    // --- Ajustes tras eliminar ---
     if (primaryKeyRow != -1) {
-        if (primaryKeyRow > selectedRow) {
-            primaryKeyRow--;
-            qDebug() << "DEBUG: Ajustando primaryKeyRow a:" << primaryKeyRow;
-        } else if (primaryKeyRow == selectedRow) {
-            primaryKeyRow = -1; // Se eliminó la fila de llave primaria
-        }
+        if (primaryKeyRow > selectedRow)      primaryKeyRow--;
+        else if (primaryKeyRow == selectedRow) primaryKeyRow = -1;
+        qDebug() << "DEBUG: Ajustando primaryKeyRow a:" << primaryKeyRow;
     }
-    
-    // Eliminar la fila
+
     tableWidget->removeRow(selectedRow);
-    
-    // Asegurar que siempre haya una fila vacía al final
     ensureEmptyRowExists();
-    
-    // Seleccionar la fila anterior o la primera si eliminamos la primera
+
     int newSelection = selectedRow;
-    if (newSelection >= tableWidget->rowCount()) {
-        newSelection = tableWidget->rowCount() - 1;
-    }
+    if (newSelection >= tableWidget->rowCount()) newSelection = tableWidget->rowCount() - 1;
     if (newSelection >= 0) {
         tableWidget->setCurrentCell(newSelection, 0);
         updatePropertiesForRow(newSelection);
     }
-    
-    // Emitir señal para actualizar vista de datos
+
     emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
-    
     qDebug() << "DEBUG: Fila eliminada exitosamente. Nueva selección:" << newSelection;
 }
 
