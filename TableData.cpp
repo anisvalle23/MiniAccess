@@ -360,12 +360,22 @@ void TableData::createHeader()
     );
     
     QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(25, 15, 25, 15);
+    headerLayout->setContentsMargins(30, 15, 25, 15);
+    headerLayout->setSpacing(20);
     
     // Título de la tabla (solo el nombre)
     tableNameLabel = new QLabel(currentTableName);
-    tableNameLabel->setFont(QFont("Arial", 18, QFont::Bold));
-    tableNameLabel->setStyleSheet("QLabel { color: #1e293b; }");
+    tableNameLabel->setFont(QFont("Inter", 18, QFont::Bold));
+    tableNameLabel->setStyleSheet(
+        "QLabel { "
+            "color: #1e293b; "
+            "padding: 2px 0px; "
+            "min-width: 150px; "
+        "}"
+    );
+    tableNameLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+    tableNameLabel->setWordWrap(false);
+    tableNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     
     headerLayout->addWidget(tableNameLabel);
     headerLayout->addStretch();
@@ -1539,4 +1549,32 @@ void TableData::deleteSelectedRow()
 
     qDebug() << "DEBUG: Fila eliminada en posición" << currentRow;
     emit personDataChanged();
+}
+
+void TableData::updateTheme(bool isDark)
+{
+    // Reaplica los estilos del header si existe
+    if (headerWidget && tableNameLabel) {
+        headerWidget->setStyleSheet(
+            "QWidget {"
+            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+            "stop:0 #f8fafc, stop:1 #e2e8f0);"
+            "border-bottom: 2px solid #cbd5e1;"
+            "}"
+        );
+        
+        tableNameLabel->setStyleSheet(
+            "QLabel { "
+                "color: #1e293b; "
+                "padding: 2px 0px; "
+                "min-width: 150px; "
+                "font-family: 'Inter', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;"
+                "font-size: 18px;"
+                "font-weight: bold;"
+            "}"
+        );
+        
+        // Fuerza una actualización del layout
+        headerWidget->update();
+    }
 }

@@ -21,6 +21,11 @@
 #include <QPropertyAnimation>
 #include <QParallelAnimationGroup>
 #include <QMap>
+#include <QMenu>
+#include <QAction>
+#include <QMessageBox>
+#include <QInputDialog>
+#include <QRegularExpression>
 #include "TableView.h"
 #include "TableData.h"
 
@@ -50,6 +55,26 @@ signals:
     void clicked();
 };
 
+// Custom table item widget with menu button
+class TableItemWidget : public QWidget
+{
+    Q_OBJECT
+public:
+    explicit TableItemWidget(const QString &tableName, QWidget *parent = nullptr);
+    QString getTableName() const { return tableName; }
+
+protected:
+    void mousePressEvent(QMouseEvent *event) override;
+
+signals:
+    void tableClicked(const QString &tableName);
+    void optionsClicked(const QString &tableName, const QPoint &pos);
+
+private:
+    QString tableName;
+    QPushButton *menuButton;
+};
+
 class TableEditor : public QWidget
 {
     Q_OBJECT
@@ -67,6 +92,7 @@ signals:
     void tableCreated(const QString &tableName);
     void tableDeleted(const QString &tableName);
     void tableFieldsChanged(const QString &tableName); // Nueva señal para cambios en campos
+    void tableRenamed(const QString &oldName, const QString &newName); // Nueva señal para renombrado
 
 private slots:
     void onCreateTableClicked();
@@ -77,6 +103,10 @@ private slots:
     void onSaveClicked();
     void onDeleteColumnClicked();
     void onSidebarItemClicked(QTreeWidgetItem *item, int column);
+    void onDeleteTableClicked();
+    void showTableContextMenu(const QPoint &pos);
+    void showTableOptionsMenu(const QString &tableName, const QPoint &pos);
+    void renameTable(const QString &oldName, const QString &newName);
 
 private:
     void setupUI();
@@ -103,6 +133,9 @@ private:
     void updateSearchComponentsTheme(bool isDark);
     void updateTreeWidgetTheme(bool isDark);
     void updateEmptyStateTheme(bool isDark);
+    void deleteTable(const QString &tableName);
+    void showStyledMessageBox(const QString &title, const QString &message, QMessageBox::Icon icon = QMessageBox::Warning);
+    bool isValidTableName(const QString &name);
     
     // UI Components
     QHBoxLayout *mainLayout;

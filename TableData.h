@@ -60,6 +60,9 @@ public:
     QString formatCurrency(const QString& raw) const;
     QString formatCurrencyWithFormat(const QString& raw, const QString& format) const; // Formatear con formato específico
     QString getCurrencyFormatForColumn(int column) const; // Obtener formato para columna específica
+    
+    // Actualizar tema
+    void updateTheme(bool isDark);
 
 
 public slots:

@@ -271,12 +271,22 @@ void TableView::createHeader()
     );
     
     QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(25, 15, 25, 15);
+    headerLayout->setContentsMargins(30, 15, 25, 15);
+    headerLayout->setSpacing(20);
     
     // Título de la tabla (solo el nombre)
     tableNameLabel = new QLabel(currentTableName);
-    tableNameLabel->setFont(QFont("Arial", 18, QFont::Bold));
-    tableNameLabel->setStyleSheet("QLabel { color: #1e293b; }");
+    tableNameLabel->setFont(QFont("Inter", 18, QFont::Bold));
+    tableNameLabel->setStyleSheet(
+        "QLabel { "
+            "color: #1e293b; "
+            "padding: 2px 0px; "
+            "min-width: 150px; "
+        "}"
+    );
+    tableNameLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
+    tableNameLabel->setWordWrap(false);
+    tableNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
     
     headerLayout->addWidget(tableNameLabel);
     headerLayout->addStretch();
@@ -1434,7 +1444,37 @@ void TableView::setTableName(const QString &tableName)
 void TableView::updateTheme(bool isDark)
 {
     isDarkTheme = isDark;
-    // Actualizar estilos según el tema
+    
+    // Reaplica los estilos del header si existe
+    if (headerWidget && tableNameLabel) {
+        headerWidget->setStyleSheet(
+            "QWidget {"
+            "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+            "stop:0 #ffffff, stop:1 #f8f9fa);"
+            "border-bottom: 2px solid #e9ecef;"
+            "margin: 0px;"
+            "padding: 0px;"
+            "}"
+        );
+        
+        tableNameLabel->setStyleSheet(
+            "QLabel {"
+            "font-family: 'Inter', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;"
+            "font-size: 20px;"
+            "font-weight: 600;"
+            "color: #2d3748;"
+            "background: transparent;"
+            "border: none;"
+            "padding: 0px;"
+            "margin: 0px;"
+            "min-width: 150px;"
+            "}"
+        );
+        
+        // Fuerza una actualización del widget
+        headerWidget->update();
+        tableNameLabel->update();
+    }
 }
 
 // Style Methods

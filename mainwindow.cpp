@@ -323,6 +323,9 @@ void MainWindow::createMainContent()
     // Connect field changes for real-time updates
     connect(tableEditorView, &TableEditor::tableFieldsChanged,
             relationshipsView, &RelationshipsView::onTableFieldsChanged);
+    // Connect table renaming for real-time updates
+    connect(tableEditorView, &TableEditor::tableRenamed,
+            relationshipsView, &RelationshipsView::onTableRenamed);
     
     // Add views to stacked widget
     stackedWidget->addWidget(homeView);     // Index 0

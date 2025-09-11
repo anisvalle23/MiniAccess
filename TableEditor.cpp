@@ -3,6 +3,11 @@
 #include <QDebug>
 #include <QTimer>
 #include <QMessageBox>
+#include <QMenu>
+#include <QAction>
+#include <QInputDialog>
+#include <QHBoxLayout>
+#include <QLabel>
 
 TableEditor::TableEditor(QWidget *parent)
     : QWidget(parent), isDarkTheme(false)
@@ -61,10 +66,13 @@ void TableEditor::createLeftPanel()
     // Table list section
     updateTableList();
 
-    // <<< AQUI es donde lo pones >>>
+    // <<< ARI es donde lo pones >>>
     connect(tableTree, &QTreeWidget::itemClicked,
             this, &TableEditor::onSidebarItemClicked,
             Qt::UniqueConnection);
+    
+    connect(tableTree, &QTreeWidget::customContextMenuRequested,
+            this, &TableEditor::showTableContextMenu);
 
     leftPanelLayout->addStretch();
 
@@ -115,6 +123,7 @@ void TableEditor::updateTableList()
     tableTree = new QTreeWidget();
     tableTree->setHeaderHidden(true);
     tableTree->setRootIsDecorated(false);
+    tableTree->setContextMenuPolicy(Qt::CustomContextMenu);
     tableTree->setStyleSheet(
         "QTreeWidget {"
             "background-color: transparent;"
@@ -139,6 +148,10 @@ void TableEditor::updateTableList()
     );
     
     tableListLayout->addWidget(tableTree);
+    
+    // Connect context menu for this new tableTree instance
+    connect(tableTree, &QTreeWidget::customContextMenuRequested,
+            this, &TableEditor::showTableContextMenu);
     
     leftPanelLayout->addWidget(tableListSection);
 }
@@ -443,8 +456,19 @@ void TableEditor::updateToolbarTheme(bool isDark)
 
 void TableEditor::updateTableTheme(bool isDark)
 {
-    // No longer need to update table theme here since TableView is a separate window
-    // Each TableView window will handle its own theme
+    // Actualizar tema de todas las vistas de tabla existentes
+    for (auto it = tableViews.begin(); it != tableViews.end(); ++it) {
+        if (it.value()) {
+            it.value()->updateTheme(isDark);
+        }
+    }
+    
+    // Actualizar tema de todas las vistas de datos existentes
+    for (auto it = tableDatas.begin(); it != tableDatas.end(); ++it) {
+        if (it.value()) {
+            it.value()->updateTheme(isDark);
+        }
+    }
 }
 
 void TableEditor::updateSearchComponentsTheme(bool isDark)
@@ -545,21 +569,39 @@ void TableEditor::onCancelClicked()
 void TableEditor::onSaveClicked()
 {
     if (!tableNameInput || tableNameInput->text().trimmed().isEmpty()) {
-        QMessageBox::warning(this, "Error", "Por favor ingresa un nombre para la tabla.");
+        showStyledMessageBox("Error", "Por favor ingresa un nombre para la tabla.");
         return;
     }
 
     QString tableName = tableNameInput->text().trimmed();
+    
+    // Validar que el nombre sea válido
+    if (!isValidTableName(tableName)) {
+        showStyledMessageBox("Nombre Inválido", 
+            "El nombre de la tabla debe:\n"
+            "• Contener solo letras, números, espacios y guiones bajos\n"
+            "• No comenzar con un número\n"
+            "• No estar vacío\n\n"
+            "Por favor elige un nombre válido.");
+        return;
+    }
+    
+    // Validar que no exista una tabla con el mismo nombre (ignorando mayúsculas/minúsculas)
+    QStringList existingTables = getCreatedTables();
+    for (const QString &existingTable : existingTables) {
+        if (existingTable.toLower() == tableName.toLower()) {
+            showStyledMessageBox("Nombre Duplicado", 
+                QString("Ya existe una tabla con el nombre '%1'.\n\nPor favor elige un nombre diferente.").arg(existingTable));
+            return; // No cerrar el panel, permitir al usuario cambiar el nombre
+        }
+    }
 
     hideCreateTablePanel();
 
-    // Si no existe ya en el sidebar, agregarlo
-    QList<QTreeWidgetItem*> found = tableTree->findItems(tableName, Qt::MatchExactly);
-    if (found.isEmpty()) {
-        addTableToSidebar(tableName);
-        // Emit signal that a new table was created
-        emit tableCreated(tableName);
-    }
+    // Agregar la tabla al sidebar
+    addTableToSidebar(tableName);
+    // Emit signal that a new table was created
+    emit tableCreated(tableName);
 
     showTableView(tableName);
     tableNameInput->clear();
@@ -710,16 +752,23 @@ void TableEditor::addTableToSidebar(const QString &tableName)
 {
     // Create new tree widget item for the table
     auto *tableItem = new QTreeWidgetItem(tableTree);
-    tableItem->setText(0, tableName);
-    tableItem->setIcon(0, QIcon("🗄️")); // You can use a proper icon here
     
-    // Connect item click to show the table
-    connect(tableTree, &QTreeWidget::itemClicked, this, [this](QTreeWidgetItem *item) {
-        if (item) {
-            QString selectedTableName = item->text(0);
-            showTableView(selectedTableName);
-        }
+    // Create custom widget for this table item
+    TableItemWidget *itemWidget = new TableItemWidget(tableName, this);
+    
+    // Connect the custom widget signals
+    connect(itemWidget, &TableItemWidget::tableClicked, this, [this](const QString &name) {
+        showTableView(name);
     });
+    
+    connect(itemWidget, &TableItemWidget::optionsClicked, this, 
+            &TableEditor::showTableOptionsMenu);
+    
+    // Set the custom widget as the tree item widget
+    tableTree->setItemWidget(tableItem, 0, itemWidget);
+    
+    // Set item data for identification
+    tableItem->setData(0, Qt::UserRole, tableName);
 }
 
 void TableEditor::showTableDataView(const QString &tableName)
@@ -840,8 +889,11 @@ void TableEditor::switchToDesignView()
 void TableEditor::onSidebarItemClicked(QTreeWidgetItem *item, int /*column*/)
 {
     if (!item) return;
-    const QString selectedTableName = item->text(0);
-    showTableView(selectedTableName);   // o showTableDataView si quieres abrir en datos
+    // Get table name from UserRole data instead of text
+    const QString selectedTableName = item->data(0, Qt::UserRole).toString();
+    if (!selectedTableName.isEmpty()) {
+        showTableView(selectedTableName);   // o showTableDataView si quieres abrir en datos
+    }
 }
 
 QStringList TableEditor::getCreatedTables() const
@@ -851,7 +903,10 @@ QStringList TableEditor::getCreatedTables() const
         for (int i = 0; i < tableTree->topLevelItemCount(); ++i) {
             QTreeWidgetItem *item = tableTree->topLevelItem(i);
             if (item) {
-                tables.append(item->text(0));
+                QString tableName = item->data(0, Qt::UserRole).toString();
+                if (!tableName.isEmpty()) {
+                    tables.append(tableName);
+                }
             }
         }
     }
@@ -879,4 +934,455 @@ QStringList TableEditor::getTableFieldsWithKeys(const QString &tableName) const 
     
     // Si no encontramos la TableView, retornar los campos sin llaves
     return getTableFields(tableName);
+}
+
+void TableEditor::showTableContextMenu(const QPoint &pos)
+{
+    QTreeWidgetItem *item = tableTree->itemAt(pos);
+    if (!item) return;
+
+    QMenu contextMenu(this);
+    contextMenu.setStyleSheet(
+        "QMenu {"
+            "background-color: #FFFFFF;"
+            "border: 1px solid #D1D5DB;"
+            "border-radius: 8px;"
+            "padding: 6px;"
+            "font-family: 'Inter';"
+            "font-size: 13px;"
+        "}"
+        "QMenu::item {"
+            "padding: 8px 12px;"
+            "margin: 2px;"
+            "border-radius: 6px;"
+            "color: #374151;"
+        "}"
+        "QMenu::item:selected {"
+            "background-color: #FEE2E2;"
+            "color: #DC2626;"
+        "}"
+    );
+    
+    // Add delete action
+    QAction *deleteAction = new QAction("🗑️ Eliminar Tabla", &contextMenu);
+    
+    connect(deleteAction, &QAction::triggered, this, [this, item]() {
+        QString tableName = item->text(0);
+        deleteTable(tableName);
+    });
+    
+    contextMenu.addAction(deleteAction);
+    
+    // Show context menu at the clicked position
+    contextMenu.exec(tableTree->mapToGlobal(pos));
+}
+
+void TableEditor::onDeleteTableClicked()
+{
+    // This can be used if you want to add a delete button elsewhere
+    if (!tableTree->currentItem()) return;
+    
+    QString tableName = tableTree->currentItem()->text(0);
+    deleteTable(tableName);
+}
+
+void TableEditor::deleteTable(const QString &tableName)
+{
+    // Show confirmation dialog
+    QMessageBox::StandardButton reply;
+    reply = QMessageBox::question(this, "Confirmar Eliminación", 
+                                 QString("¿Está seguro de que desea eliminar la tabla '%1'?\n\nEsta acción no se puede deshacer.").arg(tableName),
+                                 QMessageBox::Yes | QMessageBox::No);
+    
+    if (reply != QMessageBox::Yes) {
+        return;
+    }
+    
+    // Remove from table tree
+    for (int i = 0; i < tableTree->topLevelItemCount(); ++i) {
+        QTreeWidgetItem *item = tableTree->topLevelItem(i);
+        if (item && item->data(0, Qt::UserRole).toString() == tableName) {
+            delete tableTree->takeTopLevelItem(i);
+            break;
+        }
+    }
+    
+    // Clean up table data
+    if (tableViews.contains(tableName)) {
+        TableView *tableView = tableViews.take(tableName);
+        if (tableView) {
+            tableView->deleteLater();
+        }
+    }
+    
+    if (tableDatas.contains(tableName)) {
+        TableData *tableData = tableDatas.take(tableName);
+        if (tableData) {
+            tableData->deleteLater();
+        }
+    }
+    
+    // Remove table design data
+    if (tableDesigns.contains(tableName)) {
+        tableDesigns.remove(tableName);
+    }
+    
+    // If the deleted table was currently displayed, show welcome content
+    if (currentTableName == tableName) {
+        currentTableName.clear();
+        currentTableView = nullptr;
+        currentTableData = nullptr;
+        showWelcomeContent();
+    }
+    
+    // Emit signal to notify other components
+    emit tableDeleted(tableName);
+    
+    qDebug() << "Table deleted successfully:" << tableName;
+}
+
+void TableEditor::showTableOptionsMenu(const QString &tableName, const QPoint &pos)
+{
+    QMenu optionsMenu(this);
+    optionsMenu.setStyleSheet(
+        "QMenu {"
+            "background-color: #FFFFFF;"
+            "border: 1px solid #E5E7EB;"
+            "border-radius: 8px;"
+            "padding: 8px 0px;"
+            "min-width: 180px;"
+            "box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);"
+        "}"
+        "QMenu::item {"
+            "padding: 12px 16px;"
+            "font-family: 'Inter';"
+            "font-size: 14px;"
+            "color: #374151;"
+            "margin: 0px 4px;"
+            "border-radius: 6px;"
+        "}"
+        "QMenu::item:selected {"
+            "background-color: #F9FAFB;"
+            "color: #111827;"
+        "}"
+        "QMenu::separator {"
+            "height: 1px;"
+            "background-color: #F3F4F6;"
+            "margin: 8px 12px;"
+        "}"
+    );
+    
+    // Add edit name action
+    QAction *editAction = new QAction("✏️  Editar nombre", &optionsMenu);
+    connect(editAction, &QAction::triggered, this, [this, tableName]() {
+        bool ok;
+        QString newName = QInputDialog::getText(this, "Editar Nombre de Tabla", 
+                                              "Nuevo nombre:", QLineEdit::Normal, 
+                                              tableName, &ok);
+        if (ok && !newName.isEmpty() && newName != tableName) {
+            QString trimmedNewName = newName.trimmed();
+            
+            // Validar que el nuevo nombre sea válido
+            if (!isValidTableName(trimmedNewName)) {
+                showStyledMessageBox("Nombre Inválido", 
+                    "El nombre de la tabla debe:\n"
+                    "• Contener solo letras, números, espacios y guiones bajos\n"
+                    "• No comenzar con un número\n"
+                    "• No estar vacío\n\n"
+                    "Por favor elige un nombre válido.");
+                return;
+            }
+            
+            // Check if name already exists
+            QStringList existingTables = getCreatedTables();
+            for (const QString &existingTable : existingTables) {
+                if (existingTable.toLower() == trimmedNewName.toLower()) {
+                    showStyledMessageBox("Nombre Duplicado", 
+                        QString("Ya existe una tabla con el nombre '%1'.\n\nPor favor elige un nombre diferente.").arg(existingTable));
+                    return;
+                }
+            }
+            renameTable(tableName, trimmedNewName);
+        }
+    });
+    
+    // Add separator
+    optionsMenu.addAction(editAction);
+    optionsMenu.addSeparator();
+    
+    // Add delete action
+    QAction *deleteAction = new QAction("🗑️  Eliminar tabla", &optionsMenu);
+    deleteAction->setProperty("destructive", true);
+    connect(deleteAction, &QAction::triggered, this, [this, tableName]() {
+        deleteTable(tableName);
+    });
+    
+    optionsMenu.addAction(deleteAction);
+    
+    // Style the destructive action differently
+    deleteAction->setToolTip("Eliminar esta tabla permanentemente");
+    
+    // Show menu at the specified position
+    optionsMenu.exec(pos);
+}
+
+void TableEditor::showWelcomeContent()
+{
+    // Clear the current content area
+    QList<QWidget*> widgets = mainContentArea->findChildren<QWidget*>(QString(), Qt::FindDirectChildrenOnly);
+    for (QWidget *widget : widgets) {
+        if (widget != createTableCard) {
+            widget->hide();
+            mainContentLayout->removeWidget(widget);
+        }
+    }
+    
+    // Show the create table card if it's not already visible
+    if (createTableCard && !createTableCard->isVisible()) {
+        // Re-add the card to the layout if needed
+        QVBoxLayout *centerVerticalLayout = new QVBoxLayout();
+        centerVerticalLayout->addStretch();
+        
+        QHBoxLayout *centerLayout = new QHBoxLayout();
+        centerLayout->addStretch();
+        centerLayout->addWidget(createTableCard);
+        centerLayout->addStretch();
+        
+        centerVerticalLayout->addLayout(centerLayout);
+        centerVerticalLayout->addStretch();
+        
+        mainContentLayout->addLayout(centerVerticalLayout);
+        createTableCard->show();
+    }
+}
+
+// TableItemWidget implementation
+TableItemWidget::TableItemWidget(const QString &tableName, QWidget *parent)
+    : QWidget(parent), tableName(tableName)
+{
+    setFixedHeight(36);
+    
+    // Add hover effect to the entire widget
+    setStyleSheet(
+        "TableItemWidget {"
+            "background-color: transparent;"
+            "border-radius: 6px;"
+        "}"
+        "TableItemWidget:hover {"
+            "background-color: #F9FAFB;"
+        "}"
+    );
+    
+    QHBoxLayout *layout = new QHBoxLayout(this);
+    layout->setContentsMargins(12, 6, 8, 6);
+    layout->setSpacing(8);
+    
+    // Icon
+    QLabel *iconLabel = new QLabel("�");
+    iconLabel->setFixedSize(18, 18);
+    iconLabel->setAlignment(Qt::AlignCenter);
+    iconLabel->setFont(QFont("Inter", 14));
+    
+    // Table name label (clickable)
+    QLabel *nameLabel = new QLabel(tableName);
+    nameLabel->setFont(QFont("Inter", 13, QFont::Medium));
+    nameLabel->setStyleSheet(
+        "QLabel { "
+            "color: #374151; "
+            "padding: 2px 0px;"
+        "}"
+    );
+    nameLabel->setCursor(Qt::PointingHandCursor);
+    
+    // Menu button (3 dots)
+    menuButton = new QPushButton("•••");
+    menuButton->setFixedSize(28, 24);
+    menuButton->setFont(QFont("Inter", 12, QFont::Bold));
+    menuButton->setStyleSheet(
+        "QPushButton {"
+            "background-color: transparent;"
+            "border: 1px solid transparent;"
+            "color: #9CA3AF;"
+            "border-radius: 6px;"
+            "text-align: center;"
+            "font-weight: bold;"
+            "letter-spacing: 1px;"
+            "padding: 2px;"
+        "}"
+        "QPushButton:hover {"
+            "background-color: #F9FAFB;"
+            "border-color: #E5E7EB;"
+            "color: #6B7280;"
+        "}"
+        "QPushButton:pressed {"
+            "background-color: #F3F4F6;"
+            "border-color: #D1D5DB;"
+            "color: #374151;"
+        "}"
+    );
+    menuButton->setCursor(Qt::PointingHandCursor);
+    menuButton->setToolTip("Opciones de tabla");
+    
+    layout->addWidget(iconLabel);
+    layout->addWidget(nameLabel);
+    layout->addStretch();
+    layout->addWidget(menuButton);
+    
+    // Connect signals
+    connect(menuButton, &QPushButton::clicked, this, [this, tableName]() {
+        QPoint globalPos = menuButton->mapToGlobal(QPoint(menuButton->width() - 160, menuButton->height() + 2));
+        emit optionsClicked(tableName, globalPos);
+    });
+    
+    // Make the whole widget clickable (except menu button)
+    this->setCursor(Qt::PointingHandCursor);
+}
+
+void TableItemWidget::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        // Check if click was not on the menu button
+        QPoint clickPos = event->pos();
+        QRect menuButtonRect = menuButton->geometry();
+        
+        if (!menuButtonRect.contains(clickPos)) {
+            emit tableClicked(tableName);
+        }
+    }
+    QWidget::mousePressEvent(event);
+}
+
+void TableEditor::renameTable(const QString &oldName, const QString &newName)
+{
+    // Update the tree widget item
+    for (int i = 0; i < tableTree->topLevelItemCount(); ++i) {
+        QTreeWidgetItem *item = tableTree->topLevelItem(i);
+        if (item && item->data(0, Qt::UserRole).toString() == oldName) {
+            // Get the custom widget and update it
+            TableItemWidget *widget = qobject_cast<TableItemWidget*>(tableTree->itemWidget(item, 0));
+            if (widget) {
+                // Remove old widget and create new one with updated name
+                tableTree->removeItemWidget(item, 0);
+                TableItemWidget *newWidget = new TableItemWidget(newName, this);
+                
+                // Connect the new widget signals
+                connect(newWidget, &TableItemWidget::tableClicked, this, [this](const QString &name) {
+                    showTableView(name);
+                });
+                
+                connect(newWidget, &TableItemWidget::optionsClicked, this, 
+                        &TableEditor::showTableOptionsMenu);
+                
+                tableTree->setItemWidget(item, 0, newWidget);
+                item->setData(0, Qt::UserRole, newName);
+            }
+            break;
+        }
+    }
+    
+    // Update table designs map
+    if (tableDesigns.contains(oldName)) {
+        TableDesignData designData = tableDesigns.take(oldName);
+        tableDesigns.insert(newName, designData);
+    }
+    
+    // Update table views map
+    if (tableViews.contains(oldName)) {
+        TableView *tableView = tableViews.take(oldName);
+        if (tableView) {
+            tableView->setTableName(newName);
+            tableViews.insert(newName, tableView);
+        }
+    }
+    
+    // Update table datas map
+    if (tableDatas.contains(oldName)) {
+        TableData *tableData = tableDatas.take(oldName);
+        if (tableData) {
+            tableData->setTableName(newName);
+            tableDatas.insert(newName, tableData);
+        }
+    }
+    
+    // Update current table name if it was the renamed table
+    if (currentTableName == oldName) {
+        currentTableName = newName;
+    }
+    
+    // Emit signal to notify other components about the rename
+    qDebug() << "DEBUG TableEditor: Emitiendo tableRenamed signal:" << oldName << "->" << newName;
+    emit tableRenamed(oldName, newName);
+    
+    qDebug() << "Table renamed from" << oldName << "to" << newName;
+}
+
+void TableEditor::showStyledMessageBox(const QString &title, const QString &message, QMessageBox::Icon icon)
+{
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle(title);
+    msgBox.setText(message);
+    msgBox.setIcon(icon);
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    
+    // Aplicar estilo moderno al mensaje
+    msgBox.setStyleSheet(
+        "QMessageBox {"
+            "background-color: #FFFFFF;"
+            "color: #111827;"
+            "font-family: 'Inter';"
+            "font-size: 14px;"
+        "}"
+        "QMessageBox QLabel {"
+            "color: #111827;"
+            "font-size: 14px;"
+            "padding: 10px;"
+        "}"
+        "QPushButton {"
+            "background-color: #1F2937;"
+            "border: none;"
+            "border-radius: 6px;"
+            "color: #FFFFFF;"
+            "font-family: 'Inter';"
+            "font-size: 13px;"
+            "font-weight: 500;"
+            "padding: 8px 16px;"
+            "min-width: 80px;"
+        "}"
+        "QPushButton:hover {"
+            "background-color: #374151;"
+        "}"
+        "QPushButton:pressed {"
+            "background-color: #4B5563;"
+        "}"
+    );
+    
+    msgBox.exec();
+}
+
+bool TableEditor::isValidTableName(const QString &name)
+{
+    // Verificar que el nombre no esté vacío
+    if (name.trimmed().isEmpty()) {
+        return false;
+    }
+    
+    // Verificar que no contenga solo espacios
+    QString trimmedName = name.trimmed();
+    if (trimmedName.isEmpty()) {
+        return false;
+    }
+    
+    // Verificar que no contenga caracteres especiales problemáticos
+    // Permitir letras, números, guiones bajos y espacios
+    QRegularExpression validChars("^[a-zA-Z0-9_\\s]+$");
+    if (!validChars.match(trimmedName).hasMatch()) {
+        return false;
+    }
+    
+    // Verificar que no comience con número
+    if (trimmedName.at(0).isDigit()) {
+        return false;
+    }
+    
+    return true;
 }

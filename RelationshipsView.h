@@ -66,6 +66,7 @@ public:
     void refreshTableList();
     void addTableToDesigner(const QString &tableName, const QPointF &position);
     void setTableEditor(TableEditor *tableEditor);
+    void onTableRenamed(const QString &oldName, const QString &newName); // Nuevo método para renombrado
 
 public slots:
     void onTableFieldsChanged(const QString &tableName); // Slot público para actualización en tiempo real

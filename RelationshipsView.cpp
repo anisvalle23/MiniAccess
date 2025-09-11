@@ -1247,3 +1247,14 @@ void RelationshipDesignerView::dropEvent(QDropEvent *event)
         event->acceptProposedAction();
     }
 }
+
+void RelationshipsView::onTableRenamed(const QString &oldName, const QString &newName)
+{
+    qDebug() << "DEBUG RelationshipsView: Recibida signal tableRenamed:" << oldName << "->" << newName;
+    
+    // La forma más segura y efectiva es recargar toda la lista
+    // Esto asegura que todo esté sincronizado correctamente
+    refreshTableList();
+    
+    qDebug() << "DEBUG RelationshipsView: Lista de tablas actualizada después del renombrado";
+}
