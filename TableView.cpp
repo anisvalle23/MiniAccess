@@ -212,6 +212,8 @@ TableView::TableView(QWidget *parent) : QWidget(parent)
     
     // Inicializar lista de formatos de moneda
     fieldCurrencyFormats.clear();
+    fieldMillaresDecimals.clear();
+    fieldTextSizes.clear(); // Inicializar lista de tamaños de texto;
     
     // Crear la interfaz
     createInterface();
@@ -785,10 +787,25 @@ void TableView::onFieldNameChanged(const QString &text)
     if (currentSelectedRow >= 0) {
         QTableWidgetItem *item = tableWidget->item(currentSelectedRow, 0);
         if (item) {
-            // Si este campo es llave primaria, agregar el icono
-            if (primaryKeyRow == currentSelectedRow && !text.isEmpty()) {
-                item->setText("🔑 " + text);
-                item->setToolTip("Campo Llave Primaria - Requerido y único");
+            if (!text.isEmpty()) {
+                // Verificar el estado de Primary Key y Foreign Key
+                bool isPrimaryKey = (primaryKeyRow == currentSelectedRow);
+                bool isForeignKey = foreignKeyRows.contains(currentSelectedRow);
+                
+                // Aplicar los iconos apropiados
+                if (isPrimaryKey && isForeignKey) {
+                    item->setText("🔑🔗 " + text);
+                    item->setToolTip("Campo Primary Key con Foreign Key - Clave única que también referencia otra tabla");
+                } else if (isPrimaryKey) {
+                    item->setText("🔑 " + text);
+                    item->setToolTip("Campo Llave Primaria - Requerido y único");
+                } else if (isForeignKey) {
+                    item->setText("🔗 " + text);
+                    item->setToolTip("Campo Foreign Key - Referencia a otra tabla");
+                } else {
+                    item->setText(text);
+                    item->setToolTip("");
+                }
             } else {
                 item->setText(text);
                 item->setToolTip("");
@@ -928,8 +945,8 @@ void TableView::onRequiredChanged(bool required)
             cleanFieldName = cleanFieldName.remove("🔗");
             cleanFieldName = cleanFieldName.trimmed();
             
-            // Verificar si también es Foreign Key
-            bool isForeignKey = fieldName.startsWith("🔗 ") || fieldName.startsWith("🔑🔗 ");
+            // Verificar si también es Foreign Key (usando la lista interna)
+            bool isForeignKey = foreignKeyRows.contains(currentSelectedRow);
             
             if (isForeignKey) {
                 // Si también es Foreign Key, mostrar ambos iconos
@@ -956,15 +973,15 @@ void TableView::onRequiredChanged(bool required)
                 QString fieldName = fieldNameItem->text();
                 // Obtener el nombre limpio del campo
                 QString cleanFieldName = fieldName;
-                bool wasForeignKey = false;
                 
-                // Detectar si también era Foreign Key
-                if (cleanFieldName.startsWith("🔑🔗 ")) {
-                    cleanFieldName = cleanFieldName.mid(4); // Remover "🔑🔗 "
-                    wasForeignKey = true;
-                } else if (cleanFieldName.startsWith("🔑 ")) {
-                    cleanFieldName = cleanFieldName.mid(3); // Remover "🔑 "
-                }
+                // Limpiar todos los iconos
+                cleanFieldName = cleanFieldName.remove("🔑🔗");
+                cleanFieldName = cleanFieldName.remove("🔑");  
+                cleanFieldName = cleanFieldName.remove("�");
+                cleanFieldName = cleanFieldName.trimmed();
+                
+                // Verificar si también era Foreign Key (usando la lista interna)
+                bool wasForeignKey = foreignKeyRows.contains(currentSelectedRow);
                 
                 // Actualizar el campo según corresponda
                 if (wasForeignKey) {
@@ -1030,10 +1047,10 @@ void TableView::onForeignKeyChanged(bool isForeignKey)
             foreignKeyRows.append(currentSelectedRow);
         }
         
-        // Agregar el icono de foreign key
+        // Mostrar el icono apropiado
         if (isPrimaryKey) {
-            // Si también es Primary Key, mantener solo el icono de Primary Key (no mostrar FK visualmente)
-            fieldNameItem->setText("🔑 " + cleanFieldName);
+            // Si también es Primary Key, mostrar ambos iconos
+            fieldNameItem->setText("🔑🔗 " + cleanFieldName);
             fieldNameItem->setToolTip("Campo Primary Key con Foreign Key - Clave única que también referencia otra tabla");
         } else {
             // Solo Foreign Key
@@ -1166,6 +1183,11 @@ void TableView::onAddRowClicked()
             foreignKeyRows[i]++;
         }
     }
+    
+    // Ajustar listas de configuración de campos
+    fieldCurrencyFormats.insert(insertRow, "Lempiras (Lps)");
+    fieldMillaresDecimals.insert(insertRow, "2");
+    fieldTextSizes.insert(insertRow, "255");
     
     // Crear items para la nueva fila
     for (int col = 0; col < tableWidget->columnCount(); col++) {
@@ -1448,6 +1470,17 @@ void TableView::onDeleteRowClicked()
         }
     }
     qDebug() << "DEBUG: Foreign Keys tras eliminar fila:" << foreignKeyRows;
+    
+    // Ajustar listas de configuración de campos
+    if (selectedRow < fieldCurrencyFormats.size()) {
+        fieldCurrencyFormats.removeAt(selectedRow);
+    }
+    if (selectedRow < fieldMillaresDecimals.size()) {
+        fieldMillaresDecimals.removeAt(selectedRow);
+    }
+    if (selectedRow < fieldTextSizes.size()) {
+        fieldTextSizes.removeAt(selectedRow);
+    }
 
     tableWidget->removeRow(selectedRow);
     ensureEmptyRowExists();
@@ -2009,6 +2042,53 @@ int TableView::getPrimaryKeyColumnIndex() const
     return primaryKeyRow;
 }
 
+QStringList TableView::getCurrentTextSizes() const
+{
+    QStringList textSizes;
+    
+    qDebug() << "DEBUG: getCurrentTextSizes() - Lista guardada:" << fieldTextSizes;
+    
+    // Verificar que la tabla existe y tiene filas
+    if (!tableWidget || tableWidget->rowCount() == 0) {
+        qDebug() << "DEBUG: TableWidget is null or has no rows for text sizes";
+        return textSizes;
+    }
+    
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        // Verificar que ambas columnas existen
+        if (tableWidget->columnCount() < 2) {
+            qDebug() << "DEBUG: Table doesn't have enough columns";
+            continue;
+        }
+        
+        QTableWidgetItem *nameItem = tableWidget->item(row, 0);
+        QTableWidgetItem *typeItem = tableWidget->item(row, 1);
+        
+        if (nameItem && typeItem && !nameItem->text().trimmed().isEmpty()) {
+            QString dataType = typeItem->text();
+            
+            if (dataType == "Texto corto" || dataType == "Texto largo") {
+                if (row < fieldTextSizes.size() && !fieldTextSizes[row].isEmpty()) {
+                    QString size = fieldTextSizes[row];
+                    textSizes << size;
+                    qDebug() << "DEBUG: Added text size:" << size << "for row:" << row;
+                } else {
+                    // Valor por defecto según el tipo
+                    QString defaultSize = (dataType == "Texto corto") ? "255" : "Sin límite";
+                    textSizes << defaultSize;
+                    qDebug() << "DEBUG: Added default text size:" << defaultSize << "for row:" << row;
+                }
+            } else {
+                // Para campos que no son texto, agregar cadena vacía para mantener índices
+                textSizes << "";
+            }
+        }
+    }
+    
+    qDebug() << "DEBUG: getCurrentTextSizes() returning:" << textSizes;
+    return textSizes;
+}
+
 void TableView::createSpecificPropertiesWidgets()
 {
     // Widget contenedor para propiedades específicas con mejor distribución
@@ -2188,17 +2268,47 @@ void TableView::updateSpecificProperties(const QString &dataType)
     // Mostrar el widget correspondiente según el tipo de dato
     if (dataType == "Texto corto" || dataType == "Texto largo") {
         textPropertiesWidget->show();
+        
+        // Asegurar que la lista tenga el tamaño correcto
+        while (fieldTextSizes.size() <= currentSelectedRow) {
+            fieldTextSizes.append("255"); // Valor por defecto
+        }
+        
+        // Bloquear señales para evitar ciclos
+        textSizeEdit->blockSignals(true);
+        
         if (dataType == "Texto corto") {
             textSizeEdit->setPlaceholderText("Máximo 255 caracteres (ej: 50)");
-            textSizeEdit->setText("50");
+            
+            // Cargar el valor guardado para esta fila
+            QString savedSize = fieldTextSizes[currentSelectedRow];
+            if (!savedSize.isEmpty()) {
+                textSizeEdit->setText(savedSize);
+            } else {
+                textSizeEdit->setText("50");
+                fieldTextSizes[currentSelectedRow] = "50";
+            }
+            
             textValidationLabel->setText("(Máx. 255 caracteres)");
             textValidationLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
         } else {
             textSizeEdit->setPlaceholderText("Tamaño ilimitado por defecto");
-            textSizeEdit->setText("Sin límite");
+            
+            // Cargar el valor guardado para esta fila
+            QString savedSize = fieldTextSizes[currentSelectedRow];
+            if (!savedSize.isEmpty()) {
+                textSizeEdit->setText(savedSize);
+            } else {
+                textSizeEdit->setText("Sin límite");
+                fieldTextSizes[currentSelectedRow] = "Sin límite";
+            }
+            
             textValidationLabel->setText("(Texto de longitud ilimitada)");
             textValidationLabel->setStyleSheet("QLabel { color: #10b981; font-size: 12px; font-style: italic; }");
         }
+        
+        // Reactivar señales
+        textSizeEdit->blockSignals(false);
     } else if (dataType == "Entero" || dataType == "Decimales") {
         numberPropertiesWidget->show();
         if (dataType == "Entero") {
@@ -2260,49 +2370,80 @@ void TableView::onTextSizeChanged(const QString &text)
 {
     if (text.isEmpty()) return;
     
-    // Validar que el valor no sea mayor a 255 para campos de texto
+    // Asegurar que la lista tenga el tamaño correcto
+    while (fieldTextSizes.size() <= currentSelectedRow) {
+        fieldTextSizes.append("255"); // Valor por defecto
+    }
+    
+    // Validar que el valor no sea mayor a 255 para campos de texto corto
     bool ok;
     int size = text.toInt(&ok);
     
-    if (ok && size > 255) {
-        // Si el valor es mayor a 255, limitarlo a 255
-        textSizeEdit->blockSignals(true);
-        textSizeEdit->setText("255");
-        textSizeEdit->blockSignals(false);
-        
-        // Mostrar mensaje de error en el label de validación
-        textValidationLabel->setText("⚠️ Máximo permitido: 255 caracteres");
-        textValidationLabel->setStyleSheet("QLabel { color: #ef4444; font-size: 12px; font-weight: bold; }");
-        
-        // Cambiar el estilo del input
-        textSizeEdit->setStyleSheet(getInputStyle() + 
-            "QLineEdit { border: 2px solid #ef4444; background-color: #fef2f2; }");
-        
-        // Usar un timer para restaurar el estilo normal después de 3 segundos
-        QTimer::singleShot(3000, [this]() {
-            textSizeEdit->setStyleSheet(getInputStyle());
-            textValidationLabel->setText("(Máx. 255 caracteres)");
-            textValidationLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
-        });
-        
-        qDebug() << "DEBUG: Tamaño de texto limitado a 255 caracteres";
-    } else if (!ok && !text.contains("Sin límite") && !text.contains("ilimitado")) {
-        // Si no es un número válido y no es texto especial, mostrar error
-        textValidationLabel->setText("⚠️ Ingrese un número válido");
-        textValidationLabel->setStyleSheet("QLabel { color: #ef4444; font-size: 12px; font-weight: bold; }");
-        
-        textSizeEdit->setStyleSheet(getInputStyle() + 
-            "QLineEdit { border: 2px solid #ef4444; background-color: #fef2f2; }");
-        
-        QTimer::singleShot(3000, [this]() {
-            textSizeEdit->setStyleSheet(getInputStyle());
-            textValidationLabel->setText("(Máx. 255 caracteres)");
-            textValidationLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
-        });
+    // Obtener el tipo de dato actual
+    QTableWidgetItem *typeItem = tableWidget->item(currentSelectedRow, 1);
+    QString dataType = typeItem ? typeItem->text() : "Texto corto";
+    
+    if (dataType == "Texto largo") {
+        // Para texto largo, permitir "Sin límite" o números
+        if (text.contains("Sin límite") || text.contains("ilimitado")) {
+            fieldTextSizes[currentSelectedRow] = "Sin límite";
+            textValidationLabel->setText("✅ Texto de longitud ilimitada");
+            textValidationLabel->setStyleSheet("QLabel { color: #10b981; font-size: 12px; font-weight: bold; }");
+        } else if (ok && size > 0) {
+            fieldTextSizes[currentSelectedRow] = text;
+            textValidationLabel->setText(QString("✅ Tamaño válido: %1 caracteres").arg(size));
+            textValidationLabel->setStyleSheet("QLabel { color: #10b981; font-size: 12px; font-weight: bold; }");
+        } else {
+            textValidationLabel->setText("⚠️ Ingrese un número válido o 'Sin límite'");
+            textValidationLabel->setStyleSheet("QLabel { color: #ef4444; font-size: 12px; font-weight: bold; }");
+            return;
+        }
     } else {
-        // Restablecer estilo normal si todo está bien
-        textSizeEdit->setStyleSheet(getInputStyle());
-        if (ok && size <= 255) {
+        // Para texto corto, validar límite de 255
+        if (ok && size > 255) {
+            // Si el valor es mayor a 255, limitarlo a 255
+            textSizeEdit->blockSignals(true);
+            textSizeEdit->setText("255");
+            textSizeEdit->blockSignals(false);
+            
+            fieldTextSizes[currentSelectedRow] = "255";
+            
+            // Mostrar mensaje de error en el label de validación
+            textValidationLabel->setText("⚠️ Máximo permitido: 255 caracteres");
+            textValidationLabel->setStyleSheet("QLabel { color: #ef4444; font-size: 12px; font-weight: bold; }");
+            
+            // Cambiar el estilo del input
+            textSizeEdit->setStyleSheet(getInputStyle() + 
+                "QLineEdit { border: 2px solid #ef4444; background-color: #fef2f2; }");
+            
+            // Usar un timer para restaurar el estilo normal después de 3 segundos
+            QTimer::singleShot(3000, [this]() {
+                textSizeEdit->setStyleSheet(getInputStyle());
+                textValidationLabel->setText("(Máx. 255 caracteres)");
+                textValidationLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
+            });
+            
+            qDebug() << "DEBUG: Tamaño de texto limitado a 255 caracteres";
+        } else if (!ok) {
+            // Si no es un número válido, mostrar error
+            textValidationLabel->setText("⚠️ Ingrese un número válido (1-255)");
+            textValidationLabel->setStyleSheet("QLabel { color: #ef4444; font-size: 12px; font-weight: bold; }");
+            
+            textSizeEdit->setStyleSheet(getInputStyle() + 
+                "QLineEdit { border: 2px solid #ef4444; background-color: #fef2f2; }");
+            
+            QTimer::singleShot(3000, [this]() {
+                textSizeEdit->setStyleSheet(getInputStyle());
+                textValidationLabel->setText("(Máx. 255 caracteres)");
+                textValidationLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
+            });
+            return;
+        } else if (ok && size > 0 && size <= 255) {
+            // Valor válido, guardarlo
+            fieldTextSizes[currentSelectedRow] = text;
+            
+            // Restablecer estilo normal
+            textSizeEdit->setStyleSheet(getInputStyle());
             textValidationLabel->setText(QString("✅ Tamaño válido: %1 caracteres").arg(size));
             textValidationLabel->setStyleSheet("QLabel { color: #10b981; font-size: 12px; font-weight: bold; }");
             
@@ -2312,8 +2453,9 @@ void TableView::onTextSizeChanged(const QString &text)
                 textValidationLabel->setStyleSheet("QLabel { color: #6b7280; font-size: 12px; font-style: italic; }");
             });
         }
-        qDebug() << "DEBUG: Tamaño de texto cambiado a:" << text;
     }
+    
+    qDebug() << "DEBUG: Tamaño de texto cambiado a:" << text << "para fila:" << currentSelectedRow;
     
     // Emitir señal para actualizar vista de datos
     emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());

@@ -90,6 +90,7 @@ public:
     QStringList getCurrentFieldTypes() const;
     QStringList getCurrentCurrencyFormats() const;
     QStringList getCurrentMillaresDecimals() const; // Nuevo método para obtener decimales de millares
+    QStringList getCurrentTextSizes() const; // Nuevo método para obtener tamaños de texto
     int getPrimaryKeyColumnIndex() const; // Nuevo método para obtener índice de Primary Key
 
 signals:
@@ -203,6 +204,7 @@ private:
     // Almacenar formatos de moneda por campo
     QStringList fieldCurrencyFormats;
     QStringList fieldMillaresDecimals; // Almacenar decimales para millares por campo
+    QStringList fieldTextSizes; // Almacenar tamaños de campo de texto por campo
 };
 
 #endif // TABLEVIEW_H

@@ -281,6 +281,18 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
                 const QDate d = QDate::fromString(newText, fmt);
                 newText = d.toString("dd-MM-yyyy");
             }
+        } else if (type == "Texto corto" || type == "Texto largo") {
+            // Validación de tamaño de texto
+            if (owner) {
+                QString maxSizeStr = owner->getTextSizeForColumn(index.column());
+                if (!maxSizeStr.isEmpty() && maxSizeStr != "Sin límite" && maxSizeStr != "ilimitado") {
+                    bool ok = false;
+                    int maxSize = maxSizeStr.toInt(&ok);
+                    if (ok && newText.length() > maxSize) {
+                        return softReject(QString("Texto demasiado largo. Máximo %1 caracteres permitidos.").arg(maxSize));
+                    }
+                }
+            }
         }
         // Texto: sin extra
 
@@ -804,6 +816,31 @@ void TableData::setupDataViewWithFormatsAndDecimals(const QStringList &fieldName
     savedMillaresDecimals = millaresDecimals;
     qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
     qDebug() << "DEBUG: Decimales guardados en savedMillaresDecimals:" << savedMillaresDecimals;
+    
+    // Llamar al método base para hacer la configuración normal
+    setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
+    
+    // Aplicar formatos específicos de moneda después de la configuración básica
+    applyCurrencyFormats();
+}
+
+void TableData::setupDataViewWithTextSizes(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, int primaryKeyColumn)
+{
+    qDebug() << "DEBUG: setupDataViewWithTextSizes llamado con:";
+    qDebug() << "DEBUG: fieldNames:" << fieldNames;
+    qDebug() << "DEBUG: fieldTypes:" << fieldTypes;
+    qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
+    qDebug() << "DEBUG: millaresDecimals:" << millaresDecimals;
+    qDebug() << "DEBUG: textSizes:" << textSizes;
+    qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
+    
+    // Guardar los formatos de moneda, decimales y tamaños de texto
+    savedCurrencyFormats = currencyFormats;
+    savedMillaresDecimals = millaresDecimals;
+    savedTextSizes = textSizes;
+    qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
+    qDebug() << "DEBUG: Decimales guardados en savedMillaresDecimals:" << savedMillaresDecimals;
+    qDebug() << "DEBUG: Tamaños guardados en savedTextSizes:" << savedTextSizes;
     
     // Llamar al método base para hacer la configuración normal
     setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
@@ -1417,6 +1454,36 @@ QString TableData::getMillaresDecimalsForColumn(int column) const {
     // Valor por defecto
     qDebug() << "DEBUG: Usando decimales por defecto para columna:" << column;
     return "2";
+}
+
+QString TableData::getTextSizeForColumn(int column) const {
+    qDebug() << "DEBUG: getTextSizeForColumn llamado para columna:" << column;
+    qDebug() << "DEBUG: savedTextSizes disponibles:" << savedTextSizes;
+    
+    // Verificar que la columna existe en los tamaños guardados
+    if (column >= 0 && column < savedTextSizes.size()) {
+        QString textSize = savedTextSizes.at(column);
+        if (!textSize.isEmpty()) {
+            qDebug() << "DEBUG: Tamaño de texto encontrado para columna" << column << ":" << textSize;
+            return textSize;
+        }
+    }
+    
+    // Valor por defecto según el tipo de campo
+    if (column >= 0 && column < savedFieldTypes.size()) {
+        QString fieldType = savedFieldTypes.at(column);
+        if (fieldType == "Texto corto") {
+            qDebug() << "DEBUG: Usando tamaño por defecto para Texto corto en columna:" << column;
+            return "255";
+        } else if (fieldType == "Texto largo") {
+            qDebug() << "DEBUG: Usando tamaño por defecto para Texto largo en columna:" << column;
+            return "Sin límite";
+        }
+    }
+    
+    // Valor por defecto general
+    qDebug() << "DEBUG: Usando tamaño por defecto general para columna:" << column;
+    return "255";
 }
 
 void TableData::showSoftWarning(int row, int col, const QString& msg) const {

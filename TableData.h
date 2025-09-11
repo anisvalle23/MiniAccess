@@ -44,6 +44,7 @@ public:
     void setupDataView(const QStringList &fieldNames, const QStringList &fieldTypes, int primaryKeyColumn = -1);
     void setupDataViewWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, int primaryKeyColumn = -1);
     void setupDataViewWithFormatsAndDecimals(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, int primaryKeyColumn = -1);
+    void setupDataViewWithTextSizes(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, int primaryKeyColumn = -1);
     
     // Configurar nombre de tabla
     void setTableName(const QString &tableName);
@@ -63,6 +64,7 @@ public:
     QString formatCurrencyWithFormatAndDecimals(const QString& raw, const QString& format, const QString& decimals) const; // Formatear con formato y decimales específicos
     QString getCurrencyFormatForColumn(int column) const; // Obtener formato para columna específica
     QString getMillaresDecimalsForColumn(int column) const; // Obtener decimales para columna específica
+    QString getTextSizeForColumn(int column) const; // Obtener tamaño de texto para columna específica
     
     // Actualizar tema
     void updateTheme(bool isDark);
@@ -106,6 +108,7 @@ private:
     QStringList savedFieldTypes;
     QStringList savedCurrencyFormats; // Formatos de moneda para cada campo
     QStringList savedMillaresDecimals; // Decimales de millares para cada campo
+    QStringList savedTextSizes; // Tamaños de texto para cada campo
     QString currentTableName;
     int nextPersonId;
     int primaryKeyColumnIndex; // Índice de la columna Primary Key (-1 si no hay)
