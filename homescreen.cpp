@@ -235,7 +235,7 @@ void HomeScreen::createHeroSection()
     titleCardLayout->setSpacing(8);
     titleCardLayout->setContentsMargins(50, 40, 50, 40);
     
-    // Título línea 1 - Extra bold muy grande
+    // Título línea 1 - Extra bold muy grande (clickeable)
     titleLine1 = new QLabel("Mini Access");
     titleLine1->setAlignment(Qt::AlignCenter);
     titleLine1->setFont(QFont("Inter", 48, QFont::ExtraBold));
@@ -244,6 +244,10 @@ void HomeScreen::createHeroSection()
         "line-height: 1.1;"
     );
     titleLine1->setWordWrap(true);
+    titleLine1->setCursor(Qt::PointingHandCursor);
+    
+    // Instalar filtro de eventos para hacer el título clickeable
+    titleLine1->installEventFilter(this);
     
     // Título línea 2 - REMOVIDO
     titleLine2 = new QLabel("");
@@ -441,7 +445,10 @@ void HomeScreen::styleComponents()
         "    color: %1;"
         "    line-height: 1.1;"
         "}"
-    ).arg(textPrimary));
+        "QLabel:hover {"
+        "    color: %2;"
+        "}"
+    ).arg(textPrimary, accentColor));
     // Forzar alineación central programáticamente
     titleLine1->setAlignment(Qt::AlignCenter);
     
@@ -582,6 +589,73 @@ void HomeScreen::onStartProjectClicked()
     }
     
     qDebug() << "DEBUG: onStartProjectClicked() terminado";
+}
+
+bool HomeScreen::eventFilter(QObject *object, QEvent *event)
+{
+    // Detectar clicks en el título "Mini Access"
+    if (object == titleLine1 && event->type() == QEvent::MouseButtonPress) {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+        if (mouseEvent->button() == Qt::LeftButton) {
+            onTitleClicked();
+            return true; // Evento procesado
+        }
+    }
+    
+    // Llamar al filtro base para otros eventos
+    return QMainWindow::eventFilter(object, event);
+}
+
+void HomeScreen::onTitleClicked()
+{
+    qDebug() << "DEBUG: onTitleClicked() iniciado - Mini Access título clickeado";
+    
+    // Crear efecto visual similar al botón CTA
+    QPropertyAnimation *scaleDown = new QPropertyAnimation(titleLine1, "geometry");
+    scaleDown->setDuration(80);
+    QRect originalGeometry = titleLine1->geometry();
+    QRect scaledGeometry = originalGeometry.adjusted(2, 2, -2, -2);
+    
+    scaleDown->setStartValue(originalGeometry);
+    scaleDown->setEndValue(scaledGeometry);
+    scaleDown->setEasingCurve(QEasingCurve::OutCubic);
+    
+    // Volver al tamaño original
+    QPropertyAnimation *scaleUp = new QPropertyAnimation(titleLine1, "geometry");
+    scaleUp->setDuration(80);
+    scaleUp->setStartValue(scaledGeometry);
+    scaleUp->setEndValue(originalGeometry);
+    scaleUp->setEasingCurve(QEasingCurve::InCubic);
+    
+    QSequentialAnimationGroup *titleClickGroup = new QSequentialAnimationGroup();
+    titleClickGroup->addAnimation(scaleDown);
+    titleClickGroup->addAnimation(scaleUp);
+    titleClickGroup->start(QAbstractAnimation::DeleteWhenStopped);
+    
+    qDebug() << "DEBUG: Animación de título configurada";
+    
+    try {
+        qDebug() << "DEBUG: Intentando crear CreateProject window desde título";
+        // Crear y mostrar la ventana CreateProject (mismo código que el botón CTA)
+        createProjectWindow = new CreateProject(nullptr);
+        qDebug() << "DEBUG: CreateProject window creada exitosamente desde título";
+        
+        createProjectWindow->show();
+        qDebug() << "DEBUG: CreateProject window mostrada desde título";
+        
+        // Cerrar la ventana actual con un pequeño delay
+        QTimer::singleShot(200, this, [this]() {
+            qDebug() << "DEBUG: Cerrando HomeScreen desde título";
+            this->close();
+        });
+        
+    } catch (const std::exception& e) {
+        qDebug() << "DEBUG: Excepción capturada desde título:" << e.what();
+    } catch (...) {
+        qDebug() << "DEBUG: Excepción desconocida capturada desde título";
+    }
+    
+    qDebug() << "DEBUG: onTitleClicked() terminado";
 }
 
 void HomeScreen::createHeader()

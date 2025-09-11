@@ -17,6 +17,7 @@
 #include <QParallelAnimationGroup>
 #include <QGraphicsOpacityEffect>
 #include <QMouseEvent>
+#include <QEvent>
 #include <QPainter>
 #include <QEasingCurve>
 #include <QGraphicsDropShadowEffect>
@@ -68,6 +69,10 @@ private slots:
     void onStartProjectClicked();
     void startEntranceAnimations();
     void onSettingsClicked();
+    void onTitleClicked();
+
+protected:
+    bool eventFilter(QObject *object, QEvent *event) override;
 
 private:
     void setupUI();

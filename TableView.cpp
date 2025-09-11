@@ -1,5 +1,7 @@
 #include "TableView.h"
 #include <QDebug>
+#include <QMessageBox>
+#include <QTimer>
 
 // DataTypeDelegate Implementation
 DataTypeDelegate::DataTypeDelegate(QObject *parent) : QStyledItemDelegate(parent)
@@ -202,8 +204,12 @@ TableView::TableView(QWidget *parent) : QWidget(parent)
 {
     // Inicializar variables
     currentSelectedRow = -1;
+    primaryKeyRow = -1; // No hay llave primaria inicialmente
     isDarkTheme = false;
     currentTableName = "Nueva Tabla";
+    
+    // Inicializar lista de formatos de moneda
+    fieldCurrencyFormats.clear();
     
     // Crear la interfaz
     createInterface();
@@ -256,16 +262,16 @@ void TableView::createInterface()
 void TableView::createHeader()
 {
     headerWidget = new QWidget();
-    headerWidget->setFixedHeight(60);
+    headerWidget->setFixedHeight(70);
     headerWidget->setStyleSheet(
         "QWidget {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f8fafc, stop:1 #e2e8f0);"
-        "border-bottom: 1px solid #cbd5e1;"
+        "border-bottom: 2px solid #cbd5e1;"
         "}"
     );
     
     QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(20, 10, 20, 10);
+    headerLayout->setContentsMargins(25, 15, 25, 15);
     
     // Título de la tabla (solo el nombre)
     tableNameLabel = new QLabel(currentTableName);
@@ -277,42 +283,63 @@ void TableView::createHeader()
     
     // Contenedor para los botones
     QWidget *buttonContainer = new QWidget();
+    buttonContainer->setStyleSheet(
+        "QWidget {"
+        "background: transparent;"
+        "border: 1px solid #cbd5e1;"
+        "border-radius: 8px;"
+        "}"
+    );
     QHBoxLayout *buttonLayout = new QHBoxLayout(buttonContainer);
     buttonLayout->setContentsMargins(0, 0, 0, 0);
     buttonLayout->setSpacing(0);
     
     // Botón Vista Diseño (activo por defecto)
-    QPushButton *designViewBtn = new QPushButton("Vista Diseño");
-    designViewBtn->setFixedSize(120, 35);
+    QPushButton *designViewBtn = new QPushButton("🎨 Vista Diseño");
+    designViewBtn->setFixedSize(135, 38);
+    designViewBtn->setCursor(Qt::PointingHandCursor);
     designViewBtn->setStyleSheet(
         "QPushButton {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b82f6, stop:1 #2563eb);"
         "color: white;"
-        "border: none;"
-        "border-top-left-radius: 6px;"
-        "border-bottom-left-radius: 6px;"
+        "border: 1px solid #1d4ed8;"
+        "border-top-left-radius: 8px;"
+        "border-bottom-left-radius: 8px;"
+        "border-top-right-radius: 0px;"
+        "border-bottom-right-radius: 0px;"
         "font-weight: bold;"
         "font-size: 13px;"
+        "padding: 8px 12px;"
         "}"
         "QPushButton:hover {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2563eb, stop:1 #1d4ed8);"
+        "box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);"
         "}"
     );
     
     // Botón Vista Datos
-    dataViewBtn = new QPushButton("Vista Datos");
-    dataViewBtn->setFixedSize(120, 35);
+    dataViewBtn = new QPushButton("📊 Vista Datos");
+    dataViewBtn->setFixedSize(135, 38);
+    dataViewBtn->setCursor(Qt::PointingHandCursor);
     dataViewBtn->setStyleSheet(
         "QPushButton {"
-        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e5e7eb, stop:1 #d1d5db);"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f3f4f6, stop:1 #e5e7eb);"
         "color: #374151;"
-        "border: none;"
-        "border-top-right-radius: 6px;"
-        "border-bottom-right-radius: 6px;"
+        "border: 1px solid #d1d5db;"
+        "border-top-left-radius: 0px;"
+        "border-bottom-left-radius: 0px;"
+        "border-top-right-radius: 8px;"
+        "border-bottom-right-radius: 8px;"
         "font-weight: bold;"
         "font-size: 13px;"
+        "padding: 8px 12px;"
         "}"
         "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e5e7eb, stop:1 #d1d5db);"
+        "color: #1f2937;"
+        "box-shadow: 0 2px 4px rgba(107, 114, 128, 0.2);"
+        "}"
+        "QPushButton:pressed {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #d1d5db, stop:1 #9ca3af);"
         "}"
     );
@@ -326,6 +353,88 @@ void TableView::createHeader()
     connect(designViewBtn, &QPushButton::clicked, this, &TableView::onDesignViewClicked);
     
     headerLayout->addWidget(buttonContainer);
+    
+    // Agregar espacio entre botones de vista y botones de fila
+    headerLayout->addSpacing(30);
+    
+    // Contenedor para botones de agregar/eliminar fila
+    QWidget *rowButtonContainer = new QWidget();
+    rowButtonContainer->setStyleSheet(
+        "QWidget {"
+        "background: transparent;"
+        "}"
+    );
+    QHBoxLayout *rowButtonLayout = new QHBoxLayout(rowButtonContainer);
+    rowButtonLayout->setContentsMargins(0, 0, 0, 0);
+    rowButtonLayout->setSpacing(10);
+    
+    // Botón Agregar Fila
+    QPushButton *addRowBtn = new QPushButton("➕ Agregar Fila");
+    addRowBtn->setFixedSize(130, 38);
+    addRowBtn->setCursor(Qt::PointingHandCursor);
+    addRowBtn->setStyleSheet(
+        "QPushButton {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #10b981, stop:1 #059669);"
+        "color: white;"
+        "border: 1px solid #047857;"
+        "border-radius: 8px;"
+        "font-weight: bold;"
+        "font-size: 13px;"
+        "padding: 8px 12px;"
+        "text-align: left;"
+        "}"
+        "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #059669, stop:1 #047857);"
+        "border: 1px solid #065f46;"
+        "transform: translateY(-1px);"
+        "box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);"
+        "}"
+        "QPushButton:pressed {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #047857, stop:1 #065f46);"
+        "transform: translateY(1px);"
+        "box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);"
+        "}"
+    );
+    addRowBtn->setToolTip("Agregar una nueva fila después de la seleccionada");
+    
+    // Botón Eliminar Fila
+    QPushButton *deleteRowBtn = new QPushButton("🗑️ Eliminar Fila");
+    deleteRowBtn->setFixedSize(130, 38);
+    deleteRowBtn->setCursor(Qt::PointingHandCursor);
+    deleteRowBtn->setStyleSheet(
+        "QPushButton {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ef4444, stop:1 #dc2626);"
+        "color: white;"
+        "border: 1px solid #b91c1c;"
+        "border-radius: 8px;"
+        "font-weight: bold;"
+        "font-size: 13px;"
+        "padding: 8px 12px;"
+        "text-align: left;"
+        "}"
+        "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #dc2626, stop:1 #b91c1c);"
+        "border: 1px solid #991b1b;"
+        "transform: translateY(-1px);"
+        "box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);"
+        "}"
+        "QPushButton:pressed {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #b91c1c, stop:1 #991b1b);"
+        "transform: translateY(1px);"
+        "box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);"
+        "}"
+    );
+    deleteRowBtn->setToolTip("Eliminar la fila seleccionada");
+    
+    // Agregar botones al contenedor
+    rowButtonLayout->addWidget(addRowBtn);
+    rowButtonLayout->addWidget(deleteRowBtn);
+    
+    // Conectar señales
+    connect(addRowBtn, &QPushButton::clicked, this, &TableView::onAddRowClicked);
+    connect(deleteRowBtn, &QPushButton::clicked, this, &TableView::onDeleteRowClicked);
+    
+    headerLayout->addWidget(rowButtonContainer);
     
     mainLayout->addWidget(headerWidget);
 }
@@ -575,6 +684,10 @@ void TableView::onCellChanged(int row, int column)
 void TableView::onCellSelectionChanged()
 {
     currentSelectedRow = tableWidget->currentRow();
+    
+    // Validar integridad de llave primaria
+    validatePrimaryKeyIntegrity();
+    
     if (currentSelectedRow >= 0) {
         updatePropertiesForRow(currentSelectedRow);
     }
@@ -594,8 +707,12 @@ void TableView::updatePropertiesForRow(int row)
     QTableWidgetItem *typeItem = tableWidget->item(row, 1);
     QTableWidgetItem *descItem = tableWidget->item(row, 2);
     
-    // Actualizar propiedades
-    fieldNameEdit->setText(nameItem ? nameItem->text() : "");
+    // Actualizar propiedades - remover icono de llave del nombre para mostrar en el campo de edición
+    QString displayName = nameItem ? nameItem->text() : "";
+    if (displayName.startsWith("🔑 ")) {
+        displayName = displayName.mid(3); // Remover icono para mostrar nombre limpio
+    }
+    fieldNameEdit->setText(displayName);
     
     QString dataType = typeItem ? typeItem->text() : "TEXT";
     int index = dataTypeCombo->findText(dataType);
@@ -606,9 +723,9 @@ void TableView::updatePropertiesForRow(int row)
     descriptionEdit->setPlainText(descItem ? descItem->text() : "");
     defaultValueEdit->setText("");
     
-    // Campo requerido si es ID
-    QString fieldName = nameItem ? nameItem->text().toLower() : "";
-    requiredCheck->setChecked(fieldName == "id");
+    // Verificar si esta fila es la llave primaria
+    bool isPrimaryKey = (primaryKeyRow == row);
+    requiredCheck->setChecked(isPrimaryKey);
     
     // Actualizar propiedades específicas según el tipo de dato
     updateSpecificProperties(dataType);
@@ -629,7 +746,14 @@ void TableView::onFieldNameChanged(const QString &text)
     if (currentSelectedRow >= 0) {
         QTableWidgetItem *item = tableWidget->item(currentSelectedRow, 0);
         if (item) {
-            item->setText(text);
+            // Si este campo es llave primaria, agregar el icono
+            if (primaryKeyRow == currentSelectedRow && !text.isEmpty()) {
+                item->setText("🔑 " + text);
+                item->setToolTip("Campo Llave Primaria - Requerido y único");
+            } else {
+                item->setText(text);
+                item->setToolTip("");
+            }
         }
         ensureEmptyRowExists();
     }
@@ -669,8 +793,103 @@ void TableView::onDefaultValueChanged(const QString &value)
 
 void TableView::onRequiredChanged(bool required)
 {
-    Q_UNUSED(required)
-    // Por ahora no mostramos si es requerido en la tabla
+    if (currentSelectedRow < 0) return;
+    
+    if (required) {
+        // Si se está intentando marcar como requerido (llave primaria)
+        if (primaryKeyRow != -1 && primaryKeyRow != currentSelectedRow) {
+            // Ya existe otra llave primaria
+            QTableWidgetItem *existingPrimaryKeyItem = tableWidget->item(primaryKeyRow, 0);
+            QString existingFieldName = existingPrimaryKeyItem ? existingPrimaryKeyItem->text() : QString("Fila %1").arg(primaryKeyRow + 1);
+            
+            // Remover icono de llave del nombre para mostrar mensaje más limpio
+            if (existingFieldName.startsWith("🔑 ")) {
+                existingFieldName = existingFieldName.mid(3);
+            }
+            
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("🔑 Llave Primaria Duplicada");
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setText(QString("<h3>Solo Una Llave Primaria</h3>"));
+            msgBox.setInformativeText(QString("Ya existe una llave primaria en el campo <b>'%1'</b>.<br><br>"
+                                             "⚠️ <b>Restricción:</b> Solo puede haber una llave primaria por tabla.<br><br>"
+                                             "Para cambiar la llave primaria, primero desmarque el campo existente.")
+                                             .arg(existingFieldName));
+            msgBox.setStandardButtons(QMessageBox::Ok);
+            msgBox.button(QMessageBox::Ok)->setText("Entendido");
+            
+            // Estilo simple y muy visible
+            msgBox.setStyleSheet(
+                "QMessageBox {"
+                    "background-color: white;"
+                    "min-width: 400px;"
+                    "min-height: 200px;"
+                "}"
+                "QMessageBox QLabel {"
+                    "color: black;"
+                    "font-size: 16px;"
+                "}"
+                "QPushButton {"
+                    "background-color: blue;"
+                    "color: white;"
+                    "font-size: 16px;"
+                    "font-weight: bold;"
+                    "min-width: 120px;"
+                    "min-height: 50px;"
+                    "border: 2px solid black;"
+                    "padding: 10px;"
+                "}"
+                "QPushButton:hover {"
+                    "background-color: darkblue;"
+                "}"
+            );
+            
+            msgBox.exec();
+            
+            // Desmarcar el checkbox sin activar la señal
+            requiredCheck->blockSignals(true);
+            requiredCheck->setChecked(false);
+            requiredCheck->blockSignals(false);
+            return;
+        }
+        
+        // Marcar este campo como llave primaria
+        primaryKeyRow = currentSelectedRow;
+        
+        // Agregar el icono de llave al nombre del campo en la tabla
+        QTableWidgetItem *fieldNameItem = tableWidget->item(currentSelectedRow, 0);
+        if (fieldNameItem) {
+            QString fieldName = fieldNameItem->text();
+            // Remover cualquier icono de llave existente primero
+            if (fieldName.startsWith("🔑 ")) {
+                fieldName = fieldName.mid(3); // Remover "🔑 "
+            }
+            // Agregar el icono de llave
+            fieldNameItem->setText("🔑 " + fieldName);
+            fieldNameItem->setToolTip("Campo Llave Primaria - Requerido y único");
+            
+            qDebug() << "DEBUG: Campo marcado como llave primaria:" << fieldName << "en fila:" << currentSelectedRow;
+        }
+        
+    } else {
+        // Si se está desmarcando como requerido
+        if (primaryKeyRow == currentSelectedRow) {
+            // Remover la llave primaria
+            primaryKeyRow = -1;
+            
+            // Remover el icono de llave del nombre del campo
+            QTableWidgetItem *fieldNameItem = tableWidget->item(currentSelectedRow, 0);
+            if (fieldNameItem) {
+                QString fieldName = fieldNameItem->text();
+                if (fieldName.startsWith("🔑 ")) {
+                    fieldName = fieldName.mid(3); // Remover "🔑 "
+                    fieldNameItem->setText(fieldName);
+                    fieldNameItem->setToolTip("");
+                }
+                qDebug() << "DEBUG: Llave primaria removida del campo:" << fieldName;
+            }
+        }
+    }
 }
 
 void TableView::onDataViewClicked()
@@ -685,6 +904,294 @@ void TableView::onDesignViewClicked()
     // No necesita hacer nada ya que estamos en la vista de diseño
 }
 
+void TableView::onAddRowClicked()
+{
+    qDebug() << "DEBUG: Agregar fila después de la seleccionada";
+    
+    int selectedRow = tableWidget->currentRow();
+    int insertRow;
+    
+    if (selectedRow == -1) {
+        // Si no hay fila seleccionada, agregar al final
+        insertRow = tableWidget->rowCount();
+        qDebug() << "DEBUG: No hay fila seleccionada, agregando al final en posición:" << insertRow;
+    } else {
+        // Agregar después de la fila seleccionada
+        insertRow = selectedRow + 1;
+        qDebug() << "DEBUG: Fila seleccionada:" << selectedRow << ", insertando en posición:" << insertRow;
+    }
+    
+    // Insertar nueva fila
+    tableWidget->insertRow(insertRow);
+    
+    // Ajustar primaryKeyRow si es necesario
+    if (primaryKeyRow != -1 && primaryKeyRow >= insertRow) {
+        primaryKeyRow++;
+        qDebug() << "DEBUG: Ajustando primaryKeyRow a:" << primaryKeyRow;
+    }
+    
+    // Crear items para la nueva fila
+    for (int col = 0; col < tableWidget->columnCount(); col++) {
+        QTableWidgetItem *item = new QTableWidgetItem("");
+        
+        // Configurar fuente más grande para mejor legibilidad
+        QFont itemFont = item->font();
+        itemFont.setPointSize(14);
+        item->setFont(itemFont);
+        
+        // Solo la primera columna está habilitada inicialmente
+        if (col == 0) {
+            item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+            item->setBackground(QBrush(QColor(255, 255, 255)));
+        } else {
+            item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
+            item->setBackground(QBrush(QColor(245, 245, 245))); // Deshabilitada
+        }
+        
+        tableWidget->setItem(insertRow, col, item);
+    }
+    
+    // Seleccionar la nueva fila
+    tableWidget->setCurrentCell(insertRow, 0);
+    
+    // Emitir señal para actualizar vista de datos
+    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+    
+    qDebug() << "DEBUG: Fila agregada exitosamente en posición:" << insertRow;
+}
+
+void TableView::onDeleteRowClicked()
+{
+    qDebug() << "DEBUG: Eliminar fila seleccionada";
+    
+    int selectedRow = tableWidget->currentRow();
+    
+    if (selectedRow == -1) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Eliminar Fila");
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setText(QString("<h3>Ninguna Fila Seleccionada</h3>"));
+        msgBox.setInformativeText("Por favor seleccione una fila para eliminar.");
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.button(QMessageBox::Ok)->setText("Entendido");
+        
+        // Estilo simple y muy visible
+        msgBox.setStyleSheet(
+            "QMessageBox {"
+                "background-color: white;"
+                "min-width: 400px;"
+                "min-height: 200px;"
+            "}"
+            "QMessageBox QLabel {"
+                "color: black;"
+                "font-size: 16px;"
+            "}"
+            "QPushButton {"
+                "background-color: blue;"
+                "color: white;"
+                "font-size: 16px;"
+                "font-weight: bold;"
+                "min-width: 120px;"
+                "min-height: 50px;"
+                "border: 2px solid black;"
+                "padding: 10px;"
+            "}"
+            "QPushButton:hover {"
+                "background-color: darkblue;"
+            "}"
+        );
+        
+        msgBox.exec();
+        return;
+    }
+    
+    // Verificar que hay al menos una fila con datos para mantener
+    QTableWidgetItem *firstItem = tableWidget->item(selectedRow, 0);
+    bool isEmptyRow = !firstItem || firstItem->text().trimmed().isEmpty();
+    
+    // Verificar si la fila a eliminar es la llave primaria
+    if (primaryKeyRow == selectedRow && !isEmptyRow) {
+        QString fieldName = firstItem->text();
+        if (fieldName.startsWith("🔑 ")) {
+            fieldName = fieldName.mid(3);
+        }
+        
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("🔑 Eliminar Llave Primaria");
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setText(QString("<h3>Eliminar Campo Llave Primaria</h3>"));
+        msgBox.setInformativeText(QString("Está a punto de eliminar el campo llave primaria <b>'%1'</b>.<br><br>"
+                                         "⚠️ <b>Advertencia:</b> Este campo es único e irrecuperable.<br>"
+                                         "¿Está seguro de que desea continuar?")
+                                         .arg(fieldName));
+        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+        msgBox.setDefaultButton(QMessageBox::No);
+        
+        // Cambiar texto de botones
+        msgBox.button(QMessageBox::Yes)->setText("Sí, Eliminar");
+        msgBox.button(QMessageBox::No)->setText("No, Cancelar");
+        
+        // Estilo simple y muy visible
+        msgBox.setStyleSheet(
+            "QMessageBox {"
+                "background-color: white;"
+                "min-width: 500px;"
+                "min-height: 250px;"
+            "}"
+            "QMessageBox QLabel {"
+                "color: black;"
+                "font-size: 18px;"
+                "font-weight: bold;"
+            "}"
+            "QPushButton {"
+                "background-color: red;"
+                "color: white;"
+                "font-size: 18px;"
+                "font-weight: bold;"
+                "min-width: 150px;"
+                "min-height: 60px;"
+                "border: 3px solid black;"
+                "padding: 15px;"
+                "margin: 10px;"
+            "}"
+            "QPushButton:hover {"
+                "background-color: darkred;"
+            "}"
+            "QPushButton[text='No, Cancelar'] {"
+                "background-color: green;"
+                "color: white;"
+            "}"
+            "QPushButton[text='No, Cancelar']:hover {"
+                "background-color: darkgreen;"
+            "}"
+        );
+        
+        if (msgBox.exec() == QMessageBox::No) {
+            return;
+        }
+        
+        // Resetear llave primaria
+        primaryKeyRow = -1;
+        qDebug() << "DEBUG: Llave primaria eliminada";
+    }
+    
+    // Confirmar eliminación - diferente mensaje para filas vacías vs filas con datos
+    QString fieldName = firstItem ? firstItem->text() : "";
+    if (fieldName.startsWith("🔑 ")) {
+        fieldName = fieldName.mid(3);
+    }
+    
+    QString message, title;
+    if (isEmptyRow) {
+        title = "Eliminar Fila Vacía";
+        message = "¿Está seguro de que desea eliminar esta fila vacía?";
+    } else {
+        title = "Confirmar Eliminación";
+        message = QString("¿Está seguro de que desea eliminar el campo <b>'%1'</b>?<br><br>"
+                         "Esta acción no se puede deshacer.")
+                         .arg(fieldName.isEmpty() ? QString("Fila %1").arg(selectedRow + 1) : fieldName);
+    }
+    
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle(title);
+    msgBox.setIcon(isEmptyRow ? QMessageBox::Information : QMessageBox::Question);
+    msgBox.setText(isEmptyRow ? message : QString("<h3>Eliminar Campo</h3>"));
+    if (!isEmptyRow) {
+        msgBox.setInformativeText(message);
+    } else {
+        msgBox.setText(message);
+    }
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setDefaultButton(QMessageBox::No);
+    
+    // Cambiar texto de botones
+    msgBox.button(QMessageBox::Yes)->setText("Sí, Eliminar");
+    msgBox.button(QMessageBox::No)->setText("Cancelar");
+    
+    // Estilo para botones visibles
+    msgBox.setStyleSheet(
+        "QMessageBox {"
+            "background-color: white;"
+            "color: black;"
+            "font-size: 14px;"
+            "min-width: 450px;"
+            "min-height: 180px;"
+        "}"
+        "QMessageBox QLabel {"
+            "color: black;"
+            "font-size: 14px;"
+            "font-weight: normal;"
+        "}"
+        "QPushButton {"
+            "background-color: #e5e7eb;"
+            "color: black;"
+            "border: 2px solid #9ca3af;"
+            "border-radius: 8px;"
+            "padding: 12px 24px;"
+            "font-weight: bold;"
+            "font-size: 14px;"
+            "min-width: 120px;"
+            "min-height: 40px;"
+            "margin: 5px;"
+        "}"
+        "QPushButton:hover {"
+            "background-color: #d1d5db;"
+            "border-color: #6b7280;"
+            "color: black;"
+        "}"
+        "QPushButton:pressed {"
+            "background-color: #9ca3af;"
+            "border-color: #4b5563;"
+            "color: black;"
+        "}"
+        "QPushButton[text='Sí, Eliminar'] {"
+            "background-color: #dc2626;"
+            "color: white;"
+            "border-color: #dc2626;"
+        "}"
+        "QPushButton[text='Sí, Eliminar']:hover {"
+            "background-color: #b91c1c;"
+            "border-color: #b91c1c;"
+            "color: white;"
+        "}"
+    );
+    
+    if (msgBox.exec() == QMessageBox::No) {
+        return;
+    }
+    
+    // Ajustar primaryKeyRow si es necesario
+    if (primaryKeyRow != -1) {
+        if (primaryKeyRow > selectedRow) {
+            primaryKeyRow--;
+            qDebug() << "DEBUG: Ajustando primaryKeyRow a:" << primaryKeyRow;
+        } else if (primaryKeyRow == selectedRow) {
+            primaryKeyRow = -1; // Se eliminó la fila de llave primaria
+        }
+    }
+    
+    // Eliminar la fila
+    tableWidget->removeRow(selectedRow);
+    
+    // Asegurar que siempre haya una fila vacía al final
+    ensureEmptyRowExists();
+    
+    // Seleccionar la fila anterior o la primera si eliminamos la primera
+    int newSelection = selectedRow;
+    if (newSelection >= tableWidget->rowCount()) {
+        newSelection = tableWidget->rowCount() - 1;
+    }
+    if (newSelection >= 0) {
+        tableWidget->setCurrentCell(newSelection, 0);
+        updatePropertiesForRow(newSelection);
+    }
+    
+    // Emitir señal para actualizar vista de datos
+    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+    
+    qDebug() << "DEBUG: Fila eliminada exitosamente. Nueva selección:" << newSelection;
+}
+
 void TableView::onFieldItemChanged(QTableWidgetItem *item)
 {
     if (!item) return;
@@ -693,6 +1200,95 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
     int col = item->column();
     
     qDebug() << "DEBUG: Campo cambiado en fila:" << row << "columna:" << col;
+    
+    // Validación para nombres de campos duplicados (columna 0)
+    if (col == 0 && !item->text().trimmed().isEmpty()) {
+        QString fieldName = item->text().trimmed();
+        
+        // Si este campo tiene el icono de llave primaria, removerlo temporalmente para la comparación
+        QString cleanFieldName = fieldName;
+        if (cleanFieldName.startsWith("🔑 ")) {
+            cleanFieldName = cleanFieldName.mid(3);
+        }
+        
+        // Buscar duplicados (sin importar mayúsculas/minúsculas)
+        for (int checkRow = 0; checkRow < tableWidget->rowCount(); checkRow++) {
+            if (checkRow == row) continue; // Saltar la fila actual
+            
+            QTableWidgetItem *checkItem = tableWidget->item(checkRow, 0);
+            if (checkItem && !checkItem->text().trimmed().isEmpty()) {
+                QString existingName = checkItem->text().trimmed();
+                
+                // Remover icono de llave si existe para comparación
+                if (existingName.startsWith("🔑 ")) {
+                    existingName = existingName.mid(3);
+                }
+                
+                // Comparación sin considerar mayúsculas/minúsculas
+                if (cleanFieldName.toLower() == existingName.toLower()) {
+                    // Mostrar mensaje de error mejorado
+                    QMessageBox msgBox(this);
+                    msgBox.setWindowTitle("❌ Campo Duplicado");
+                    msgBox.setIcon(QMessageBox::Warning);
+                    msgBox.setText(QString("<h3>Nombre de Campo Duplicado</h3>"));
+                    msgBox.setInformativeText(QString("Ya existe un campo con el nombre <b>'%1'</b>.<br><br>"
+                                                     "⚠️ <b>Restricción:</b> Los nombres de los campos deben ser únicos<br>"
+                                                     "(sin importar mayúsculas/minúsculas).<br><br>"
+                                                     "Por favor elija un nombre diferente.")
+                                                     .arg(existingName));
+                    msgBox.setStandardButtons(QMessageBox::Ok);
+                    msgBox.button(QMessageBox::Ok)->setText("Entendido");
+                    
+                    // Estilo para botones visibles
+                    msgBox.setStyleSheet(
+                        "QMessageBox {"
+                        "background-color: white;"
+                        "color: #1f2937;"
+                        "}"
+                        "QPushButton {"
+                        "background-color: #f3f4f6;"
+                        "color: #1f2937;"
+                        "border: 2px solid #d1d5db;"
+                        "border-radius: 6px;"
+                        "padding: 8px 16px;"
+                        "font-weight: bold;"
+                        "min-width: 80px;"
+                        "}"
+                        "QPushButton:hover {"
+                        "background-color: #e5e7eb;"
+                        "border-color: #9ca3af;"
+                        "}"
+                        "QPushButton:pressed {"
+                        "background-color: #d1d5db;"
+                        "border-color: #6b7280;"
+                        "}"
+                    );
+                    
+                    msgBox.exec();
+                    
+                    // Limpiar el campo duplicado usando blockSignals del widget table
+                    tableWidget->blockSignals(true);
+                    item->setText("");
+                    tableWidget->blockSignals(false);
+                    
+                    // Enfocar en el campo para que el usuario pueda escribir un nombre diferente
+                    tableWidget->setCurrentItem(item);
+                    tableWidget->editItem(item);
+                    
+                    qDebug() << "DEBUG: Campo duplicado detectado:" << cleanFieldName << "vs" << existingName;
+                    return; // Salir sin procesar más
+                }
+            }
+        }
+        
+        // Si llegamos aquí, no hay duplicados. Restaurar el icono de llave si este es el campo llave primaria
+        if (primaryKeyRow == row) {
+            if (!cleanFieldName.isEmpty() && !fieldName.startsWith("🔑 ")) {
+                item->setText("🔑 " + cleanFieldName);
+                item->setToolTip("Campo Llave Primaria - Requerido y único");
+            }
+        }
+    }
     
     // Si se escribió algo en una celda, habilitar la siguiente celda en la misma fila
     if (!item->text().trimmed().isEmpty()) {
@@ -763,6 +1359,9 @@ void TableView::addNewRow()
 
 void TableView::ensureEmptyRowExists()
 {
+    // Validar integridad de llave primaria antes de manipular filas
+    validatePrimaryKeyIntegrity();
+    
     // Verificar si necesitamos más filas vacías
     bool needNewRow = true;
     for (int row = 0; row < tableWidget->rowCount(); row++) {
@@ -921,6 +1520,12 @@ QStringList TableView::getCurrentFieldNames() const
         QTableWidgetItem *item = tableWidget->item(row, 0);
         if (item && !item->text().trimmed().isEmpty()) {
             QString fieldName = item->text().trimmed();
+            
+            // Remover el icono de llave si existe
+            if (fieldName.startsWith("🔑 ")) {
+                fieldName = fieldName.mid(3);
+            }
+            
             if (!fieldName.isEmpty()) {
                 fieldNames << fieldName;
                 qDebug() << "DEBUG: Added field name:" << fieldName;
@@ -963,6 +1568,54 @@ QStringList TableView::getCurrentFieldTypes() const
     
     qDebug() << "DEBUG: getCurrentFieldTypes() returning:" << fieldTypes;
     return fieldTypes;
+}
+
+QStringList TableView::getCurrentCurrencyFormats() const
+{
+    QStringList currencyFormats;
+    
+    qDebug() << "DEBUG: getCurrentCurrencyFormats() - Lista guardada:" << fieldCurrencyFormats;
+    
+    // Verificar que la tabla existe y tiene filas
+    if (!tableWidget || tableWidget->rowCount() == 0) {
+        qDebug() << "DEBUG: TableWidget is null or has no rows for currency formats";
+        return currencyFormats;
+    }
+    
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        // Verificar que ambas columnas existen
+        if (tableWidget->columnCount() < 2) {
+            qDebug() << "DEBUG: Table doesn't have enough columns for currency formats";
+            continue;
+        }
+        
+        QTableWidgetItem *typeItem = tableWidget->item(row, 1);
+        QTableWidgetItem *nameItem = tableWidget->item(row, 0);
+        
+        if (typeItem && !typeItem->text().trimmed().isEmpty()) {
+            QString fieldType = typeItem->text().trimmed();
+            if (!fieldType.isEmpty()) {
+                // Si es un campo de moneda, obtener el formato guardado
+                if (fieldType == "moneda") {
+                    QString format = "Lempiras (Lps)"; // Valor por defecto
+                    
+                    // Usar el formato guardado si existe
+                    if (row < fieldCurrencyFormats.size() && !fieldCurrencyFormats[row].isEmpty()) {
+                        format = fieldCurrencyFormats[row];
+                    }
+                    
+                    currencyFormats << format;
+                    qDebug() << "DEBUG: Added currency format:" << format << "for row:" << row;
+                } else {
+                    // Para campos que no son moneda, agregar cadena vacía para mantener índices
+                    currencyFormats << "";
+                }
+            }
+        }
+    }
+    
+    qDebug() << "DEBUG: getCurrentCurrencyFormats() returning:" << currencyFormats;
+    return currencyFormats;
 }
 
 void TableView::createSpecificPropertiesWidgets()
@@ -1140,7 +1793,30 @@ void TableView::updateSpecificProperties(const QString &dataType)
         }
     } else if (dataType == "moneda") {
         currencyPropertiesWidget->show();
-        currencyFormatCombo->setCurrentText("Lempiras (Lps)");
+        
+        // Asegurar que la lista tenga el tamaño correcto
+        while (fieldCurrencyFormats.size() <= currentSelectedRow) {
+            fieldCurrencyFormats.append("Lempiras (Lps)");
+        }
+        
+        // Bloquear señales para evitar ciclos
+        currencyFormatCombo->blockSignals(true);
+        
+        // Cargar el formato guardado para esta fila
+        if (currentSelectedRow >= 0 && currentSelectedRow < fieldCurrencyFormats.size()) {
+            QString savedFormat = fieldCurrencyFormats[currentSelectedRow];
+            if (!savedFormat.isEmpty()) {
+                currencyFormatCombo->setCurrentText(savedFormat);
+            } else {
+                currencyFormatCombo->setCurrentText("Lempiras (Lps)");
+                fieldCurrencyFormats[currentSelectedRow] = "Lempiras (Lps)";
+            }
+        } else {
+            currencyFormatCombo->setCurrentText("Lempiras (Lps)");
+        }
+        
+        // Reactivar señales
+        currencyFormatCombo->blockSignals(false);
     } else if (dataType == "fecha") {
         datePropertiesWidget->show();
         dateFormatCombo->setCurrentText("DD-MM-YY");
@@ -1244,8 +1920,25 @@ void TableView::onNumberTypeChanged(const QString &text)
 void TableView::onCurrencyFormatChanged(const QString &text)
 {
     qDebug() << "DEBUG: Formato de moneda cambiado a:" << text;
+    qDebug() << "DEBUG: Fila actual seleccionada:" << currentSelectedRow;
+    
+    // Guardar el formato para el campo actual
+    if (currentSelectedRow >= 0) {
+        // Asegurar que la lista tenga el tamaño correcto
+        while (fieldCurrencyFormats.size() <= currentSelectedRow) {
+            fieldCurrencyFormats.append("Lempiras (Lps)");
+        }
+        
+        // Guardar el formato seleccionado para esta fila
+        fieldCurrencyFormats[currentSelectedRow] = text;
+        qDebug() << "DEBUG: Guardado formato" << text << "para fila" << currentSelectedRow;
+        qDebug() << "DEBUG: Lista completa de formatos:" << fieldCurrencyFormats;
+    }
+    
     // Emitir señal para actualizar vista de datos
     emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+    // Emitir señal específica con formatos de moneda
+    emit tableDesignChangedWithFormats(getCurrentFieldNames(), getCurrentFieldTypes(), getCurrentCurrencyFormats());
 }
 
 void TableView::onDateFormatChanged(const QString &text)
@@ -1451,4 +2144,41 @@ void TableView::updateExampleData()
     
     // Restaurar señales
     tableWidget->blockSignals(false);
+}
+
+void TableView::validatePrimaryKeyIntegrity()
+{
+    // Si no hay llave primaria definida, no hay nada que validar
+    if (primaryKeyRow == -1) {
+        return;
+    }
+    
+    // Verificar que la fila de llave primaria aún existe y tiene datos válidos
+    if (primaryKeyRow >= tableWidget->rowCount()) {
+        // La fila de llave primaria fue eliminada
+        qDebug() << "DEBUG: Llave primaria fue eliminada. Reseteando primaryKeyRow.";
+        primaryKeyRow = -1;
+        return;
+    }
+    
+    // Verificar que el item de llave primaria aún existe y no está vacío
+    QTableWidgetItem *primaryKeyItem = tableWidget->item(primaryKeyRow, 0);
+    if (!primaryKeyItem || primaryKeyItem->text().trimmed().isEmpty()) {
+        // El campo de llave primaria está vacío
+        qDebug() << "DEBUG: Campo de llave primaria está vacío. Reseteando primaryKeyRow.";
+        primaryKeyRow = -1;
+        return;
+    }
+    
+    // Si llegamos aquí, la llave primaria es válida
+    QString fieldName = primaryKeyItem->text();
+    if (!fieldName.startsWith("🔑 ")) {
+        // Restaurar el icono de llave si fue removido accidentalmente
+        if (fieldName.startsWith("🔑 ")) {
+            fieldName = fieldName.mid(3);
+        }
+        primaryKeyItem->setText("🔑 " + fieldName);
+        primaryKeyItem->setToolTip("Campo Llave Primaria - Requerido y único");
+        qDebug() << "DEBUG: Icono de llave primaria restaurado para:" << fieldName;
+    }
 }

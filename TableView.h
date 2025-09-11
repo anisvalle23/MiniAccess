@@ -18,6 +18,8 @@
 #include <QTextEdit>
 #include <QScrollArea>
 #include <QFrame>
+#include <QMessageBox>
+#include <QMessageBox>
 #include <QTimer>
 #include <QStyledItemDelegate>
 #include <QPainter>
@@ -85,10 +87,12 @@ public:
     // Obtener campos actuales del diseño
     QStringList getCurrentFieldNames() const;
     QStringList getCurrentFieldTypes() const;
+    QStringList getCurrentCurrencyFormats() const;
 
 signals:
     void switchToDataView();
     void tableDesignChanged(const QStringList &fieldNames, const QStringList &fieldTypes);
+    void tableDesignChangedWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats);
 
 private slots:
     void onCellChanged(int row, int column);
@@ -101,6 +105,8 @@ private slots:
     void onDataViewClicked();
     void onDesignViewClicked();
     void onFieldItemChanged(QTableWidgetItem *item);
+    void onAddRowClicked();
+    void onDeleteRowClicked();
     
     // Slots para propiedades específicas
     void onTextSizeChanged(const QString &text);
@@ -130,6 +136,9 @@ private:
     QString getInputStyle();
     QString getComboStyle();
     QString getTextEditStyle();
+    
+    // Método para validar integridad de llave primaria
+    void validatePrimaryKeyIntegrity();
     
     // UI Components
     QVBoxLayout *mainLayout;
@@ -178,6 +187,10 @@ private:
     QString currentTableName;
     bool isDarkTheme;
     int currentSelectedRow;
+    int primaryKeyRow; // Fila que contiene la llave primaria (-1 si no hay)
+    
+    // Almacenar formatos de moneda por campo
+    QStringList fieldCurrencyFormats;
 };
 
 #endif // TABLEVIEW_H

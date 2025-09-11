@@ -3,6 +3,7 @@
 #include <QIntValidator>
 #include <QDoubleValidator>
 #include <QRegularExpressionValidator>
+#include <QRegularExpression>
 #include <QDate>
 #include <QDateEdit>
 #include <QCalendarWidget>
@@ -199,7 +200,22 @@ void DataFieldDelegate::setEditorData(QWidget *editor, const QModelIndex &index)
     }
 
     if (auto *line = qobject_cast<QLineEdit*>(editor)) {
-        line->setText(index.model()->data(index, Qt::EditRole).toString());
+        QString currentText = index.model()->data(index, Qt::EditRole).toString();
+        
+        // Si es un campo de moneda, extraer solo el número para edición
+        const TableData *owner = qobject_cast<const TableData*>(this->parent());
+        const QString type = owner ? owner->fieldTypeForColumn(index.column()) : QString();
+        
+        if (type == "moneda" && !currentText.isEmpty()) {
+            // Extraer solo el número del texto formateado (quitar prefijos como "Lps ", "$", etc.)
+            QString cleanText = currentText;
+            cleanText.remove(QRegularExpression("^(Lps|\\$|€)\\s*"));  // Quitar prefijos
+            cleanText.remove(QRegularExpression("[,\\s]"));  // Quitar comas y espacios
+            qDebug() << "DEBUG: Texto original:" << currentText << "-> Texto limpio para editar:" << cleanText;
+            line->setText(cleanText);
+        } else {
+            line->setText(currentText);
+        }
     }
 }
 
@@ -249,7 +265,10 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
             bool ok=false; newText.toDouble(&ok);
             if (!ok) return softReject("Moneda inválida. Ingresa un número.");
             // >>> formateo visual aquí <<<
-            if (owner) newText = owner->formatCurrency(newText);
+            if (owner) {
+                QString format = owner->getCurrencyFormatForColumn(index.column());
+                newText = owner->formatCurrencyWithFormat(newText, format);
+            }
         } else if (type == "fecha") {
             if (!owner->isValueValidForType(type, newText)) {
                 return softReject("Fecha inválida. Usa dd-MM-aaaa o dd/MM/aaaa.");
@@ -332,16 +351,16 @@ void TableData::createUI()
 void TableData::createHeader()
 {
     headerWidget = new QWidget();
-    headerWidget->setFixedHeight(60);
+    headerWidget->setFixedHeight(70);
     headerWidget->setStyleSheet(
         "QWidget {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f8fafc, stop:1 #e2e8f0);"
-        "border-bottom: 1px solid #cbd5e1;"
+        "border-bottom: 2px solid #cbd5e1;"
         "}"
     );
     
     QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(20, 10, 20, 10);
+    headerLayout->setContentsMargins(25, 15, 25, 15);
     
     // Título de la tabla (solo el nombre)
     tableNameLabel = new QLabel(currentTableName);
@@ -351,45 +370,66 @@ void TableData::createHeader()
     headerLayout->addWidget(tableNameLabel);
     headerLayout->addStretch();
     
-    // Contenedor para los botones
+    // Contenedor para los botones de vista
     QWidget *buttonContainer = new QWidget();
+    buttonContainer->setStyleSheet(
+        "QWidget {"
+        "background: transparent;"
+        "border: 1px solid #cbd5e1;"
+        "border-radius: 8px;"
+        "}"
+    );
     QHBoxLayout *buttonLayout = new QHBoxLayout(buttonContainer);
     buttonLayout->setContentsMargins(0, 0, 0, 0);
     buttonLayout->setSpacing(0);
     
     // Botón Vista Diseño (inactivo)
-    designViewBtn = new QPushButton("Vista Diseño");
-    designViewBtn->setFixedSize(120, 35);
+    designViewBtn = new QPushButton("🎨 Vista Diseño");
+    designViewBtn->setFixedSize(135, 38);
+    designViewBtn->setCursor(Qt::PointingHandCursor);
     designViewBtn->setStyleSheet(
         "QPushButton {"
-        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e5e7eb, stop:1 #d1d5db);"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f3f4f6, stop:1 #e5e7eb);"
         "color: #374151;"
-        "border: none;"
-        "border-top-left-radius: 6px;"
-        "border-bottom-left-radius: 6px;"
+        "border: 1px solid #d1d5db;"
+        "border-top-left-radius: 8px;"
+        "border-bottom-left-radius: 8px;"
+        "border-top-right-radius: 0px;"
+        "border-bottom-right-radius: 0px;"
         "font-weight: bold;"
         "font-size: 13px;"
+        "padding: 8px 12px;"
         "}"
         "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e5e7eb, stop:1 #d1d5db);"
+        "color: #1f2937;"
+        "box-shadow: 0 2px 4px rgba(107, 114, 128, 0.2);"
+        "}"
+        "QPushButton:pressed {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #d1d5db, stop:1 #9ca3af);"
         "}"
     );
     
     // Botón Vista Datos (activo)
-    QPushButton *dataViewBtn = new QPushButton("Vista Datos");
-    dataViewBtn->setFixedSize(120, 35);
+    QPushButton *dataViewBtn = new QPushButton("📊 Vista Datos");
+    dataViewBtn->setFixedSize(135, 38);
+    dataViewBtn->setCursor(Qt::PointingHandCursor);
     dataViewBtn->setStyleSheet(
         "QPushButton {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #3b82f6, stop:1 #2563eb);"
         "color: white;"
-        "border: none;"
-        "border-top-right-radius: 6px;"
-        "border-bottom-right-radius: 6px;"
+        "border: 1px solid #1d4ed8;"
+        "border-top-left-radius: 0px;"
+        "border-bottom-left-radius: 0px;"
+        "border-top-right-radius: 8px;"
+        "border-bottom-right-radius: 8px;"
         "font-weight: bold;"
         "font-size: 13px;"
+        "padding: 8px 12px;"
         "}"
         "QPushButton:hover {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2563eb, stop:1 #1d4ed8);"
+        "box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);"
         "}"
     );
     
@@ -397,10 +437,92 @@ void TableData::createHeader()
     buttonLayout->addWidget(designViewBtn);
     buttonLayout->addWidget(dataViewBtn);
     
-    // Conectar señales
+    // Conectar señales para ambos botones
     connect(designViewBtn, &QPushButton::clicked, this, &TableData::onDesignViewClicked);
     
     headerLayout->addWidget(buttonContainer);
+    
+    // Agregar espacio entre botones de vista y botones de fila
+    headerLayout->addSpacing(30);
+    
+    // Contenedor para botones de agregar/eliminar fila
+    QWidget *rowButtonContainer = new QWidget();
+    rowButtonContainer->setStyleSheet(
+        "QWidget {"
+        "background: transparent;"
+        "}"
+    );
+    QHBoxLayout *rowButtonLayout = new QHBoxLayout(rowButtonContainer);
+    rowButtonLayout->setContentsMargins(0, 0, 0, 0);
+    rowButtonLayout->setSpacing(10);
+    
+    // Botón Agregar Fila
+    QPushButton *addRowBtn = new QPushButton("➕ Agregar Fila");
+    addRowBtn->setFixedSize(130, 38);
+    addRowBtn->setCursor(Qt::PointingHandCursor);
+    addRowBtn->setStyleSheet(
+        "QPushButton {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #10b981, stop:1 #059669);"
+        "color: white;"
+        "border: 1px solid #047857;"
+        "border-radius: 8px;"
+        "font-weight: bold;"
+        "font-size: 13px;"
+        "padding: 8px 12px;"
+        "text-align: left;"
+        "}"
+        "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #059669, stop:1 #047857);"
+        "border: 1px solid #065f46;"
+        "transform: translateY(-1px);"
+        "box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);"
+        "}"
+        "QPushButton:pressed {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #047857, stop:1 #065f46);"
+        "transform: translateY(1px);"
+        "box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);"
+        "}"
+    );
+    addRowBtn->setToolTip("Agregar una nueva fila después de la seleccionada");
+    
+    // Botón Eliminar Fila
+    QPushButton *deleteRowBtn = new QPushButton("🗑️ Eliminar Fila");
+    deleteRowBtn->setFixedSize(130, 38);
+    deleteRowBtn->setCursor(Qt::PointingHandCursor);
+    deleteRowBtn->setStyleSheet(
+        "QPushButton {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ef4444, stop:1 #dc2626);"
+        "color: white;"
+        "border: 1px solid #b91c1c;"
+        "border-radius: 8px;"
+        "font-weight: bold;"
+        "font-size: 13px;"
+        "padding: 8px 12px;"
+        "text-align: left;"
+        "}"
+        "QPushButton:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #dc2626, stop:1 #b91c1c);"
+        "border: 1px solid #991b1b;"
+        "transform: translateY(-1px);"
+        "box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);"
+        "}"
+        "QPushButton:pressed {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #b91c1c, stop:1 #991b1b);"
+        "transform: translateY(1px);"
+        "box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);"
+        "}"
+    );
+    deleteRowBtn->setToolTip("Eliminar la fila seleccionada");
+    
+    // Agregar botones al contenedor
+    rowButtonLayout->addWidget(addRowBtn);
+    rowButtonLayout->addWidget(deleteRowBtn);
+    
+    // Conectar señales
+    connect(addRowBtn, &QPushButton::clicked, this, &TableData::addNewRow);
+    connect(deleteRowBtn, &QPushButton::clicked, this, &TableData::deleteSelectedRow);
+    
+    headerLayout->addWidget(rowButtonContainer);
     
     mainLayout->addWidget(headerWidget);
 }
@@ -553,7 +675,10 @@ void TableData::setupDataView(const QStringList &fieldNames, const QStringList &
                 if (first && first->toolTip().contains("Ejemplo")) continue;
 
                 const QString t = it->text().trimmed();
-                if (!t.isEmpty()) it->setText(formatCurrency(t));
+                if (!t.isEmpty()) {
+                    QString format = getCurrencyFormatForColumn(col);
+                    it->setText(formatCurrencyWithFormat(t, format));
+                }
             }
             dataTable->blockSignals(false);
         }
@@ -586,6 +711,64 @@ void TableData::configureColumnWidths()
             }
         }
     }
+}
+
+void TableData::setupDataViewWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats)
+{
+    qDebug() << "DEBUG: setupDataViewWithFormats llamado con:";
+    qDebug() << "DEBUG: fieldNames:" << fieldNames;
+    qDebug() << "DEBUG: fieldTypes:" << fieldTypes;
+    qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
+    
+    // Guardar los formatos de moneda
+    savedCurrencyFormats = currencyFormats;
+    qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
+    
+    // Llamar al método base para hacer la configuración normal
+    setupDataView(fieldNames, fieldTypes);
+    
+    // Aplicar formatos específicos de moneda después de la configuración básica
+    applyCurrencyFormats();
+}
+
+void TableData::applyCurrencyFormats()
+{
+    qDebug() << "DEBUG: Aplicando formatos de moneda específicos";
+    
+    if (savedCurrencyFormats.isEmpty() || savedFieldTypes.isEmpty()) {
+        qDebug() << "DEBUG: No hay formatos de moneda o tipos de campo guardados";
+        return;
+    }
+    
+    for (int col = 0; col < savedFieldTypes.size() && col < savedCurrencyFormats.size(); ++col) {
+        if (savedFieldTypes.at(col) == "moneda") {
+            QString format = savedCurrencyFormats.at(col);
+            qDebug() << "DEBUG: Aplicando formato de moneda" << format << "a columna" << col;
+            
+            dataTable->blockSignals(true);
+            for (int row = 0; row < dataTable->rowCount(); ++row) {
+                QTableWidgetItem *item = dataTable->item(row, col);
+                if (!item) continue;
+                
+                // Saltar fila de ejemplo
+                QTableWidgetItem *firstItem = dataTable->item(row, 0);
+                if (firstItem && firstItem->toolTip().contains("Ejemplo")) continue;
+
+                const QString text = item->text().trimmed();
+                if (!text.isEmpty()) {
+                    // Aplicar formato específico según la selección
+                    QString formattedValue = formatCurrencyWithFormat(text, format);
+                    item->setText(formattedValue);
+                }
+            }
+            dataTable->blockSignals(false);
+        }
+    }
+    
+    // Forzar actualización visual de la tabla
+    qDebug() << "DEBUG: Forzando actualización visual de la tabla";
+    dataTable->viewport()->update();
+    dataTable->repaint();
 }
 
 void TableData::addPersonRow(const QStringList &personData)
@@ -671,30 +854,78 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
         return;
     }
     
-    // Aplicar formato automático para campos de moneda
-    /*if (col < savedFieldTypes.size() && col < savedFieldNames.size() && savedFieldTypes.at(col) == "moneda") {
+    // Aplicar formato automático para campos de moneda con formato dinámico
+    if (col < savedFieldTypes.size() && col < savedFieldNames.size() && savedFieldTypes.at(col) == "moneda") {
         QString text = item->text().trimmed();
-        if (!text.isEmpty() && !text.startsWith("Lps ") && !text.startsWith("$") && !text.startsWith("€")) {
-            // Bloquear señales para evitar bucle infinito
-            dataTable->blockSignals(true);
+        if (!text.isEmpty()) {
+            // Verificar si el texto ya tiene formato de moneda
+            bool alreadyFormatted = text.startsWith("Lps ") || 
+                                   text.startsWith("$") || 
+                                   text.startsWith("€") ||
+                                   text.contains("Lps") ||
+                                   text.contains("$") ||
+                                   text.contains("€");
             
-            // Extraer solo los números y puntos decimales
-            QString cleanNumber = "";
-            for (int i = 0; i < text.length(); i++) {
-                QChar c = text.at(i);
-                if (c.isDigit() || c == '.' || c == ',') {
-                    cleanNumber += c;
+            qDebug() << "DEBUG: Texto a verificar:" << text << "- Ya formateado:" << alreadyFormatted;
+            
+            // Obtener el formato correspondiente para esta columna
+            QString format = "Lempiras (Lps)"; // Formato por defecto
+            if (col < savedCurrencyFormats.size() && !savedCurrencyFormats.at(col).isEmpty()) {
+                format = savedCurrencyFormats.at(col);
+                qDebug() << "DEBUG: Usando formato guardado:" << format;
+            } else {
+                qDebug() << "DEBUG: Usando formato por defecto:" << format;
+            }
+            
+            // Si ya está formateado, verificar si está en el formato correcto
+            if (alreadyFormatted) {
+                bool correctFormat = false;
+                if (format.contains("Lempiras") || format.contains("Lps")) {
+                    correctFormat = text.startsWith("Lps ") || text.contains("Lps");
+                } else if (format.contains("Dollar") || format.contains("$")) {
+                    correctFormat = text.startsWith("$");
+                } else if (format.contains("Euros") || format.contains("€")) {
+                    correctFormat = text.startsWith("€");
                 }
+                
+                qDebug() << "DEBUG: Formato correcto aplicado:" << correctFormat;
+                
+                // Si no está en el formato correcto, reformatear
+                if (!correctFormat) {
+                    // Extraer el número y reformatear
+                    QString cleanNumber = text;
+                    cleanNumber.remove(QRegularExpression("^(Lps|\\$|€)\\s*"));
+                    cleanNumber.remove(QRegularExpression("[,\\s]"));
+                    
+                    qDebug() << "DEBUG: Reformateando de" << text << "a formato" << format << "con número limpio:" << cleanNumber;
+                    
+                    dataTable->blockSignals(true);
+                    QString formattedText = formatCurrencyWithFormat(cleanNumber, format);
+                    item->setText(formattedText);
+                    dataTable->blockSignals(false);
+                    
+                    qDebug() << "DEBUG: Texto reformateado:" << formattedText;
+                    
+                    // Forzar actualización visual inmediata
+                    dataTable->viewport()->update();
+                }
+            } else {
+                // Texto sin formato - aplicar formato por primera vez
+                qDebug() << "DEBUG: Aplicando formato por primera vez a:" << text;
+                
+                dataTable->blockSignals(true);
+                QString formattedText = formatCurrencyWithFormat(text, format);
+                qDebug() << "DEBUG: Texto original:" << text << "-> Texto formateado:" << formattedText;
+                if (!formattedText.isEmpty()) {
+                    item->setText(formattedText);
+                }
+                dataTable->blockSignals(false);
+                
+                // Forzar actualización visual inmediata
+                dataTable->viewport()->update();
             }
-            
-            if (!cleanNumber.isEmpty()) {
-                item->setText("Lps " + cleanNumber);
-            }
-            
-            dataTable->blockSignals(false);
         }
     }
-    */
 
     // Solo agregar nueva fila si estamos escribiendo en la última fila y hay contenido real
     if (row == dataTable->rowCount() - 1 && !item->text().trimmed().isEmpty()) {
@@ -809,8 +1040,6 @@ QString TableData::getTableStyle()
 
 QString TableData::generateExampleData(const QString &dataType, int column)
 {
-    Q_UNUSED(column) // Por ahora no usamos la columna, pero puede ser útil en el futuro
-    
     if (dataType == "Entero") {
         return "12345";
     } else if (dataType == "Decimales") {
@@ -822,7 +1051,24 @@ QString TableData::generateExampleData(const QString &dataType, int column)
     } else if (dataType == "Texto largo / Párrafo") {
         return "Este es un ejemplo de texto largo...";
     } else if (dataType == "moneda") {
-        return "Lps 1,500.00";
+        // Usar el formato correspondiente para esta columna si está disponible
+        QString format = "Lempiras (Lps)"; // Formato por defecto
+        if (column < savedCurrencyFormats.size() && !savedCurrencyFormats.at(column).isEmpty()) {
+            format = savedCurrencyFormats.at(column);
+        }
+        
+        // Generar ejemplo con el formato correcto
+        if (format.contains("Lempiras") || format.contains("Lps")) {
+            return "Lps 1,500.00";
+        } else if (format.contains("Dollar") || format.contains("$")) {
+            return "$1,500.00";
+        } else if (format.contains("Euros") || format.contains("€")) {
+            return "€1,500.00";
+        } else if (format.contains("Millares")) {
+            return "1,500";
+        } else {
+            return "Lps 1,500.00"; // Formato por defecto
+        }
     } else if (dataType == "fecha") {
         return "15-08-24";
     }
@@ -940,6 +1186,62 @@ QString TableData::formatCurrency(const QString& raw) const {
     return QStringLiteral("Lps %1").arg(loc.toString(v, 'f', 2));
 }
 
+QString TableData::formatCurrencyWithFormat(const QString& raw, const QString& format) const {
+    // Extrae dígitos, separadores y signo para poder parsear
+    QString cleaned;
+    cleaned.reserve(raw.size());
+    for (QChar c : raw) {
+        if (c.isDigit() || c == '.' || c == ',' || c == '-') cleaned.append(c);
+    }
+    if (cleaned.isEmpty()) return QString();
+
+    // Normaliza decimal a punto para parseo
+    QString normalized = cleaned;
+    normalized.replace(',', '.');
+
+    bool ok = false;
+    const double v = normalized.toDouble(&ok);
+    if (!ok) return raw; // Si no se pudo parsear, deja el texto tal cual
+
+    // Formatea según el formato especificado
+    QLocale loc(QLocale::Spanish, QLocale::Honduras);
+    QString formattedNumber = loc.toString(v, 'f', 2);
+    
+    if (format.contains("Lempiras") || format.contains("Lps")) {
+        return QStringLiteral("Lps %1").arg(formattedNumber);
+    } else if (format.contains("Dollar") || format.contains("$")) {
+        return QStringLiteral("$%1").arg(formattedNumber);
+    } else if (format.contains("Euros") || format.contains("€")) {
+        return QStringLiteral("€%1").arg(formattedNumber);
+    } else if (format.contains("Millares")) {
+        // Solo mostrar la parte entera con separadores de miles
+        int integerPart = static_cast<int>(v);
+        QString integerFormatted = loc.toString(integerPart);
+        return integerFormatted;
+    } else {
+        // Formato por defecto (Lempiras)
+        return QStringLiteral("Lps %1").arg(formattedNumber);
+    }
+}
+
+QString TableData::getCurrencyFormatForColumn(int column) const {
+    qDebug() << "DEBUG: getCurrencyFormatForColumn llamado para columna:" << column;
+    qDebug() << "DEBUG: savedCurrencyFormats disponibles:" << savedCurrencyFormats;
+    
+    // Verificar que la columna existe en los formatos guardados
+    if (column >= 0 && column < savedCurrencyFormats.size()) {
+        QString format = savedCurrencyFormats.at(column);
+        if (!format.isEmpty()) {
+            qDebug() << "DEBUG: Formato encontrado para columna" << column << ":" << format;
+            return format;
+        }
+    }
+    
+    // Valor por defecto
+    qDebug() << "DEBUG: Usando formato por defecto para columna:" << column;
+    return "Lempiras (Lps)";
+}
+
 void TableData::showSoftWarning(int row, int col, const QString& msg) const {
     if (!dataTable) return;
     // marcar rojo suave
@@ -987,54 +1289,208 @@ void DataFieldDelegate::initStyleOption(QStyleOptionViewItem *option,
     if (raw.isEmpty())
         return;
 
-    // Si ya viene con prefijo, no doble formatees
-    if (raw.startsWith("Lps ", Qt::CaseInsensitive)) {
+    // Obtener el formato específico para esta columna
+    QString format = owner ? owner->getCurrencyFormatForColumn(index.column()) : "Lempiras (Lps)";
+    qDebug() << "DEBUG: initStyleOption - Formato para columna" << index.column() << ":" << format;
+
+    // Si ya viene formateado correctamente, no hacer nada
+    if ((format.contains("Dollar") && raw.startsWith("$")) ||
+        (format.contains("Euros") && raw.startsWith("€")) ||
+        (format.contains("Lempiras") && raw.startsWith("Lps"))) {
         option->text = raw;
+        qDebug() << "DEBUG: initStyleOption - Ya formateado correctamente:" << raw;
         return;
     }
 
-    // === Formateo rápido aquí (si ya tienes TableData::formatCurrency, úsala) ===
-    auto formatCurrencyInline = [](const QString& src)->QString {
-        // limpiar: dígitos, . , y signo
-        QString cleaned; cleaned.reserve(src.size());
-        bool neg = false;
-        for (QChar c : src) {
-            if (c == '-') { neg = !neg; continue; }
-            if (c.isDigit() || c == '.' || c == ',') cleaned.append(c);
+    // Aplicar formato usando el método de TableData
+    if (owner) {
+        QString formattedText = owner->formatCurrencyWithFormat(raw, format);
+        option->text = formattedText;
+        qDebug() << "DEBUG: initStyleOption - Texto formateado:" << raw << "->" << formattedText;
+    } else {
+        option->text = raw;
+    }
+}
+
+void TableData::addNewRow()
+{
+    if (!dataTable) return;
+    
+    int newRowIndex = dataTable->rowCount();
+    dataTable->insertRow(newRowIndex);
+    
+    // Configurar la nueva fila
+    for (int col = 0; col < dataTable->columnCount(); ++col) {
+        QTableWidgetItem *item = new QTableWidgetItem("");
+        item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        dataTable->setItem(newRowIndex, col, item);
+    }
+    
+    // Seleccionar la nueva fila y enfocar la primera celda
+    dataTable->setCurrentCell(newRowIndex, 0);
+    dataTable->edit(dataTable->currentIndex());
+    
+    qDebug() << "DEBUG: Nueva fila agregada en posición" << newRowIndex;
+}
+
+void TableData::deleteSelectedRow()
+{
+    if (!dataTable) return;
+    
+    int currentRow = dataTable->currentRow();
+    
+    if (currentRow < 0) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Información");
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setText("Por favor selecciona una fila para eliminar.");
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        
+        // Estilo mucho más simple y visible
+        msgBox.setStyleSheet(
+            "QMessageBox {"
+                "background-color: white;"
+                "min-width: 400px;"
+                "min-height: 200px;"
+            "}"
+            "QMessageBox QLabel {"
+                "color: black;"
+                "font-size: 16px;"
+            "}"
+            "QPushButton {"
+                "background-color: blue;"
+                "color: white;"
+                "font-size: 16px;"
+                "font-weight: bold;"
+                "min-width: 120px;"
+                "min-height: 50px;"
+                "border: none;"
+                "padding: 10px;"
+            "}"
+            "QPushButton:hover {"
+                "background-color: darkblue;"
+            "}"
+        );
+        
+        msgBox.exec();
+        return;
+    }
+    
+    // Verificar si es una fila de ejemplo
+    QTableWidgetItem *firstItem = dataTable->item(currentRow, 0);
+    if (firstItem && firstItem->toolTip().contains("Ejemplo")) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("No se puede eliminar");
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setText("No se puede eliminar la fila de ejemplo.");
+        msgBox.setInformativeText("Esta fila muestra cómo se verán los datos y no se puede eliminar.");
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        
+        // Estilo simple y visible
+        msgBox.setStyleSheet(
+            "QMessageBox {"
+                "background-color: white;"
+                "min-width: 400px;"
+                "min-height: 200px;"
+            "}"
+            "QMessageBox QLabel {"
+                "color: black;"
+                "font-size: 16px;"
+            "}"
+            "QPushButton {"
+                "background-color: orange;"
+                "color: black;"
+                "font-size: 16px;"
+                "font-weight: bold;"
+                "min-width: 120px;"
+                "min-height: 50px;"
+                "border: 2px solid black;"
+                "padding: 10px;"
+            "}"
+            "QPushButton:hover {"
+                "background-color: darkorange;"
+            "}"
+        );
+        
+        msgBox.exec();
+        return;
+    }
+    
+    // Verificar si la fila tiene datos
+    bool hasData = false;
+    for (int col = 0; col < dataTable->columnCount(); ++col) {
+        QTableWidgetItem *item = dataTable->item(currentRow, col);
+        if (item && !item->text().trimmed().isEmpty()) {
+            hasData = true;
+            break;
         }
-        if (cleaned.isEmpty()) return src;
-
-        // el último separador visto es decimal
-        int lastDot = cleaned.lastIndexOf('.');
-        int lastCom = cleaned.lastIndexOf(',');
-        QChar dec = (lastDot > lastCom ? QChar('.') : (lastCom > -1 ? QChar(',') : QChar()));
-        QString norm;
-        for (QChar c : cleaned) {
-            if (c.isDigit()) norm.append(c);
-            else if (!dec.isNull() && c == dec) norm.append('.');
+    }
+    
+    // Mostrar confirmación para filas con datos o sin datos
+    QString message = hasData ? 
+        "¿Estás seguro de que deseas eliminar esta fila con datos? Esta acción no se puede deshacer." :
+        "¿Estás seguro de que deseas eliminar esta fila vacía?";
+    
+    QMessageBox msgBox(this);
+    msgBox.setWindowTitle("Confirmar eliminación");
+    msgBox.setIcon(hasData ? QMessageBox::Question : QMessageBox::Information);
+    msgBox.setText(message);
+    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+    msgBox.setDefaultButton(QMessageBox::No);
+    
+    // Cambiar texto de botones
+    msgBox.button(QMessageBox::Yes)->setText("Sí, Eliminar");
+    msgBox.button(QMessageBox::No)->setText("Cancelar");
+    
+    // Estilo simple y muy visible
+    msgBox.setStyleSheet(
+        "QMessageBox {"
+            "background-color: white;"
+            "min-width: 500px;"
+            "min-height: 250px;"
+        "}"
+        "QMessageBox QLabel {"
+            "color: black;"
+            "font-size: 18px;"
+            "font-weight: bold;"
+        "}"
+        "QPushButton {"
+            "background-color: red;"
+            "color: white;"
+            "font-size: 18px;"
+            "font-weight: bold;"
+            "min-width: 150px;"
+            "min-height: 60px;"
+            "border: 3px solid black;"
+            "padding: 15px;"
+            "margin: 10px;"
+        "}"
+        "QPushButton:hover {"
+            "background-color: darkred;"
+        "}"
+        "QPushButton[text='Cancelar'] {"
+            "background-color: green;"
+            "color: white;"
+        "}"
+        "QPushButton[text='Cancelar']:hover {"
+            "background-color: darkgreen;"
+        "}"
+    );
+    
+    if (msgBox.exec() != QMessageBox::Yes) {
+        return;
+    }
+    
+    dataTable->removeRow(currentRow);
+    
+    // Si hay filas restantes, seleccionar la siguiente o la anterior
+    if (dataTable->rowCount() > 0) {
+        int newRow = (currentRow < dataTable->rowCount()) ? currentRow : currentRow - 1;
+        if (newRow >= 0) {
+            dataTable->setCurrentCell(newRow, 0);
         }
-        bool ok=false;
-        double v = norm.toDouble(&ok);
-        if (!ok) return src;
-        if (neg) v = -v;
-
-        // miles con ',', 2 decimales
-        const bool isNeg = v < 0;
-        v = std::abs(v);
-        qint64 entero = static_cast<qint64>(std::floor(v));
-        int cents = static_cast<int>(qRound64((v - entero)*100.0));
-        QString entStr = QString::number(entero);
-        for (int pos = entStr.size() - 3; pos > 0; pos -= 3) entStr.insert(pos, ',');
-
-        QString decStr = QString("%1").arg(cents, 2, 10, QLatin1Char('0'));
-        QString out = QString("Lps %1.%2").arg(entStr, decStr);
-        if (isNeg) out.prepend('-');
-        return out;
-    };
-
-    // Si tienes TableData::formatCurrency, prefierela:
-    // raw = owner ? owner->formatCurrency(raw) : formatCurrencyInline(raw);
-    raw = formatCurrencyInline(raw);
-
-    option->text = raw;
+    }
+    
+    qDebug() << "DEBUG: Fila eliminada en posición" << currentRow;
+    emit personDataChanged();
 }
