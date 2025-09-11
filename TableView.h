@@ -89,12 +89,14 @@ public:
     QStringList getAllFieldNames() const; // Método que incluye las llaves 🔑
     QStringList getCurrentFieldTypes() const;
     QStringList getCurrentCurrencyFormats() const;
+    QStringList getCurrentMillaresDecimals() const; // Nuevo método para obtener decimales de millares
     int getPrimaryKeyColumnIndex() const; // Nuevo método para obtener índice de Primary Key
 
 signals:
     void switchToDataView();
     void tableDesignChanged(const QStringList &fieldNames, const QStringList &fieldTypes);
     void tableDesignChangedWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats);
+    void tableDesignChangedWithFormatsAndDecimals(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals);
     void foreignKeyRemoved(const QString &tableName, const QString &fieldName); // Nueva señal para FK eliminada
 
 private slots:
@@ -117,6 +119,7 @@ private slots:
     void onNumberTypeChanged(const QString &text);
     void onCurrencyFormatChanged(const QString &text);
     void onDateFormatChanged(const QString &text);
+    void onMillaresDecimalsChanged(const QString &text); // Nuevo slot para decimales de millares
     
     // Función para actualizar ejemplos de datos
     void updateExampleData();
@@ -184,6 +187,8 @@ private:
     // Para tipo moneda
     QWidget *currencyPropertiesWidget;
     QComboBox *currencyFormatCombo; // Lps, Dollar, Euro, Millares
+    QComboBox *millaresDecimalsCombo; // Combo para decimales cuando es Millares
+    QLabel *millaresDecimalsLabel; // Label explicativo
     
     // Para tipo fecha
     QWidget *datePropertiesWidget;
@@ -193,9 +198,11 @@ private:
     bool isDarkTheme;
     int currentSelectedRow;
     int primaryKeyRow; // Fila que contiene la llave primaria (-1 si no hay)
+    QList<int> foreignKeyRows; // Lista de filas que son Foreign Keys
     
     // Almacenar formatos de moneda por campo
     QStringList fieldCurrencyFormats;
+    QStringList fieldMillaresDecimals; // Almacenar decimales para millares por campo
 };
 
 #endif // TABLEVIEW_H

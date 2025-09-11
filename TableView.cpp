@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QTimer>
+#include <QIntValidator>
 
 // DataTypeDelegate Implementation
 DataTypeDelegate::DataTypeDelegate(QObject *parent) : QStyledItemDelegate(parent)
@@ -15,7 +16,7 @@ QWidget *DataTypeDelegate::createEditor(QWidget *parent, const QStyleOptionViewI
     Q_UNUSED(index)
     
     QComboBox *comboBox = new QComboBox(parent);
-    comboBox->addItems({"Entero", "Decimales", "Sí / No", "Texto corto (hasta N caracteres)", "Texto largo / Párrafo", "moneda", "fecha"});
+    comboBox->addItems({"Entero", "Decimales", "Sí / No", "Texto corto", "Texto largo", "moneda", "fecha"});
     comboBox->setStyleSheet(
         "QComboBox {"
         "background-color: white;"
@@ -205,6 +206,7 @@ TableView::TableView(QWidget *parent) : QWidget(parent)
     // Inicializar variables
     currentSelectedRow = -1;
     primaryKeyRow = -1; // No hay llave primaria inicialmente
+    foreignKeyRows.clear(); // No hay foreign keys inicialmente
     isDarkTheme = false;
     currentTableName = "Nueva Tabla";
     
@@ -567,7 +569,7 @@ void TableView::createPropertiesArea()
     leftColumn->addWidget(typeLabel);
     
     dataTypeCombo = new QComboBox();
-    dataTypeCombo->addItems({"Entero", "Decimales", "Sí / No", "Texto corto (hasta N caracteres)", "Texto largo / Párrafo", "moneda", "fecha"});
+    dataTypeCombo->addItems({"Entero", "Decimales", "Sí / No", "Texto corto", "Texto largo", "moneda", "fecha"});
     dataTypeCombo->setStyleSheet(getComboStyle());
     leftColumn->addWidget(dataTypeCombo);
     
@@ -734,10 +736,15 @@ void TableView::updatePropertiesForRow(int row)
     QTableWidgetItem *typeItem = tableWidget->item(row, 1);
     QTableWidgetItem *descItem = tableWidget->item(row, 2);
     
-    // Actualizar propiedades - remover icono de llave del nombre para mostrar en el campo de edición
+    // Actualizar propiedades - remover iconos para mostrar nombre limpio en el campo de edición
     QString displayName = nameItem ? nameItem->text() : "";
-    if (displayName.startsWith("🔑 ")) {
-        displayName = displayName.mid(3); // Remover icono para mostrar nombre limpio
+    // Remover iconos combinados (🔑🔗) o individuales (🔑 o 🔗)
+    if (displayName.startsWith("🔑🔗 ")) {
+        displayName = displayName.mid(4); // Remover "🔑🔗 "
+    } else if (displayName.startsWith("🔑 ")) {
+        displayName = displayName.mid(3); // Remover "🔑 "
+    } else if (displayName.startsWith("🔗 ")) {
+        displayName = displayName.mid(3); // Remover "🔗 "
     }
     fieldNameEdit->setText(displayName);
     
@@ -754,9 +761,8 @@ void TableView::updatePropertiesForRow(int row)
     bool isPrimaryKey = (primaryKeyRow == row);
     requiredCheck->setChecked(isPrimaryKey);
     
-    // Verificar si esta fila es una Foreign Key (basándose en el icono)
-    QString fieldName = nameItem ? nameItem->text() : "";
-    bool isForeignKey = fieldName.startsWith("🔗 ");
+    // Verificar si esta fila es una Foreign Key (usando la lista interna)
+    bool isForeignKey = foreignKeyRows.contains(row);
     foreignKeyCheck->setChecked(isForeignKey);
     
     // Actualizar propiedades específicas según el tipo de dato
@@ -893,15 +899,49 @@ void TableView::onRequiredChanged(bool required)
         QTableWidgetItem *fieldNameItem = tableWidget->item(currentSelectedRow, 0);
         if (fieldNameItem) {
             QString fieldName = fieldNameItem->text();
-            // Remover cualquier icono de llave existente primero
-            if (fieldName.startsWith("🔑 ")) {
-                fieldName = fieldName.mid(3); // Remover "🔑 "
-            }
-            // Agregar el icono de llave
-            fieldNameItem->setText("🔑 " + fieldName);
-            fieldNameItem->setToolTip("Campo Llave Primaria - Requerido y único");
+            // Obtener el nombre limpio del campo
+            QString cleanFieldName = fieldName;
             
-            qDebug() << "DEBUG: Campo marcado como llave primaria:" << fieldName << "en fila:" << currentSelectedRow;
+            // Remover todos los iconos posibles de manera robusta
+            bool hasChanges = true;
+            while (hasChanges) {
+                hasChanges = false;
+                
+                if (cleanFieldName.startsWith("��🔗 ")) {
+                    cleanFieldName = cleanFieldName.mid(4);
+                    hasChanges = true;
+                } else if (cleanFieldName.startsWith("� ")) {
+                    cleanFieldName = cleanFieldName.mid(3);
+                    hasChanges = true;
+                } else if (cleanFieldName.startsWith("� ")) {
+                    cleanFieldName = cleanFieldName.mid(3);
+                    hasChanges = true;
+                }
+            }
+            
+            // Limpiar espacios extra
+            cleanFieldName = fieldName;
+            
+            // Método simple y robusto para limpiar todos los iconos
+            cleanFieldName = cleanFieldName.remove("🔑🔗");
+            cleanFieldName = cleanFieldName.remove("🔑");  
+            cleanFieldName = cleanFieldName.remove("🔗");
+            cleanFieldName = cleanFieldName.trimmed();
+            
+            // Verificar si también es Foreign Key
+            bool isForeignKey = fieldName.startsWith("🔗 ") || fieldName.startsWith("🔑🔗 ");
+            
+            if (isForeignKey) {
+                // Si también es Foreign Key, mostrar ambos iconos
+                fieldNameItem->setText("🔑🔗 " + cleanFieldName);
+                fieldNameItem->setToolTip("Campo Primary Key y Foreign Key - Clave única que referencia otra tabla");
+            } else {
+                // Solo Primary Key
+                fieldNameItem->setText("🔑 " + cleanFieldName);
+                fieldNameItem->setToolTip("Campo Llave Primaria - Requerido y único");
+            }
+            
+            qDebug() << "DEBUG: Campo marcado como llave primaria:" << cleanFieldName << "en fila:" << currentSelectedRow;
         }
         
     } else {
@@ -914,12 +954,30 @@ void TableView::onRequiredChanged(bool required)
             QTableWidgetItem *fieldNameItem = tableWidget->item(currentSelectedRow, 0);
             if (fieldNameItem) {
                 QString fieldName = fieldNameItem->text();
-                if (fieldName.startsWith("🔑 ")) {
-                    fieldName = fieldName.mid(3); // Remover "🔑 "
-                    fieldNameItem->setText(fieldName);
+                // Obtener el nombre limpio del campo
+                QString cleanFieldName = fieldName;
+                bool wasForeignKey = false;
+                
+                // Detectar si también era Foreign Key
+                if (cleanFieldName.startsWith("🔑🔗 ")) {
+                    cleanFieldName = cleanFieldName.mid(4); // Remover "🔑🔗 "
+                    wasForeignKey = true;
+                } else if (cleanFieldName.startsWith("🔑 ")) {
+                    cleanFieldName = cleanFieldName.mid(3); // Remover "🔑 "
+                }
+                
+                // Actualizar el campo según corresponda
+                if (wasForeignKey) {
+                    // Si también era Foreign Key, mantener solo el icono FK
+                    fieldNameItem->setText("🔗 " + cleanFieldName);
+                    fieldNameItem->setToolTip("Campo Foreign Key - Referencia a otra tabla");
+                } else {
+                    // Solo era Primary Key, quitar todo
+                    fieldNameItem->setText(cleanFieldName);
                     fieldNameItem->setToolTip("");
                 }
-                qDebug() << "DEBUG: Llave primaria removida del campo:" << fieldName;
+                
+                qDebug() << "DEBUG: Llave primaria removida del campo:" << cleanFieldName;
             }
         }
     }
@@ -934,34 +992,76 @@ void TableView::onForeignKeyChanged(bool isForeignKey)
     
     QString fieldName = fieldNameItem->text();
     
-    if (isForeignKey) {
-        // Remover cualquier icono de foreign key existente primero
-        if (fieldName.startsWith("🔗 ")) {
-            fieldName = fieldName.mid(3); // Remover "🔗 "
+    // Obtener el nombre limpio del campo (sin iconos)
+    QString cleanFieldName = fieldName;
+    
+    // Remover todos los iconos posibles de manera robusta
+    bool hasChanges = true;
+    while (hasChanges) {
+        hasChanges = false;
+        
+        if (cleanFieldName.startsWith("��🔗 ")) {
+            cleanFieldName = cleanFieldName.mid(4);
+            hasChanges = true;
+        } else if (cleanFieldName.startsWith("� ")) {
+            cleanFieldName = cleanFieldName.mid(3);
+            hasChanges = true;
+        } else if (cleanFieldName.startsWith("� ")) {
+            cleanFieldName = cleanFieldName.mid(3);
+            hasChanges = true;
         }
-        // También remover icono de primary key si existe (para evitar conflictos visuales)
-        if (fieldName.startsWith("🔑 ")) {
-            fieldName = fieldName.mid(3); // Remover "🔑 "
+    }
+    
+    // Limpiar espacios extra
+    cleanFieldName = fieldName;
+    
+    // Método simple y robusto para limpiar todos los iconos
+    cleanFieldName = cleanFieldName.remove("🔑🔗");
+    cleanFieldName = cleanFieldName.remove("🔑");  
+    cleanFieldName = cleanFieldName.remove("🔗");
+    cleanFieldName = cleanFieldName.trimmed();
+    
+    // Verificar si este campo es también Primary Key
+    bool isPrimaryKey = (primaryKeyRow == currentSelectedRow);
+    
+    if (isForeignKey) {
+        // Agregar a la lista de Foreign Keys si no está ya
+        if (!foreignKeyRows.contains(currentSelectedRow)) {
+            foreignKeyRows.append(currentSelectedRow);
         }
         
         // Agregar el icono de foreign key
-        fieldNameItem->setText("🔗 " + fieldName);
-        fieldNameItem->setToolTip("Campo Foreign Key - Referencia a otra tabla");
+        if (isPrimaryKey) {
+            // Si también es Primary Key, mantener solo el icono de Primary Key (no mostrar FK visualmente)
+            fieldNameItem->setText("🔑 " + cleanFieldName);
+            fieldNameItem->setToolTip("Campo Primary Key con Foreign Key - Clave única que también referencia otra tabla");
+        } else {
+            // Solo Foreign Key
+            fieldNameItem->setText("🔗 " + cleanFieldName);
+            fieldNameItem->setToolTip("Campo Foreign Key - Referencia a otra tabla");
+        }
         
-        qDebug() << "DEBUG: Campo marcado como Foreign Key:" << fieldName << "en fila:" << currentSelectedRow;
+        qDebug() << "DEBUG: Campo marcado como Foreign Key:" << cleanFieldName << "en fila:" << currentSelectedRow;
         
     } else {
+        // Remover de la lista de Foreign Keys
+        foreignKeyRows.removeAll(currentSelectedRow);
+        
         // Remover el icono de foreign key
-        if (fieldName.startsWith("🔗 ")) {
-            fieldName = fieldName.mid(3); // Remover "🔗 "
-            fieldNameItem->setText(fieldName);
+        if (isPrimaryKey) {
+            // Si sigue siendo Primary Key, restaurar solo el icono de PK
+            fieldNameItem->setText("🔑 " + cleanFieldName);
+            fieldNameItem->setToolTip("Campo Primary Key - Clave única e irrepetible");
+        } else {
+            // No es ni PK ni FK, solo el nombre limpio
+            fieldNameItem->setText(cleanFieldName);
             fieldNameItem->setToolTip("");
-            
-            qDebug() << "DEBUG: Foreign Key removida del campo:" << fieldName;
-            
-            // Emitir señal para notificar que se eliminó una Foreign Key
-            emit foreignKeyRemoved(currentTableName, fieldName);
         }
+        
+        qDebug() << "DEBUG: Foreign Key removida del campo:" << cleanFieldName;
+        
+        // Emitir señal para notificar que se eliminó una Foreign Key
+        emit foreignKeyRemoved(currentTableName, cleanFieldName);
     }
 }
 
@@ -1058,6 +1158,13 @@ void TableView::onAddRowClicked()
     if (primaryKeyRow != -1 && primaryKeyRow >= insertRow) {
         primaryKeyRow++;
         qDebug() << "DEBUG: Ajustando primaryKeyRow a:" << primaryKeyRow;
+    }
+    
+    // Ajustar foreignKeyRows si es necesario
+    for (int i = 0; i < foreignKeyRows.size(); i++) {
+        if (foreignKeyRows[i] >= insertRow) {
+            foreignKeyRows[i]++;
+        }
     }
     
     // Crear items para la nueva fila
@@ -1331,6 +1438,16 @@ void TableView::onDeleteRowClicked()
         else if (primaryKeyRow == selectedRow) primaryKeyRow = -1;
         qDebug() << "DEBUG: Ajustando primaryKeyRow a:" << primaryKeyRow;
     }
+    
+    // Ajustar las filas de Foreign Keys
+    for (int i = foreignKeyRows.size() - 1; i >= 0; i--) {
+        if (foreignKeyRows[i] > selectedRow) {
+            foreignKeyRows[i]--;  // Ajustar índice hacia arriba
+        } else if (foreignKeyRows[i] == selectedRow) {
+            foreignKeyRows.removeAt(i);  // Remover la FK que se está eliminando
+        }
+    }
+    qDebug() << "DEBUG: Foreign Keys tras eliminar fila:" << foreignKeyRows;
 
     tableWidget->removeRow(selectedRow);
     ensureEmptyRowExists();
@@ -1829,6 +1946,54 @@ QStringList TableView::getCurrentCurrencyFormats() const
     return currencyFormats;
 }
 
+QStringList TableView::getCurrentMillaresDecimals() const
+{
+    QStringList millaresDecimals;
+    
+    qDebug() << "DEBUG: getCurrentMillaresDecimals() - Lista guardada:" << fieldMillaresDecimals;
+    
+    // Verificar que la tabla existe y tiene filas
+    if (!tableWidget || tableWidget->rowCount() == 0) {
+        qDebug() << "DEBUG: TableWidget is null or has no rows for millares decimals";
+        return millaresDecimals;
+    }
+    
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        // Verificar que ambas columnas existen
+        if (tableWidget->columnCount() < 2) {
+            qDebug() << "DEBUG: Table doesn't have enough columns for millares decimals";
+            continue;
+        }
+        
+        QTableWidgetItem *typeItem = tableWidget->item(row, 1);
+        QTableWidgetItem *nameItem = tableWidget->item(row, 0);
+        
+        if (typeItem && !typeItem->text().trimmed().isEmpty()) {
+            QString fieldType = typeItem->text().trimmed();
+            if (!fieldType.isEmpty()) {
+                // Si es un campo de moneda, obtener los decimales guardados
+                if (fieldType == "moneda") {
+                    QString decimals = "2"; // Valor por defecto
+                    
+                    // Usar los decimales guardados si existen
+                    if (row < fieldMillaresDecimals.size() && !fieldMillaresDecimals[row].isEmpty()) {
+                        decimals = fieldMillaresDecimals[row];
+                    }
+                    
+                    millaresDecimals << decimals;
+                    qDebug() << "DEBUG: Added millares decimals:" << decimals << "for row:" << row;
+                } else {
+                    // Para campos que no son moneda, agregar cadena vacía para mantener índices
+                    millaresDecimals << "";
+                }
+            }
+        }
+    }
+    
+    qDebug() << "DEBUG: getCurrentMillaresDecimals() returning:" << millaresDecimals;
+    return millaresDecimals;
+}
+
 int TableView::getPrimaryKeyColumnIndex() const
 {
     // Retorna el índice de la columna que es Primary Key, o -1 si no hay Primary Key
@@ -1928,10 +2093,16 @@ void TableView::createSpecificPropertiesWidgets()
     
     // Widget para propiedades de moneda
     currencyPropertiesWidget = new QWidget();
-    currencyPropertiesWidget->setMinimumHeight(40); // Altura mínima
-    QHBoxLayout *currencyLayout = new QHBoxLayout(currencyPropertiesWidget);
-    currencyLayout->setContentsMargins(0, 5, 0, 5); // Margen vertical
-    currencyLayout->setSpacing(15);
+    currencyPropertiesWidget->setMinimumHeight(70); // Más altura para acomodar decimales de millares
+    QVBoxLayout *currencyMainLayout = new QVBoxLayout(currencyPropertiesWidget);
+    currencyMainLayout->setContentsMargins(0, 5, 0, 5);
+    currencyMainLayout->setSpacing(8);
+    
+    // Layout horizontal para el formato de moneda
+    QWidget *currencyFormatWidget = new QWidget();
+    QHBoxLayout *currencyLayout = new QHBoxLayout(currencyFormatWidget);
+    currencyLayout->setContentsMargins(0, 0, 0, 0);
+    currencyLayout->setSpacing(10); // Reducir espaciado para que esté más junto
     
     QLabel *currencyFormatLabel = new QLabel("Formato de Moneda:");
     currencyFormatLabel->setStyleSheet("QLabel { color: #475569; font-weight: bold; }");
@@ -1944,7 +2115,26 @@ void TableView::createSpecificPropertiesWidgets()
     currencyFormatCombo->setMaximumWidth(200);
     currencyFormatCombo->setMinimumHeight(35); // Altura mínima para el combo
     currencyLayout->addWidget(currencyFormatCombo);
-    currencyLayout->addStretch();
+    
+    // Combo para decimales de millares (al lado derecho del formato, más junto)
+    millaresDecimalsLabel = new QLabel("Decimales:");
+    millaresDecimalsLabel->setStyleSheet("QLabel { color: #475569; font-weight: bold; }");
+    millaresDecimalsLabel->setMinimumWidth(80);
+    
+    millaresDecimalsCombo = new QComboBox();
+    millaresDecimalsCombo->addItems({"0", "1", "2", "3", "4", "5", "6"});
+    millaresDecimalsCombo->setCurrentText("2"); // Valor por defecto
+    millaresDecimalsCombo->setStyleSheet(getComboStyle());
+    millaresDecimalsCombo->setMaximumWidth(80);
+    millaresDecimalsCombo->setMinimumHeight(35);
+    
+    // Agregar el combo de decimales al mismo layout horizontal
+    currencyLayout->addWidget(millaresDecimalsLabel);
+    currencyLayout->addWidget(millaresDecimalsCombo);
+    currencyLayout->addStretch(); // Agregar stretch al final
+    
+    // Agregar widget al layout principal de moneda
+    currencyMainLayout->addWidget(currencyFormatWidget);
     
     // Widget para propiedades de fecha
     datePropertiesWidget = new QWidget();
@@ -1984,6 +2174,7 @@ void TableView::createSpecificPropertiesWidgets()
     connect(numberTypeCombo, &QComboBox::currentTextChanged, this, &TableView::onNumberTypeChanged);
     connect(currencyFormatCombo, &QComboBox::currentTextChanged, this, &TableView::onCurrencyFormatChanged);
     connect(dateFormatCombo, &QComboBox::currentTextChanged, this, &TableView::onDateFormatChanged);
+    connect(millaresDecimalsCombo, &QComboBox::currentTextChanged, this, &TableView::onMillaresDecimalsChanged);
 }
 
 void TableView::updateSpecificProperties(const QString &dataType)
@@ -1995,9 +2186,9 @@ void TableView::updateSpecificProperties(const QString &dataType)
     datePropertiesWidget->hide();
     
     // Mostrar el widget correspondiente según el tipo de dato
-    if (dataType == "Texto corto (hasta N caracteres)" || dataType == "Texto largo / Párrafo") {
+    if (dataType == "Texto corto" || dataType == "Texto largo") {
         textPropertiesWidget->show();
-        if (dataType == "Texto corto (hasta N caracteres)") {
+        if (dataType == "Texto corto") {
             textSizeEdit->setPlaceholderText("Máximo 255 caracteres (ej: 50)");
             textSizeEdit->setText("50");
             textValidationLabel->setText("(Máx. 255 caracteres)");
@@ -2025,8 +2216,14 @@ void TableView::updateSpecificProperties(const QString &dataType)
             fieldCurrencyFormats.append("Lempiras (Lps)");
         }
         
+        // Asegurar que la lista de decimales tenga el tamaño correcto
+        while (fieldMillaresDecimals.size() <= currentSelectedRow) {
+            fieldMillaresDecimals.append("2");
+        }
+        
         // Bloquear señales para evitar ciclos
         currencyFormatCombo->blockSignals(true);
+        millaresDecimalsCombo->blockSignals(true);
         
         // Cargar el formato guardado para esta fila
         if (currentSelectedRow >= 0 && currentSelectedRow < fieldCurrencyFormats.size()) {
@@ -2041,8 +2238,18 @@ void TableView::updateSpecificProperties(const QString &dataType)
             currencyFormatCombo->setCurrentText("Lempiras (Lps)");
         }
         
+        // Mostrar combo de decimales para TODOS los tipos de moneda
+        millaresDecimalsLabel->show();
+        millaresDecimalsCombo->show();
+        
+        // Cargar decimales guardados
+        if (currentSelectedRow < fieldMillaresDecimals.size()) {
+            millaresDecimalsCombo->setCurrentText(fieldMillaresDecimals[currentSelectedRow]);
+        }
+        
         // Reactivar señales
         currencyFormatCombo->blockSignals(false);
+        millaresDecimalsCombo->blockSignals(false);
     } else if (dataType == "fecha") {
         datePropertiesWidget->show();
         dateFormatCombo->setCurrentText("DD-MM-YY");
@@ -2148,6 +2355,22 @@ void TableView::onCurrencyFormatChanged(const QString &text)
     qDebug() << "DEBUG: Formato de moneda cambiado a:" << text;
     qDebug() << "DEBUG: Fila actual seleccionada:" << currentSelectedRow;
     
+    // El combo de decimales siempre se muestra para todos los tipos de moneda
+    millaresDecimalsLabel->show();
+    millaresDecimalsCombo->show();
+    
+    // Asegurar que la lista de decimales tenga el tamaño correcto
+    while (fieldMillaresDecimals.size() <= currentSelectedRow) {
+        fieldMillaresDecimals.append("2"); // Valor por defecto: 2 decimales
+    }
+    
+    // Cargar el valor guardado para esta fila
+    if (currentSelectedRow >= 0 && currentSelectedRow < fieldMillaresDecimals.size()) {
+        millaresDecimalsCombo->blockSignals(true);
+        millaresDecimalsCombo->setCurrentText(fieldMillaresDecimals[currentSelectedRow]);
+        millaresDecimalsCombo->blockSignals(false);
+    }
+    
     // Guardar el formato para el campo actual
     if (currentSelectedRow >= 0) {
         // Asegurar que la lista tenga el tamaño correcto
@@ -2163,8 +2386,8 @@ void TableView::onCurrencyFormatChanged(const QString &text)
     
     // Emitir señal para actualizar vista de datos
     emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
-    // Emitir señal específica con formatos de moneda
-    emit tableDesignChangedWithFormats(getCurrentFieldNames(), getCurrentFieldTypes(), getCurrentCurrencyFormats());
+    // Emitir señal específica con formatos de moneda y decimales
+    emit tableDesignChangedWithFormatsAndDecimals(getCurrentFieldNames(), getCurrentFieldTypes(), getCurrentCurrencyFormats(), getCurrentMillaresDecimals());
 }
 
 void TableView::onDateFormatChanged(const QString &text)
@@ -2172,6 +2395,29 @@ void TableView::onDateFormatChanged(const QString &text)
     qDebug() << "DEBUG: Formato de fecha cambiado a:" << text;
     // Emitir señal para actualizar vista de datos
     emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+}
+
+void TableView::onMillaresDecimalsChanged(const QString &text)
+{
+    qDebug() << "DEBUG: Decimales de millares cambiado a:" << text;
+    qDebug() << "DEBUG: Fila actual seleccionada:" << currentSelectedRow;
+    
+    // Guardar el número de decimales para el campo actual
+    if (currentSelectedRow >= 0) {
+        // Asegurar que la lista tenga el tamaño correcto
+        while (fieldMillaresDecimals.size() <= currentSelectedRow) {
+            fieldMillaresDecimals.append("2");
+        }
+        
+        // Guardar el número de decimales seleccionado para esta fila
+        fieldMillaresDecimals[currentSelectedRow] = text;
+        qDebug() << "DEBUG: Guardados" << text << "decimales para fila" << currentSelectedRow;
+        qDebug() << "DEBUG: Lista completa de decimales:" << fieldMillaresDecimals;
+    }
+    
+    // Emitir señal para actualizar vista de datos
+    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+    emit tableDesignChangedWithFormatsAndDecimals(getCurrentFieldNames(), getCurrentFieldTypes(), getCurrentCurrencyFormats(), getCurrentMillaresDecimals());
 }
 
 QString TableView::generateExampleData(const QString &dataType, int column)
@@ -2198,7 +2444,7 @@ QString TableView::generateExampleData(const QString &dataType, int column)
         }
     } else if (dataType == "Sí / No") {
         return "Sí";
-    } else if (dataType == "Texto corto (hasta N caracteres)") {
+    } else if (dataType == "Texto corto") {
         QString size = textSizeEdit ? textSizeEdit->text() : "50";
         if (size == "Sin límite" || size.contains("ilimitado")) {
             return "Texto de ejemplo";
@@ -2214,7 +2460,7 @@ QString TableView::generateExampleData(const QString &dataType, int column)
             }
             return "Texto de ejemplo";
         }
-    } else if (dataType == "Texto largo / Párrafo") {
+    } else if (dataType == "Texto largo") {
         return "Este es un ejemplo de texto largo que puede contener múltiples líneas...";
     } else if (dataType == "moneda") {
         QString format = currencyFormatCombo ? currencyFormatCombo->currentText() : "Lempiras (Lps)";

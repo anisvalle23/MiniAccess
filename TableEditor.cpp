@@ -719,6 +719,26 @@ void TableEditor::showTableView(const QString &tableName)
                     // Emitir señal de que los campos cambiaron
                     emit tableFieldsChanged(tableName);
                 }, Qt::UniqueConnection);
+
+        // Conectar señal específica para formatos de moneda y decimales de millares
+        connect(view, &TableView::tableDesignChangedWithFormatsAndDecimals, this,
+                [this, tableName](const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals) {
+                    // Guardar diseño en "arreglos" por tabla
+                    TableDesignData &d = tableDesigns[tableName];
+                    d.fieldNames = fieldNames;
+                    d.fieldTypes = fieldTypes;
+                    // Si existe su TableData, sincronizar con formatos de moneda y decimales
+                    if (tableDatas.contains(tableName) && tableDatas.value(tableName)) {
+                        // Obtener el índice de Primary Key del TableView actual
+                        int primaryKeyIndex = -1;
+                        if (tableViews.contains(tableName) && tableViews.value(tableName)) {
+                            primaryKeyIndex = tableViews.value(tableName)->getPrimaryKeyColumnIndex();
+                        }
+                        tableDatas.value(tableName)->setupDataViewWithFormatsAndDecimals(fieldNames, fieldTypes, currencyFormats, millaresDecimals, primaryKeyIndex);
+                    }
+                    // Emitir señal de que los campos cambiaron
+                    emit tableFieldsChanged(tableName);
+                }, Qt::UniqueConnection);
         
         // Conectar señal para Foreign Key eliminada
         connect(view, &TableView::foreignKeyRemoved, this,
@@ -1014,6 +1034,33 @@ QStringList TableEditor::getTablePrimaryKeys(const QString &tableName) const {
     }
     
     return primaryKeys;
+}
+
+QStringList TableEditor::getTablePrimaryAndForeignKeys(const QString &tableName) const {
+    QStringList primaryAndForeignKeys;
+    
+    // Buscar la TableView correspondiente en el mapa tableViews
+    if (tableViews.contains(tableName)) {
+        TableView* tableView = tableViews.value(tableName);
+        if (tableView) {
+            // Obtener todos los nombres de campos con sus iconos
+            QStringList allFieldNames = tableView->getAllFieldNames();
+            
+            // Filtrar solo los que tienen AMBOS iconos: Primary Key (🔑) Y Foreign Key (🔗)
+            for (const QString &fieldName : allFieldNames) {
+                if (fieldName.contains("🔑") && fieldName.contains("🔗")) {
+                    // Extraer el nombre del campo sin iconos
+                    QString cleanFieldName = fieldName;
+                    cleanFieldName.remove("🔑 ");
+                    cleanFieldName.remove("🔗 ");
+                    cleanFieldName = cleanFieldName.trimmed();
+                    primaryAndForeignKeys.append(cleanFieldName);
+                }
+            }
+        }
+    }
+    
+    return primaryAndForeignKeys;
 }
 
 void TableEditor::showTableContextMenu(const QPoint &pos)

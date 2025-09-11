@@ -266,8 +266,8 @@ void RelationshipsView::createRelationshipDesigner()
     QWidget *instructionCard = new QWidget();
     instructionCard->setStyleSheet(
         "QWidget {"
-            "background: #FFF5F5;"
-            "border: 1px solid #FFCDD2;"
+            "background: #E8F5E8;"
+            "border: 1px solid #C8E6C9;"
             "border-radius: 6px;"
             "padding: 8px;"
         "}"
@@ -276,7 +276,7 @@ void RelationshipsView::createRelationshipDesigner()
     cardLayout->setMargin(8);
     
     QLabel *instructionText = new QLabel("💡 Arrastra tablas desde la lista izquierda aquí para conectarlas");
-    instructionText->setStyleSheet("color: #C62828; font-size: 11px; font-weight: 500;");
+    instructionText->setStyleSheet("color: #2E7D32; font-size: 11px; font-weight: 500;");
     instructionText->setWordWrap(true);
     
     cardLayout->addWidget(instructionText);
@@ -333,16 +333,16 @@ void RelationshipsView::createPropertiesPanel()
     propertiesGroup->setStyleSheet(
         "QGroupBox {"
             "font-weight: bold;"
-            "border: 1px solid #FFEBEE;"
+            "border: 1px solid #E8F5E8;"
             "border-radius: 8px;"
             "margin-top: 12px;"
-            "background: #FFFAFA;"
+            "background: #F9FFF9;"
         "}"
         "QGroupBox::title {"
             "subcontrol-origin: margin;"
             "left: 12px;"
             "padding: 0 6px;"
-            "color: #C62828;"
+            "color: #2E7D32;"
             "background: white;"
         "}"
     );
@@ -889,9 +889,13 @@ void RelationshipsView::onCreateRelationship()
         QStringList sourcePrimaryKeys = tableEditor->getTablePrimaryKeys(sourceTable);
         QStringList targetPrimaryKeys = tableEditor->getTablePrimaryKeys(targetTable);
         
+        // *** NUEVO: Obtener campos que sean tanto PK como FK ***
+        QStringList sourcePKandFK = tableEditor->getTablePrimaryAndForeignKeys(sourceTable);
+        QStringList targetPKandFK = tableEditor->getTablePrimaryAndForeignKeys(targetTable);
+        
         // VALIDACIÓN SEGÚN TIPO DE RELACIÓN
         if (shortType == "1:1") {
-            // Relación 1:1: Una de las dos tablas debe tener FK que apunte a PK de la otra
+            // Relación 1:1: PK puede ser también FK - ESTO ES VÁLIDO
             bool sourceHasValidFK = !sourceForeignKeys.isEmpty();
             bool targetHasValidFK = !targetForeignKeys.isEmpty();
             
@@ -905,6 +909,7 @@ void RelationshipsView::onCreateRelationship()
                            "⚠️ <b>Estado actual:</b><br>"
                            "• Tabla <b>'%1'</b>: %2 Foreign Keys<br>"
                            "• Tabla <b>'%3'</b>: %4 Foreign Keys<br><br>"
+                           "✅ <b>Nota:</b> En relaciones 1:1, un campo puede ser Primary Key y Foreign Key al mismo tiempo.<br><br>"
                            "<b>Solución:</b><br>"
                            "1. Vaya a la vista de diseño de una de las tablas<br>"
                            "2. Seleccione el campo de referencia<br>"
@@ -916,7 +921,7 @@ void RelationshipsView::onCreateRelationship()
                 msgBox.setStandardButtons(QMessageBox::Ok);
                 msgBox.button(QMessageBox::Ok)->setText("Entendido");
                 msgBox.setStyleSheet(
-                    "QMessageBox { background-color: white; min-width: 500px; min-height: 280px; }"
+                    "QMessageBox { background-color: white; min-width: 500px; min-height: 300px; }"
                     "QMessageBox QLabel { color: black; font-size: 14px; }"
                     "QPushButton { background-color: #2196F3; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
                     "QPushButton:hover { background-color: #1976D2; }"
@@ -925,8 +930,15 @@ void RelationshipsView::onCreateRelationship()
                 return;
             }
             
+            // Información adicional si hay campos PK+FK (esto es válido en 1:1)
+            if (!sourcePKandFK.isEmpty() || !targetPKandFK.isEmpty()) {
+                qDebug() << "DEBUG: Relación 1:1 válida - Se encontraron campos PK+FK en:" 
+                         << "Tabla" << sourceTable << ":" << sourcePKandFK 
+                         << "Tabla" << targetTable << ":" << targetPKandFK;
+            }
+            
         } else if (shortType == "1:N") {
-            // Relación 1:N: La tabla del lado "muchos" (target) debe tener FK que apunte a PK de la tabla "uno" (source)
+            // Relación 1:N: FK no puede ser PK en el lado muchos (target)
             if (targetForeignKeys.isEmpty()) {
                 QMessageBox msgBox;
                 msgBox.setIcon(QMessageBox::Warning);
@@ -951,6 +963,40 @@ void RelationshipsView::onCreateRelationship()
                     "QMessageBox QLabel { color: black; font-size: 14px; }"
                     "QPushButton { background-color: #FF9800; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
                     "QPushButton:hover { background-color: #F57C00; }"
+                );
+                msgBox.exec();
+                return;
+            }
+            
+            // *** NUEVA VALIDACIÓN: FK no puede ser PK en el lado muchos ***
+            if (!targetPKandFK.isEmpty()) {
+                QMessageBox msgBox;
+                msgBox.setIcon(QMessageBox::Warning);
+                msgBox.setWindowTitle("⚠️ Relación 1:N - Violación de Integridad");
+                msgBox.setText("<h3>Error: Foreign Key no puede ser Primary Key en el lado muchos</h3>");
+                msgBox.setInformativeText(
+                    QString("En una relación 1:N, el Foreign Key en la tabla del lado muchos NO puede ser también Primary Key.<br><br>"
+                           "🚫 <b>Campo(s) problemático(s) en tabla '%1':</b><br>"
+                           "• %2<br><br>"
+                           "📘 <b>Explicación:</b><br>"
+                           "Si el FK fuera PK en el lado muchos, solo podría haber un registro por cada valor de FK, "
+                           "convirtiendo efectivamente la relación en 1:1 en lugar de 1:N.<br><br>"
+                           "<b>Soluciones:</b><br>"
+                           "1. <b>Remover Primary Key</b> del campo '%3' en tabla '%4'<br>"
+                           "2. <b>Crear Primary Key diferente</b> (ej: campo 'Id' autoincremental)<br>"
+                           "3. <b>Cambiar a relación 1:1</b> si esa es la intención")
+                           .arg(targetTable)
+                           .arg(targetPKandFK.join(", "))
+                           .arg(targetPKandFK.first())
+                           .arg(targetTable)
+                );
+                msgBox.setStandardButtons(QMessageBox::Ok);
+                msgBox.button(QMessageBox::Ok)->setText("Entendido");
+                msgBox.setStyleSheet(
+                    "QMessageBox { background-color: white; min-width: 580px; min-height: 380px; }"
+                    "QMessageBox QLabel { color: black; font-size: 14px; }"
+                    "QPushButton { background-color: #E53E3E; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+                    "QPushButton:hover { background-color: #C53030; }"
                 );
                 msgBox.exec();
                 return;
@@ -1007,6 +1053,87 @@ void RelationshipsView::onCreateRelationship()
                 return;
             } else {
                 qDebug() << "DEBUG: Tabla intermedia encontrada:" << intermediateTableName << "con Foreign Keys válidas";
+                
+                // *** NUEVA VALIDACIÓN para N:M: FKs pueden ser PK compuesta en la tabla intermedia ***
+                QStringList intermediatePKandFK = tableEditor->getTablePrimaryAndForeignKeys(intermediateTableName);
+                QStringList intermediateFKs = tableEditor->getTableForeignKeys(intermediateTableName);
+                QStringList intermediatePKs = tableEditor->getTablePrimaryKeys(intermediateTableName);
+                
+                // Verificar que los Foreign Keys en la tabla intermedia puedan formar una Primary Key compuesta válida
+                bool validNMConfiguration = true;
+                QString validationMessage = "";
+                
+                if (intermediateFKs.size() >= 2) {
+                    // Caso ideal: Los FKs pueden ser parte de una PK compuesta
+                    qDebug() << "DEBUG: Tabla intermedia" << intermediateTableName << "tiene" << intermediateFKs.size() << "Foreign Keys";
+                    qDebug() << "DEBUG: Primary Keys en tabla intermedia:" << intermediatePKs;
+                    qDebug() << "DEBUG: Campos PK+FK en tabla intermedia:" << intermediatePKandFK;
+                    
+                    // Verificar que al menos algunos de los FKs sean también PKs (para Primary Key compuesta)
+                    if (intermediatePKs.size() >= 2) {
+                        // Verificar que los PKs incluyan los FKs necesarios
+                        int fksAsPks = 0;
+                        for (const QString &fk : intermediateFKs) {
+                            if (intermediatePKs.contains(fk)) {
+                                fksAsPks++;
+                            }
+                        }
+                        
+                        if (fksAsPks >= 2) {
+                            qDebug() << "DEBUG: ✅ Configuración N:M válida - Primary Key compuesta formada por Foreign Keys";
+                        } else {
+                            validationMessage = QString("La tabla intermedia '%1' debe tener los Foreign Keys como parte de una Primary Key compuesta para garantizar la unicidad en relaciones N:M.").arg(intermediateTableName);
+                        }
+                    } else if (intermediatePKs.size() == 1 && !intermediatePKandFK.isEmpty()) {
+                        qDebug() << "DEBUG: ✅ Configuración N:M válida - Primary Key simple que también es Foreign Key";
+                    } else {
+                        validationMessage = QString("La tabla intermedia '%1' necesita una Primary Key compuesta formada por los Foreign Keys para garantizar la integridad de la relación N:M.").arg(intermediateTableName);
+                    }
+                }
+                
+                // Mostrar advertencia informativa si la configuración no es ideal (pero permitir continuar)
+                if (!validationMessage.isEmpty()) {
+                    QMessageBox msgBox;
+                    msgBox.setIcon(QMessageBox::Information);
+                    msgBox.setWindowTitle("💡 Relación N:M - Recomendación de Diseño");
+                    msgBox.setText("<h3>Configuración de Tabla Intermedia</h3>");
+                    msgBox.setInformativeText(
+                        QString("La tabla intermedia '%1' fue encontrada y tiene Foreign Keys suficientes.<br><br>"
+                               "💡 <b>Recomendación:</b><br>"
+                               "%2<br><br>"
+                               "✅ <b>Configuración actual encontrada:</b><br>"
+                               "• Tabla intermedia: <b>%3</b><br>"
+                               "• Foreign Keys: %4<br>"
+                               "• Primary Keys: %5<br><br>"
+                               "📘 <b>Mejores prácticas para N:M:</b><br>"
+                               "• Los Foreign Keys deberían formar una Primary Key compuesta<br>"
+                               "• Esto garantiza que no haya relaciones duplicadas<br><br>"
+                               "<b>¿Desea continuar creando la relación?</b>")
+                               .arg(intermediateTableName)
+                               .arg(validationMessage)
+                               .arg(intermediateTableName)
+                               .arg(intermediateFKs.join(", "))
+                               .arg(intermediatePKs.join(", "))
+                    );
+                    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+                    msgBox.button(QMessageBox::Yes)->setText("Sí, continuar");
+                    msgBox.button(QMessageBox::No)->setText("No, revisar diseño");
+                    msgBox.setDefaultButton(QMessageBox::Yes);
+                    msgBox.setStyleSheet(
+                        "QMessageBox { background-color: white; min-width: 600px; min-height: 400px; }"
+                        "QMessageBox QLabel { color: black; font-size: 14px; }"
+                        "QPushButton { font-size: 14px; font-weight: bold; min-width: 120px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+                        "QPushButton:default { background-color: #10B981; color: white; }"
+                        "QPushButton:default:hover { background-color: #059669; }"
+                        "QPushButton:!default { background-color: #6B7280; color: white; }"
+                        "QPushButton:!default:hover { background-color: #4B5563; }"
+                    );
+                    
+                    int result = msgBox.exec();
+                    if (result == QMessageBox::No) {
+                        return; // Usuario decidió no continuar
+                    }
+                }
             }
         }
         

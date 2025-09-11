@@ -267,7 +267,8 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
             // >>> formateo visual aquí <<<
             if (owner) {
                 QString format = owner->getCurrencyFormatForColumn(index.column());
-                newText = owner->formatCurrencyWithFormat(newText, format);
+                QString decimals = owner->getMillaresDecimalsForColumn(index.column());
+                newText = owner->formatCurrencyWithFormatAndDecimals(newText, format, decimals);
             }
         } else if (type == "fecha") {
             if (!owner->isValueValidForType(type, newText)) {
@@ -692,7 +693,8 @@ void TableData::setupDataView(const QStringList &fieldNames, const QStringList &
                 const QString t = it->text().trimmed();
                 if (!t.isEmpty()) {
                     QString format = getCurrencyFormatForColumn(col);
-                    it->setText(formatCurrencyWithFormat(t, format));
+                    QString decimals = getMillaresDecimalsForColumn(col);
+                    it->setText(formatCurrencyWithFormatAndDecimals(t, format, decimals));
                 }
             }
             dataTable->blockSignals(false);
@@ -773,7 +775,8 @@ void TableData::applyCurrencyFormats()
                 const QString text = item->text().trimmed();
                 if (!text.isEmpty()) {
                     // Aplicar formato específico según la selección
-                    QString formattedValue = formatCurrencyWithFormat(text, format);
+                    QString decimals = savedMillaresDecimals.size() > col ? savedMillaresDecimals.at(col) : "2";
+                    QString formattedValue = formatCurrencyWithFormatAndDecimals(text, format, decimals);
                     item->setText(formattedValue);
                 }
             }
@@ -785,6 +788,28 @@ void TableData::applyCurrencyFormats()
     qDebug() << "DEBUG: Forzando actualización visual de la tabla";
     dataTable->viewport()->update();
     dataTable->repaint();
+}
+
+void TableData::setupDataViewWithFormatsAndDecimals(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, int primaryKeyColumn)
+{
+    qDebug() << "DEBUG: setupDataViewWithFormatsAndDecimals llamado con:";
+    qDebug() << "DEBUG: fieldNames:" << fieldNames;
+    qDebug() << "DEBUG: fieldTypes:" << fieldTypes;
+    qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
+    qDebug() << "DEBUG: millaresDecimals:" << millaresDecimals;
+    qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
+    
+    // Guardar los formatos de moneda y decimales
+    savedCurrencyFormats = currencyFormats;
+    savedMillaresDecimals = millaresDecimals;
+    qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
+    qDebug() << "DEBUG: Decimales guardados en savedMillaresDecimals:" << savedMillaresDecimals;
+    
+    // Llamar al método base para hacer la configuración normal
+    setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
+    
+    // Aplicar formatos específicos de moneda después de la configuración básica
+    applyCurrencyFormats();
 }
 
 void TableData::addPersonRow(const QStringList &personData)
@@ -986,7 +1011,8 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
                     qDebug() << "DEBUG: Reformateando de" << text << "a formato" << format << "con número limpio:" << cleanNumber;
                     
                     dataTable->blockSignals(true);
-                    QString formattedText = formatCurrencyWithFormat(cleanNumber, format);
+                    QString decimals = savedMillaresDecimals.size() > col ? savedMillaresDecimals.at(col) : "2";
+                    QString formattedText = formatCurrencyWithFormatAndDecimals(cleanNumber, format, decimals);
                     item->setText(formattedText);
                     dataTable->blockSignals(false);
                     
@@ -1000,7 +1026,8 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
                 qDebug() << "DEBUG: Aplicando formato por primera vez a:" << text;
                 
                 dataTable->blockSignals(true);
-                QString formattedText = formatCurrencyWithFormat(text, format);
+                QString decimals = savedMillaresDecimals.size() > col ? savedMillaresDecimals.at(col) : "2";
+                QString formattedText = formatCurrencyWithFormatAndDecimals(text, format, decimals);
                 qDebug() << "DEBUG: Texto original:" << text << "-> Texto formateado:" << formattedText;
                 if (!formattedText.isEmpty()) {
                     item->setText(formattedText);
@@ -1310,6 +1337,52 @@ QString TableData::formatCurrencyWithFormat(const QString& raw, const QString& f
     }
 }
 
+QString TableData::formatCurrencyWithFormatAndDecimals(const QString& raw, const QString& format, const QString& decimals) const {
+    // Extrae dígitos, separadores y signo para poder parsear
+    QString cleaned;
+    cleaned.reserve(raw.size());
+    for (QChar c : raw) {
+        if (c.isDigit() || c == '.' || c == ',' || c == '-') cleaned.append(c);
+    }
+    if (cleaned.isEmpty()) return QString();
+
+    // Normaliza decimal a punto para parseo
+    QString normalized = cleaned;
+    normalized.replace(',', '.');
+
+    bool ok = false;
+    const double v = normalized.toDouble(&ok);
+    if (!ok) return raw; // Si no se pudo parsear, deja el texto tal cual
+
+    // Formatea según el formato especificado
+    QLocale loc(QLocale::Spanish, QLocale::Honduras);
+    
+    // Usar el número de decimales especificado para todos los formatos
+    bool decOk = false;
+    int numDecimals = decimals.toInt(&decOk);
+    if (!decOk || numDecimals < 0 || numDecimals > 6) {
+        numDecimals = 2; // Valor por defecto
+    }
+    
+    if (format.contains("Lempiras") || format.contains("Lps")) {
+        QString formattedNumber = loc.toString(v, 'f', numDecimals);
+        return QStringLiteral("Lps %1").arg(formattedNumber);
+    } else if (format.contains("Dollar") || format.contains("$")) {
+        QString formattedNumber = loc.toString(v, 'f', numDecimals);
+        return QStringLiteral("$%1").arg(formattedNumber);
+    } else if (format.contains("Euros") || format.contains("€")) {
+        QString formattedNumber = loc.toString(v, 'f', numDecimals);
+        return QStringLiteral("€%1").arg(formattedNumber);
+    } else if (format.contains("Millares")) {
+        QString formattedNumber = loc.toString(v, 'f', numDecimals);
+        return formattedNumber;
+    } else {
+        // Formato por defecto (Lempiras)
+        QString formattedNumber = loc.toString(v, 'f', numDecimals);
+        return QStringLiteral("Lps %1").arg(formattedNumber);
+    }
+}
+
 QString TableData::getCurrencyFormatForColumn(int column) const {
     qDebug() << "DEBUG: getCurrencyFormatForColumn llamado para columna:" << column;
     qDebug() << "DEBUG: savedCurrencyFormats disponibles:" << savedCurrencyFormats;
@@ -1326,6 +1399,24 @@ QString TableData::getCurrencyFormatForColumn(int column) const {
     // Valor por defecto
     qDebug() << "DEBUG: Usando formato por defecto para columna:" << column;
     return "Lempiras (Lps)";
+}
+
+QString TableData::getMillaresDecimalsForColumn(int column) const {
+    qDebug() << "DEBUG: getMillaresDecimalsForColumn llamado para columna:" << column;
+    qDebug() << "DEBUG: savedMillaresDecimals disponibles:" << savedMillaresDecimals;
+    
+    // Verificar que la columna existe en los decimales guardados
+    if (column >= 0 && column < savedMillaresDecimals.size()) {
+        QString decimals = savedMillaresDecimals.at(column);
+        if (!decimals.isEmpty()) {
+            qDebug() << "DEBUG: Decimales encontrados para columna" << column << ":" << decimals;
+            return decimals;
+        }
+    }
+    
+    // Valor por defecto
+    qDebug() << "DEBUG: Usando decimales por defecto para columna:" << column;
+    return "2";
 }
 
 void TableData::showSoftWarning(int row, int col, const QString& msg) const {
@@ -1390,7 +1481,8 @@ void DataFieldDelegate::initStyleOption(QStyleOptionViewItem *option,
 
     // Aplicar formato usando el método de TableData
     if (owner) {
-        QString formattedText = owner->formatCurrencyWithFormat(raw, format);
+        QString decimals = owner->getMillaresDecimalsForColumn(index.column());
+        QString formattedText = owner->formatCurrencyWithFormatAndDecimals(raw, format, decimals);
         option->text = formattedText;
         qDebug() << "DEBUG: initStyleOption - Texto formateado:" << raw << "->" << formattedText;
     } else {

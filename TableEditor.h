@@ -89,6 +89,7 @@ public:
     QStringList getTableFieldsWithKeys(const QString &tableName) const; // Nuevo método que incluye las llaves
     QStringList getTableForeignKeys(const QString &tableName) const; // Método para obtener solo los Foreign Keys
     QStringList getTablePrimaryKeys(const QString &tableName) const; // Método para obtener solo los Primary Keys
+    QStringList getTablePrimaryAndForeignKeys(const QString &tableName) const; // Método para obtener campos que son PK y FK
 
 signals:
     void tableCreated(const QString &tableName);
