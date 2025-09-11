@@ -57,6 +57,16 @@ class TableEditor : public QWidget
 public:
     explicit TableEditor(QWidget *parent = nullptr);
     void updateTheme(bool isDark);
+    
+    // Methods to get created tables info
+    QStringList getCreatedTables() const;
+    QStringList getTableFields(const QString &tableName) const;
+    QStringList getTableFieldsWithKeys(const QString &tableName) const; // Nuevo método que incluye las llaves
+
+signals:
+    void tableCreated(const QString &tableName);
+    void tableDeleted(const QString &tableName);
+    void tableFieldsChanged(const QString &tableName); // Nueva señal para cambios en campos
 
 private slots:
     void onCreateTableClicked();

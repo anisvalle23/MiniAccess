@@ -1,5 +1,6 @@
 #include "RelationshipsView.h"
 #include "ThemeManager.h"
+#include "TableEditor.h"
 #include <QApplication>
 #include <QDir>
 #include <QJsonDocument>
@@ -12,10 +13,11 @@
 #include <QGraphicsProxyWidget>
 #include <QDrag>
 #include <QMimeData>
+#include <QDebug>
 #include <cmath>
 
 RelationshipsView::RelationshipsView(QWidget *parent)
-    : QWidget(parent), isDarkTheme(false)
+    : QWidget(parent), isDarkTheme(false), tableEditor(nullptr)
 {
     setupUI();
     styleComponents();
@@ -29,6 +31,14 @@ RelationshipsView::RelationshipsView(QWidget *parent)
     // Load initial data
     loadTables();
     loadRelationships();
+}
+
+void RelationshipsView::setTableEditor(TableEditor *editor)
+{
+    tableEditor = editor;
+    
+    // Reload tables when editor is set
+    loadTables();
 }
 
 void RelationshipsView::setupUI()
@@ -114,7 +124,11 @@ void RelationshipsView::createToolbar()
     // Connect signals
     connect(createRelationshipBtn, &QPushButton::clicked, this, &RelationshipsView::onCreateRelationship);
     connect(deleteRelationshipBtn, &QPushButton::clicked, this, &RelationshipsView::onDeleteRelationship);
-    connect(refreshBtn, &QPushButton::clicked, this, &RelationshipsView::refreshTableList);
+    connect(refreshBtn, &QPushButton::clicked, this, [this]() {
+        refreshTableList();
+        // Show a brief confirmation
+        QMessageBox::information(this, "Actualizado", "Las tablas y campos han sido actualizados correctamente.");
+    });
 }
 
 void RelationshipsView::createMainArea()
@@ -161,12 +175,15 @@ void RelationshipsView::createRelationshipsList()
     // Habilitar drag iniciado por mouse
     connect(tablesListWidget, &QListWidget::itemPressed, [this](QListWidgetItem *item) {
         if (item && QApplication::mouseButtons() & Qt::LeftButton) {
-            QDrag *drag = new QDrag(this);
-            QMimeData *mimeData = new QMimeData;
+            // Only allow drag if the item has UserRole data (real table, not info message)
             QString tableName = item->data(Qt::UserRole).toString();
-            mimeData->setText(tableName);
-            drag->setMimeData(mimeData);
-            drag->exec(Qt::CopyAction);
+            if (!tableName.isEmpty() && availableTables.contains(tableName)) {
+                QDrag *drag = new QDrag(this);
+                QMimeData *mimeData = new QMimeData;
+                mimeData->setText(tableName);
+                drag->setMimeData(mimeData);
+                drag->exec(Qt::CopyAction);
+            }
         }
     });
     
@@ -519,30 +536,48 @@ void RelationshipsView::loadTables()
     sourceTableCombo->clear();
     targetTableCombo->clear();
     
-    // Crear tablas predeterminadas para demostración
-    QStringList predefinedTables = {"estudiante", "maestro"};
-    
-    for (const QString &tableName : predefinedTables) {
-        availableTables.append(tableName);
+    // Get tables from TableEditor if available
+    if (tableEditor) {
+        QStringList createdTables = tableEditor->getCreatedTables();
         
-        // Create draggable item for tables list
-        QListWidgetItem *item = new QListWidgetItem("📊 " + tableName);
-        item->setData(Qt::UserRole, tableName);
-        item->setFlags(item->flags() | Qt::ItemIsDragEnabled);
-        tablesListWidget->addItem(item);
-        
-        sourceTableCombo->addItem(tableName);
-        targetTableCombo->addItem(tableName);
-        
-        // Definir campos básicos para cada tabla
-        QStringList fields;
-        if (tableName == "estudiante") {
-            fields << "id" << "nombre" << "apellido" << "email" << "carrera" << "maestro_id";
-        } else if (tableName == "maestro") {
-            fields << "id" << "nombre" << "apellido" << "especialidad" << "telefono";
+        for (const QString &tableName : createdTables) {
+            availableTables.append(tableName);
+            
+            // Create draggable item for tables list
+            QListWidgetItem *item = new QListWidgetItem("📊 " + tableName);
+            item->setData(Qt::UserRole, tableName);
+            item->setFlags(item->flags() | Qt::ItemIsDragEnabled);
+            tablesListWidget->addItem(item);
+            
+            sourceTableCombo->addItem(tableName);
+            targetTableCombo->addItem(tableName);
+            
+            // Get fields from TableEditor - con llaves incluidas para mostrar las primary keys
+            QStringList fields = tableEditor->getTableFieldsWithKeys(tableName);
+            
+            // Filter out empty fields and ensure we only get actual field names
+            QStringList validFields;
+            for (const QString &field : fields) {
+                QString cleanField = field.trimmed();
+                if (!cleanField.isEmpty()) {
+                    validFields << cleanField;
+                }
+            }
+            
+            // Always store the fields, even if empty
+            tableFields[tableName] = validFields;
         }
-        tableFields[tableName] = fields;
+        
+        // If no tables found, show a helpful message
+        if (createdTables.isEmpty()) {
+            QListWidgetItem *item = new QListWidgetItem("📝 No hay tablas creadas");
+            item->setFlags(Qt::NoItemFlags); // Make it non-selectable and non-draggable
+            item->setForeground(QColor("#999999"));
+            tablesListWidget->addItem(item);
+        }
     }
+    
+    // Remove the fallback predefined tables - only show real tables from TableEditor
 }
 
 void RelationshipsView::loadRelationships()
@@ -581,7 +616,10 @@ void RelationshipsView::addTableToDesigner(const QString &tableName, const QPoin
     TableGraphicsItem *tableItem = new TableGraphicsItem(tableName, rect);
     
     if (tableFields.contains(tableName)) {
-        tableItem->setFields(tableFields[tableName]);
+        QStringList fields = tableFields[tableName];
+        if (!fields.isEmpty()) {
+            tableItem->setFields(fields);
+        }
     }
     
     tableItem->updateTheme(isDarkTheme);
@@ -607,7 +645,18 @@ void RelationshipsView::addTableToDesigner(const QString &tableName, const QPoin
     TableGraphicsItem *newTableItem = new TableGraphicsItem(tableName);
     QPointF scenePos = designerView->mapToScene(position);
     newTableItem->setPos(scenePos);
+    
+    // Set fields for the new table item
+    if (tableFields.contains(tableName)) {
+        QStringList fields = tableFields[tableName];
+        if (!fields.isEmpty()) {
+            newTableItem->setFields(fields);
+        }
+    }
+    
+    newTableItem->updateTheme(isDarkTheme);
     designerScene->addItem(newTableItem);
+    tableItems.append(newTableItem);
     
     // Update combo boxes to reflect available tables in designer
     if (sourceTableCombo->findText(tableName) == -1) {
@@ -644,8 +693,82 @@ void RelationshipsView::createRelationshipBetweenTables(const QString &table1, c
 
 void RelationshipsView::refreshTableList()
 {
+    // Store current selections to restore them if possible
+    QString currentSourceTable = sourceTableCombo->currentText();
+    QString currentTargetTable = targetTableCombo->currentText();
+    
+    // Reload tables from TableEditor
     loadTables();
     loadRelationships();
+    
+    // Restore selections if the tables still exist
+    int sourceIndex = sourceTableCombo->findText(currentSourceTable);
+    if (sourceIndex >= 0) {
+        sourceTableCombo->setCurrentIndex(sourceIndex);
+    }
+    
+    int targetIndex = targetTableCombo->findText(currentTargetTable);
+    if (targetIndex >= 0) {
+        targetTableCombo->setCurrentIndex(targetIndex);
+    }
+    
+    // Update the visual designer by clearing items that no longer exist
+    QList<TableGraphicsItem*> itemsToRemove;
+    for (auto *item : tableItems) {
+        QString tableName = item->getTableName();
+        if (!availableTables.contains(tableName)) {
+            itemsToRemove.append(item);
+        }
+    }
+    
+    // Remove invalid table items
+    for (auto *item : itemsToRemove) {
+        designerScene->removeItem(item);
+        tableItems.removeAll(item);
+        delete item;
+    }
+    
+    // Also remove relationship lines that reference deleted tables
+    QList<RelationshipLine*> linesToRemove;
+    for (auto *line : relationshipLines) {
+        QString sourceTableName = line->getSourceTable()->getTableName();
+        QString targetTableName = line->getTargetTable()->getTableName();
+        
+        if (!availableTables.contains(sourceTableName) || !availableTables.contains(targetTableName)) {
+            linesToRemove.append(line);
+        }
+    }
+    
+    // Remove invalid relationship lines
+    for (auto *line : linesToRemove) {
+        designerScene->removeItem(line);
+        relationshipLines.removeAll(line);
+        delete line;
+    }
+    
+    // Update existing table items with new field information
+    for (auto *item : tableItems) {
+        QString tableName = item->getTableName();
+        if (tableFields.contains(tableName)) {
+            QStringList fields = tableFields[tableName];
+            // Force update fields even if previously empty
+            item->setFields(fields);
+        } else if (tableEditor) {
+            // Try to get fields directly from tableEditor if not in our cache
+            QStringList fields = tableEditor->getTableFields(tableName);
+            QStringList validFields;
+            for (const QString &field : fields) {
+                QString cleanField = field.trimmed();
+                if (!cleanField.isEmpty()) {
+                    validFields << cleanField;
+                }
+            }
+            if (!validFields.isEmpty()) {
+                tableFields[tableName] = validFields;
+                item->setFields(validFields);
+            }
+        }
+    }
 }
 
 void RelationshipsView::onCreateRelationship()
@@ -711,18 +834,62 @@ void RelationshipsView::onRelationshipSelectionChanged()
     }
 }
 
+void RelationshipsView::onTableFieldsChanged(const QString &tableName)
+{
+    if (!tableEditor) return;
+    
+    // Update the fields for this specific table - usando el método que incluye las llaves
+    QStringList fields = tableEditor->getTableFieldsWithKeys(tableName);
+    QStringList validFields;
+    for (const QString &field : fields) {
+        QString cleanField = field.trimmed();
+        if (!cleanField.isEmpty()) {
+            validFields << cleanField;
+        }
+    }
+    
+    // Update our local cache
+    tableFields[tableName] = validFields;
+    
+    // Update any existing table items in the designer
+    for (auto *item : tableItems) {
+        if (item->getTableName() == tableName) {
+            item->setFields(validFields);
+            // Force a scene update to show changes immediately
+            item->update();
+        }
+    }
+}
+
 void RelationshipsView::showTableDetails(const QString &tableName)
 {
-    // Update properties panel with table information - SIMPLIFICADO
-    // relationshipNameEdit->setText(QString("Nueva relación con %1").arg(tableName));
+    // Extract table name from display text (remove emoji)
+    QString cleanTableName = tableName;
+    if (cleanTableName.startsWith("📊 ")) {
+        cleanTableName = cleanTableName.mid(2).trimmed();
+    }
     
-    QString tableInfo = QString("Tabla seleccionada: %1\n\n").arg(tableName);
+    // Only show details if it's a real table, not an info message
+    if (!availableTables.contains(cleanTableName)) {
+        return;
+    }
     
-    if (tableFields.contains(tableName)) {
-        tableInfo += "Campos disponibles:\n";
-        for (const QString &field : tableFields[tableName]) {
-            tableInfo += QString("• %1\n").arg(field);
+    QString tableInfo = QString("Tabla seleccionada: %1\n\n").arg(cleanTableName);
+    
+    if (tableFields.contains(cleanTableName)) {
+        QStringList fields = tableFields[cleanTableName];
+        if (!fields.isEmpty()) {
+            tableInfo += "Campos disponibles:\n";
+            for (const QString &field : fields) {
+                if (!field.trimmed().isEmpty()) {
+                    tableInfo += QString("• %1\n").arg(field.trimmed());
+                }
+            }
+        } else {
+            tableInfo += "Esta tabla no tiene campos definidos.\n";
         }
+    } else {
+        tableInfo += "No se encontraron campos para esta tabla.\n";
     }
     
     tableInfo += "\nPara crear una relación:\n"
@@ -818,12 +985,23 @@ void TableGraphicsItem::setFields(const QStringList &fields)
         QGraphicsTextItem *fieldText = new QGraphicsTextItem(fields[i], this);
         fieldText->setFont(fieldFont);
         fieldText->setPos(rect().x() + 10, rect().y() + 25 + i * 15);
+        
+        // Apply current theme to new field text
+        if (isDarkTheme) {
+            fieldText->setDefaultTextColor(QColor("#CCCCCC"));
+        } else {
+            fieldText->setDefaultTextColor(QColor("#666666"));
+        }
+        
         fieldTexts.append(fieldText);
     }
     
     // Adjust rectangle size based on content
-    qreal height = 30 + fields.size() * 15;
+    qreal height = qMax(30 + fields.size() * 15, 60); // Minimum height of 60
     setRect(rect().x(), rect().y(), rect().width(), height);
+    
+    // Force update to show changes immediately
+    update();
 }
 
 void TableGraphicsItem::updateTheme(bool isDark)

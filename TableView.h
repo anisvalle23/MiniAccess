@@ -86,6 +86,7 @@ public:
     
     // Obtener campos actuales del diseño
     QStringList getCurrentFieldNames() const;
+    QStringList getAllFieldNames() const; // Método que incluye las llaves 🔑
     QStringList getCurrentFieldTypes() const;
     QStringList getCurrentCurrencyFormats() const;
 

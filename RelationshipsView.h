@@ -37,6 +37,7 @@
 
 class TableGraphicsItem;
 class RelationshipLine;
+class TableEditor;
 
 // Custom QGraphicsView for drag and drop
 class RelationshipDesignerView : public QGraphicsView
@@ -64,6 +65,10 @@ public:
     void updateTheme(bool isDark);
     void refreshTableList();
     void addTableToDesigner(const QString &tableName, const QPointF &position);
+    void setTableEditor(TableEditor *tableEditor);
+
+public slots:
+    void onTableFieldsChanged(const QString &tableName); // Slot público para actualización en tiempo real
 
 private slots:
     void onCreateRelationship();
@@ -160,6 +165,7 @@ private:
     QMap<QString, QStringList> tableFields;
     QList<TableGraphicsItem*> tableItems;
     QList<RelationshipLine*> relationshipLines;
+    TableEditor *tableEditor; // Reference to table editor
     
     // Theme
     bool isDarkTheme;

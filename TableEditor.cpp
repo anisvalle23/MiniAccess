@@ -555,8 +555,11 @@ void TableEditor::onSaveClicked()
 
     // Si no existe ya en el sidebar, agregarlo
     QList<QTreeWidgetItem*> found = tableTree->findItems(tableName, Qt::MatchExactly);
-    if (found.isEmpty())
+    if (found.isEmpty()) {
         addTableToSidebar(tableName);
+        // Emit signal that a new table was created
+        emit tableCreated(tableName);
+    }
 
     showTableView(tableName);
     tableNameInput->clear();
@@ -646,6 +649,8 @@ void TableEditor::showTableView(const QString &tableName)
                     if (tableDatas.contains(tableName) && tableDatas.value(tableName)) {
                         tableDatas.value(tableName)->setupDataView(fieldNames, fieldTypes);
                     }
+                    // Emitir señal de que los campos cambiaron
+                    emit tableFieldsChanged(tableName);
                 }, Qt::UniqueConnection);
 
         // Conectar señal específica para formatos de moneda
@@ -659,6 +664,8 @@ void TableEditor::showTableView(const QString &tableName)
                     if (tableDatas.contains(tableName) && tableDatas.value(tableName)) {
                         tableDatas.value(tableName)->setupDataViewWithFormats(fieldNames, fieldTypes, currencyFormats);
                     }
+                    // Emitir señal de que los campos cambiaron
+                    emit tableFieldsChanged(tableName);
                 }, Qt::UniqueConnection);
 
         tableViews.insert(tableName, view);
@@ -835,4 +842,41 @@ void TableEditor::onSidebarItemClicked(QTreeWidgetItem *item, int /*column*/)
     if (!item) return;
     const QString selectedTableName = item->text(0);
     showTableView(selectedTableName);   // o showTableDataView si quieres abrir en datos
+}
+
+QStringList TableEditor::getCreatedTables() const
+{
+    QStringList tables;
+    if (tableTree) {
+        for (int i = 0; i < tableTree->topLevelItemCount(); ++i) {
+            QTreeWidgetItem *item = tableTree->topLevelItem(i);
+            if (item) {
+                tables.append(item->text(0));
+            }
+        }
+    }
+    return tables;
+}
+
+QStringList TableEditor::getTableFields(const QString &tableName) const
+{
+    if (tableDesigns.contains(tableName)) {
+        return tableDesigns.value(tableName).fieldNames;
+    }
+    return QStringList();
+}
+
+QStringList TableEditor::getTableFieldsWithKeys(const QString &tableName) const {
+    // Buscar la TableView correspondiente en el mapa tableViews
+    if (tableViews.contains(tableName)) {
+        TableView* tableView = tableViews.value(tableName);
+        if (tableView) {
+            // Usar el método que incluye las llaves
+            QStringList allFieldNames = tableView->getAllFieldNames();
+            return allFieldNames;
+        }
+    }
+    
+    // Si no encontramos la TableView, retornar los campos sin llaves
+    return getTableFields(tableName);
 }
