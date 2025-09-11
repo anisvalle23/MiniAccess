@@ -70,12 +70,15 @@ public:
 
 public slots:
     void onTableFieldsChanged(const QString &tableName); // Slot público para actualización en tiempo real
+    void onForeignKeyRemoved(const QString &tableName, const QString &fieldName); // Slot para FK eliminada
 
 private slots:
+    void onNewRelationshipClicked();
     void onCreateRelationship();
     void onDeleteRelationship();
     void onTableSelectionChanged();
     void onRelationshipSelectionChanged();
+    void onRelationshipDoubleClicked(QListWidgetItem *item);
     void showTableDetails(const QString &tableName);
     void addTableToDesigner(const QString &tableName, const QPoint &position);
 
@@ -92,6 +95,7 @@ private:
     void createRelationshipBetweenTables(const QString &table1, const QString &table2, 
                                        const QString &relationship_type);
     void updatePropertiesPanel(const QString &selectedItem);
+    void clearDesignerArea(); // Método para limpiar el área de diseño
     
     // UI Components
     QVBoxLayout *mainLayout;
@@ -101,7 +105,6 @@ private:
     QHBoxLayout *toolbarLayout;
     QPushButton *createRelationshipBtn;
     QPushButton *deleteRelationshipBtn;
-    QPushButton *refreshBtn;
     QLabel *titleLabel;
     
     // Main content area

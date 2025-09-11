@@ -73,11 +73,9 @@ void RelationshipsView::createToolbar()
     // Buttons
     createRelationshipBtn = new QPushButton("✨ Nueva Relación");
     deleteRelationshipBtn = new QPushButton("🗑️ Eliminar");
-    refreshBtn = new QPushButton("🔄 Actualizar");
     
     createRelationshipBtn->setFixedSize(160, 40);
     deleteRelationshipBtn->setFixedSize(120, 40);
-    refreshBtn->setFixedSize(130, 40);
     
     // Style buttons with better design
     QString primaryButtonStyle = 
@@ -113,22 +111,15 @@ void RelationshipsView::createToolbar()
     
     createRelationshipBtn->setStyleSheet(primaryButtonStyle);
     deleteRelationshipBtn->setStyleSheet(secondaryButtonStyle);
-    refreshBtn->setStyleSheet(secondaryButtonStyle);
     
     toolbarLayout->addWidget(createRelationshipBtn);
     toolbarLayout->addWidget(deleteRelationshipBtn);
-    toolbarLayout->addWidget(refreshBtn);
     
     mainLayout->addWidget(toolbarWidget);
     
     // Connect signals
-    connect(createRelationshipBtn, &QPushButton::clicked, this, &RelationshipsView::onCreateRelationship);
+    connect(createRelationshipBtn, &QPushButton::clicked, this, &RelationshipsView::onNewRelationshipClicked);
     connect(deleteRelationshipBtn, &QPushButton::clicked, this, &RelationshipsView::onDeleteRelationship);
-    connect(refreshBtn, &QPushButton::clicked, this, [this]() {
-        refreshTableList();
-        // Show a brief confirmation
-        QMessageBox::information(this, "Actualizado", "Las tablas y campos han sido actualizados correctamente.");
-    });
 }
 
 void RelationshipsView::createMainArea()
@@ -255,6 +246,8 @@ void RelationshipsView::createRelationshipsList()
             this, &RelationshipsView::onTableSelectionChanged);
     connect(relationshipsListWidget, &QListWidget::itemSelectionChanged,
             this, &RelationshipsView::onRelationshipSelectionChanged);
+    connect(relationshipsListWidget, &QListWidget::itemDoubleClicked,
+            this, &RelationshipsView::onRelationshipDoubleClicked);
 }
 
 void RelationshipsView::createRelationshipDesigner()
@@ -420,7 +413,11 @@ void RelationshipsView::createPropertiesPanel()
         "<b>Tipos de Relaciones:</b><br>"
         "• <b>1:1</b> - Uno a uno<br>"
         "• <b>1:N</b> - Uno a muchos<br>"
-        "• <b>N:M</b> - Muchos a muchos"
+        "• <b>N:M</b> - Muchos a muchos<br><br>"
+        "<b>Validaciones de Llaves:</b><br>"
+        "• <b>1:1</b> → Un campo puede ser Primary Key y Foreign Key al mismo tiempo.<br>"
+        "• <b>1:N</b> → La Foreign Key no debe ser Primary Key en el lado muchos.<br>"
+        "• <b>N:M</b> → Las Foreign Keys en la tabla intermedia pueden formar una Primary Key compuesta."
     );
     infoLabel->setStyleSheet("color: #666; font-size: 10px; margin: 8px 0;");
     infoLabel->setWordWrap(true);
@@ -544,7 +541,7 @@ void RelationshipsView::loadTables()
             availableTables.append(tableName);
             
             // Create draggable item for tables list
-            QListWidgetItem *item = new QListWidgetItem("📊 " + tableName);
+            QListWidgetItem *item = new QListWidgetItem(tableName);
             item->setData(Qt::UserRole, tableName);
             item->setFlags(item->flags() | Qt::ItemIsDragEnabled);
             tablesListWidget->addItem(item);
@@ -691,6 +688,25 @@ void RelationshipsView::createRelationshipBetweenTables(const QString &table1, c
     }
 }
 
+void RelationshipsView::clearDesignerArea()
+{
+    // Limpiar todas las tablas del área de diseño
+    for (auto *item : tableItems) {
+        designerScene->removeItem(item);
+        delete item;
+    }
+    tableItems.clear();
+    
+    // Limpiar todas las líneas de relación
+    for (auto *line : relationshipLines) {
+        designerScene->removeItem(line);
+        delete line;
+    }
+    relationshipLines.clear();
+    
+    qDebug() << "DEBUG: Área de diseño limpiada";
+}
+
 void RelationshipsView::refreshTableList()
 {
     // Store current selections to restore them if possible
@@ -771,6 +787,21 @@ void RelationshipsView::refreshTableList()
     }
 }
 
+void RelationshipsView::onNewRelationshipClicked()
+{
+    // Limpiar el área de diseño (canvas) para preparar una nueva relación
+    clearDesignerArea();
+    
+    // Limpiar selecciones de los combos para que el usuario seleccione nuevas tablas
+    sourceTableCombo->setCurrentIndex(-1);
+    targetTableCombo->setCurrentIndex(-1);
+    
+    // Mostrar mensaje de confirmación
+    QMessageBox::information(this, "Área Limpiada", 
+        "El área de diseño ha sido limpiada.\n"
+        "Puede arrastrar tablas desde la lista izquierda para crear una nueva relación.");
+}
+
 void RelationshipsView::onCreateRelationship()
 {
     QString sourceTable = sourceTableCombo->currentText();
@@ -797,6 +828,192 @@ void RelationshipsView::onCreateRelationship()
         return;
     }
     
+    // *** VALIDACIÓN DE RELACIONES DUPLICADAS ***
+    // Verificar si ya existe una relación entre estas dos tablas
+    for (int i = 0; i < relationshipsListWidget->count(); ++i) {
+        QListWidgetItem *item = relationshipsListWidget->item(i);
+        QString existingRelationText = item->text();
+        
+        // Verificar ambas direcciones de la relación
+        bool isDuplicate = false;
+        
+        // Dirección 1: sourceTable → targetTable
+        if (existingRelationText.contains(sourceTable) && existingRelationText.contains(targetTable)) {
+            // Extraer las partes de la relación existente para verificar que sea la misma dirección
+            QStringList parts = existingRelationText.split(" → ");
+            if (parts.size() == 2) {
+                QString existingSource = parts[0].trimmed();
+                QString existingTargetPart = parts[1].trimmed();
+                QString existingTarget = existingTargetPart.split(" (")[0].trimmed(); // Remover el tipo (1:1), (1:N), etc.
+                
+                if ((existingSource == sourceTable && existingTarget == targetTable) ||
+                    (existingSource == targetTable && existingTarget == sourceTable)) {
+                    isDuplicate = true;
+                }
+            }
+        }
+        
+        if (isDuplicate) {
+            QMessageBox msgBox;
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setWindowTitle("⚠️ Relación Duplicada");
+            msgBox.setText("<h3>Relación Ya Existente</h3>");
+            msgBox.setInformativeText(
+                QString("Ya existe una relación entre las tablas <b>'%1'</b> y <b>'%2'</b>.<br><br>"
+                       "📋 <b>Relación existente:</b><br>"
+                       "• %3<br><br>"
+                       "💡 <b>Nota:</b> Solo se permite una relación entre cada par de tablas.<br>"
+                       "Si desea cambiar el tipo de relación, primero elimine la relación existente.")
+                       .arg(sourceTable, targetTable, existingRelationText)
+            );
+            msgBox.setStandardButtons(QMessageBox::Ok);
+            msgBox.button(QMessageBox::Ok)->setText("Entendido");
+            msgBox.setStyleSheet(
+                "QMessageBox { background-color: white; min-width: 450px; min-height: 250px; }"
+                "QMessageBox QLabel { color: black; font-size: 14px; }"
+                "QPushButton { background-color: #FF9800; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+                "QPushButton:hover { background-color: #F57C00; }"
+            );
+            msgBox.exec();
+            return;
+        }
+    }
+    
+    // *** VALIDACIONES ESPECÍFICAS POR TIPO DE RELACIÓN ***
+    if (tableEditor) {
+        // Obtener Foreign Keys de ambas tablas
+        QStringList sourceForeignKeys = tableEditor->getTableForeignKeys(sourceTable);
+        QStringList targetForeignKeys = tableEditor->getTableForeignKeys(targetTable);
+        
+        // Obtener Primary Keys de ambas tablas (para validar referencias)
+        QStringList sourcePrimaryKeys = tableEditor->getTablePrimaryKeys(sourceTable);
+        QStringList targetPrimaryKeys = tableEditor->getTablePrimaryKeys(targetTable);
+        
+        // VALIDACIÓN SEGÚN TIPO DE RELACIÓN
+        if (shortType == "1:1") {
+            // Relación 1:1: Una de las dos tablas debe tener FK que apunte a PK de la otra
+            bool sourceHasValidFK = !sourceForeignKeys.isEmpty();
+            bool targetHasValidFK = !targetForeignKeys.isEmpty();
+            
+            if (!sourceHasValidFK && !targetHasValidFK) {
+                QMessageBox msgBox;
+                msgBox.setIcon(QMessageBox::Warning);
+                msgBox.setWindowTitle("🔗 Relación 1:1 - Foreign Key Requerida");
+                msgBox.setText("<h3>Foreign Key Requerida para Relación 1:1</h3>");
+                msgBox.setInformativeText(
+                    QString("Para establecer una relación 1:1, una de las tablas debe contener una Foreign Key que apunte a la Primary Key de la otra.<br><br>"
+                           "⚠️ <b>Estado actual:</b><br>"
+                           "• Tabla <b>'%1'</b>: %2 Foreign Keys<br>"
+                           "• Tabla <b>'%3'</b>: %4 Foreign Keys<br><br>"
+                           "<b>Solución:</b><br>"
+                           "1. Vaya a la vista de diseño de una de las tablas<br>"
+                           "2. Seleccione el campo de referencia<br>"
+                           "3. Marque la casilla 'Foreign Key' en las propiedades<br>"
+                           "4. Regrese e intente crear la relación nuevamente")
+                           .arg(sourceTable).arg(sourceForeignKeys.size())
+                           .arg(targetTable).arg(targetForeignKeys.size())
+                );
+                msgBox.setStandardButtons(QMessageBox::Ok);
+                msgBox.button(QMessageBox::Ok)->setText("Entendido");
+                msgBox.setStyleSheet(
+                    "QMessageBox { background-color: white; min-width: 500px; min-height: 280px; }"
+                    "QMessageBox QLabel { color: black; font-size: 14px; }"
+                    "QPushButton { background-color: #2196F3; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+                    "QPushButton:hover { background-color: #1976D2; }"
+                );
+                msgBox.exec();
+                return;
+            }
+            
+        } else if (shortType == "1:N") {
+            // Relación 1:N: La tabla del lado "muchos" (target) debe tener FK que apunte a PK de la tabla "uno" (source)
+            if (targetForeignKeys.isEmpty()) {
+                QMessageBox msgBox;
+                msgBox.setIcon(QMessageBox::Warning);
+                msgBox.setWindowTitle("🔗 Relación 1:N - Foreign Key Requerida");
+                msgBox.setText("<h3>Foreign Key Requerida para Relación 1:N</h3>");
+                msgBox.setInformativeText(
+                    QString("Para establecer una relación 1:N, la tabla del lado muchos debe contener una Foreign Key que apunte a la Primary Key de la tabla del lado uno.<br><br>"
+                           "⚠️ <b>Problema:</b><br>"
+                           "• Tabla <b>'%1'</b> (lado UNO): ✅ Origen válido<br>"
+                           "• Tabla <b>'%2'</b> (lado MUCHOS): ❌ No tiene Foreign Keys<br><br>"
+                           "<b>Solución:</b><br>"
+                           "1. Vaya a la vista de diseño de la tabla '%3'<br>"
+                           "2. Seleccione el campo que referenciará a '%4'<br>"
+                           "3. Marque la casilla 'Foreign Key' en las propiedades<br>"
+                           "4. Regrese e intente crear la relación nuevamente")
+                           .arg(sourceTable, targetTable, targetTable, sourceTable)
+                );
+                msgBox.setStandardButtons(QMessageBox::Ok);
+                msgBox.button(QMessageBox::Ok)->setText("Entendido");
+                msgBox.setStyleSheet(
+                    "QMessageBox { background-color: white; min-width: 520px; min-height: 300px; }"
+                    "QMessageBox QLabel { color: black; font-size: 14px; }"
+                    "QPushButton { background-color: #FF9800; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+                    "QPushButton:hover { background-color: #F57C00; }"
+                );
+                msgBox.exec();
+                return;
+            }
+            
+        } else if (shortType == "N:M") {
+            // Relación N:M: Se requiere una tabla intermedia con dos Foreign Keys
+            QStringList allTables = tableEditor->getCreatedTables();
+            bool foundIntermediateTable = false;
+            QString intermediateTableName;
+            
+            // Buscar una tabla intermedia que tenga FK a ambas tablas
+            for (const QString &tableName : allTables) {
+                if (tableName == sourceTable || tableName == targetTable) continue;
+                
+                QStringList tableFKs = tableEditor->getTableForeignKeys(tableName);
+                
+                // Verificar si tiene FK suficientes (al menos 2 para una relación N:M)
+                if (tableFKs.size() >= 2) {
+                    foundIntermediateTable = true;
+                    intermediateTableName = tableName;
+                    break;
+                }
+            }
+            
+            if (!foundIntermediateTable) {
+                QMessageBox msgBox;
+                msgBox.setIcon(QMessageBox::Warning);
+                msgBox.setWindowTitle("🔗 Relación N:M - Tabla Intermedia Requerida");
+                msgBox.setText("<h3>Tabla Intermedia Requerida para Relación N:M</h3>");
+                msgBox.setInformativeText(
+                    QString("Para establecer una relación N:M, se requiere una tabla intermedia con dos Foreign Keys que apunten a las Primary Keys de ambas tablas.<br><br>"
+                           "⚠️ <b>Problema:</b><br>"
+                           "• Tabla <b>'%1'</b>: Tabla origen<br>"
+                           "• Tabla <b>'%2'</b>: Tabla destino<br>"
+                           "• <b>Tabla intermedia</b>: ❌ No encontrada<br><br>"
+                           "<b>Solución:</b><br>"
+                           "1. Cree una nueva tabla intermedia (ej: '%3_%4')<br>"
+                           "2. Agregue un campo Foreign Key que apunte a '%5'<br>"
+                           "3. Agregue otro campo Foreign Key que apunte a '%6'<br>"
+                           "4. Marque ambos campos como 'Foreign Key' en las propiedades<br>"
+                           "5. Regrese e intente crear la relación nuevamente")
+                           .arg(sourceTable, targetTable, sourceTable, targetTable, sourceTable, targetTable)
+                );
+                msgBox.setStandardButtons(QMessageBox::Ok);
+                msgBox.button(QMessageBox::Ok)->setText("Entendido");
+                msgBox.setStyleSheet(
+                    "QMessageBox { background-color: white; min-width: 550px; min-height: 350px; }"
+                    "QMessageBox QLabel { color: black; font-size: 14px; }"
+                    "QPushButton { background-color: #9C27B0; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+                    "QPushButton:hover { background-color: #7B1FA2; }"
+                );
+                msgBox.exec();
+                return;
+            } else {
+                qDebug() << "DEBUG: Tabla intermedia encontrada:" << intermediateTableName << "con Foreign Keys válidas";
+            }
+        }
+        
+        // Si llegamos aquí, todas las validaciones pasaron
+        qDebug() << "DEBUG: Validaciones de" << shortType << "pasaron correctamente entre" << sourceTable << "y" << targetTable;
+    }
+    
     // Create visual representation
     createRelationshipBetweenTables(sourceTable, targetTable, shortType);
     
@@ -811,10 +1028,52 @@ void RelationshipsView::onDeleteRelationship()
 {
     int currentRow = relationshipsListWidget->currentRow();
     if (currentRow >= 0) {
-        relationshipsListWidget->takeItem(currentRow);
-        QMessageBox::information(this, "Relación Eliminada", "La relación ha sido eliminada.");
+        // Obtener el texto de la relación seleccionada
+        QListWidgetItem *selectedItem = relationshipsListWidget->item(currentRow);
+        QString relationshipText = selectedItem->text();
+        
+        // Eliminar de la lista primero
+        delete relationshipsListWidget->takeItem(currentRow);
+        
+        // Limpiar completamente el área del diseñador (como "Nueva Relación")
+        clearDesignerArea();
+        
+        // Limpiar selecciones de los combos
+        sourceTableCombo->setCurrentIndex(-1);
+        targetTableCombo->setCurrentIndex(-1);
+        
+        // Mostrar mensaje de confirmación
+        QMessageBox msgBox;
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setWindowTitle("🗑️ Relación Eliminada");
+        msgBox.setText("<h3>Relación Eliminada Exitosamente</h3>");
+        msgBox.setInformativeText(QString("La relación '%1' ha sido eliminada.\n\nEl área de diseño ha sido limpiada y está lista para crear una nueva relación.").arg(relationshipText));
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.button(QMessageBox::Ok)->setText("Entendido");
+        msgBox.setStyleSheet(
+            "QMessageBox { background-color: white; min-width: 400px; min-height: 200px; }"
+            "QMessageBox QLabel { color: black; font-size: 14px; }"
+            "QPushButton { background-color: #4CAF50; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+            "QPushButton:hover { background-color: #45A049; }"
+        );
+        msgBox.exec();
+        
     } else {
-        QMessageBox::warning(this, "Error", "Selecciona una relación para eliminar.");
+        // No hay relación seleccionada
+        QMessageBox msgBox;
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setWindowTitle("⚠️ Selecciona una Relación");
+        msgBox.setText("<h3>Ninguna Relación Seleccionada</h3>");
+        msgBox.setInformativeText("Debes seleccionar una relación de la lista antes de poder eliminarla.");
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.button(QMessageBox::Ok)->setText("Entendido");
+        msgBox.setStyleSheet(
+            "QMessageBox { background-color: white; min-width: 350px; min-height: 180px; }"
+            "QMessageBox QLabel { color: black; font-size: 14px; }"
+            "QPushButton { background-color: #FF9800; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+            "QPushButton:hover { background-color: #F57C00; }"
+        );
+        msgBox.exec();
     }
 }
 
@@ -832,6 +1091,68 @@ void RelationshipsView::onRelationshipSelectionChanged()
     if (currentItem) {
         updatePropertiesPanel(currentItem->text());
     }
+}
+
+void RelationshipsView::onRelationshipDoubleClicked(QListWidgetItem *item)
+{
+    if (!item) return;
+    
+    QString relationshipText = item->text();
+    qDebug() << "DEBUG: Doble clic en relación:" << relationshipText;
+    
+    // Parsear la relación para obtener las tablas y el tipo
+    // Formato esperado: "tabla1 → tabla2 (tipo)"
+    QStringList parts = relationshipText.split(" → ");
+    if (parts.size() != 2) {
+        qDebug() << "ERROR: Formato de relación inválido";
+        return;
+    }
+    
+    QString sourceTable = parts[0].trimmed();
+    QString targetPart = parts[1].trimmed();
+    
+    // Extraer tabla destino y tipo de relación
+    QStringList targetParts = targetPart.split(" (");
+    if (targetParts.size() != 2) {
+        qDebug() << "ERROR: No se pudo extraer tabla destino y tipo";
+        return;
+    }
+    
+    QString targetTable = targetParts[0].trimmed();
+    QString relationshipType = targetParts[1].replace(")", "").trimmed();
+    
+    qDebug() << "DEBUG: Mostrando relación -" << "Source:" << sourceTable << "Target:" << targetTable << "Type:" << relationshipType;
+    
+    // Limpiar el diseñador actual
+    clearDesignerArea();
+    
+    // Agregar las tablas al diseñador en posiciones específicas
+    QPointF sourcePos(50, 100);   // Posición de la tabla origen (izquierda)
+    QPointF targetPos(300, 100);  // Posición de la tabla destino (derecha)
+    
+    addTableToDesigner(sourceTable, sourcePos);
+    addTableToDesigner(targetTable, targetPos);
+    
+    // Crear la línea de relación visual
+    createRelationshipBetweenTables(sourceTable, targetTable, relationshipType);
+    
+    // Actualizar los combos para reflejar la relación actual
+    int sourceIndex = sourceTableCombo->findText(sourceTable);
+    int targetIndex = targetTableCombo->findText(targetTable);
+    
+    if (sourceIndex >= 0) sourceTableCombo->setCurrentIndex(sourceIndex);
+    if (targetIndex >= 0) targetTableCombo->setCurrentIndex(targetIndex);
+    
+    // Establecer el tipo de relación en el combo
+    for (int i = 0; i < relationshipTypeCombo->count(); ++i) {
+        QString comboText = relationshipTypeCombo->itemText(i);
+        if (comboText.contains(relationshipType)) {
+            relationshipTypeCombo->setCurrentIndex(i);
+            break;
+        }
+    }
+    
+    qDebug() << "DEBUG: Relación visualizada correctamente en el diseñador";
 }
 
 void RelationshipsView::onTableFieldsChanged(const QString &tableName)
@@ -858,6 +1179,83 @@ void RelationshipsView::onTableFieldsChanged(const QString &tableName)
             // Force a scene update to show changes immediately
             item->update();
         }
+    }
+}
+
+void RelationshipsView::onForeignKeyRemoved(const QString &tableName, const QString &fieldName)
+{
+    qDebug() << "DEBUG RelationshipsView: Foreign Key eliminada en tabla:" << tableName << "campo:" << fieldName;
+    
+    // Lista para almacenar relaciones que se eliminarán
+    QStringList relationshipsToRemove;
+    QList<RelationshipLine*> linesToRemove;
+    
+    // Buscar relaciones que usen esta tabla y eliminarlas
+    for (int i = 0; i < relationshipsListWidget->count(); ++i) {
+        QListWidgetItem *item = relationshipsListWidget->item(i);
+        QString relationshipText = item->text();
+        
+        // Verificar si la relación involucra la tabla afectada
+        if (relationshipText.contains(tableName)) {
+            relationshipsToRemove << relationshipText;
+            qDebug() << "DEBUG: Marcando relación para eliminar:" << relationshipText;
+        }
+    }
+    
+    // Eliminar líneas de relación visual que involucren la tabla
+    for (auto *line : relationshipLines) {
+        QString sourceTable = line->getSourceTable()->getTableName();
+        QString targetTable = line->getTargetTable()->getTableName();
+        
+        if (sourceTable == tableName || targetTable == tableName) {
+            linesToRemove.append(line);
+        }
+    }
+    
+    // Eliminar las líneas visuales
+    for (auto *line : linesToRemove) {
+        designerScene->removeItem(line);
+        relationshipLines.removeAll(line);
+        delete line;
+    }
+    
+    // Eliminar relaciones de la lista
+    for (int i = relationshipsListWidget->count() - 1; i >= 0; --i) {
+        QListWidgetItem *item = relationshipsListWidget->item(i);
+        if (relationshipsToRemove.contains(item->text())) {
+            delete relationshipsListWidget->takeItem(i);
+        }
+    }
+    
+    // Actualizar campos de la tabla en el cache y elementos visuales
+    onTableFieldsChanged(tableName);
+    
+    // Mostrar mensaje informativo si se eliminaron relaciones
+    if (!relationshipsToRemove.isEmpty()) {
+        QString message = QString("Se eliminaron %1 relación(es) de la tabla '%2' debido a que se eliminó el campo Foreign Key '%3'.\n\n")
+                         .arg(relationshipsToRemove.size())
+                         .arg(tableName)
+                         .arg(fieldName);
+        
+        message += "Relaciones eliminadas:\n";
+        for (const QString &relation : relationshipsToRemove) {
+            message += "• " + relation + "\n";
+        }
+        
+        QMessageBox msgBox;
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setWindowTitle("🔗 Relaciones Eliminadas");
+        msgBox.setText("<h3>Relaciones Eliminadas por Foreign Key</h3>");
+        msgBox.setInformativeText(message);
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.button(QMessageBox::Ok)->setText("Entendido");
+        msgBox.setStyleSheet(
+            "QMessageBox { background-color: white; min-width: 450px; min-height: 250px; }"
+            "QMessageBox QLabel { color: black; font-size: 14px; }"
+            "QPushButton { background-color: #FF5722; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+            "QPushButton:hover { background-color: #E64A19; }"
+        );
+        msgBox.exec();
     }
 }
 

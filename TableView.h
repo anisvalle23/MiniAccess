@@ -89,11 +89,13 @@ public:
     QStringList getAllFieldNames() const; // Método que incluye las llaves 🔑
     QStringList getCurrentFieldTypes() const;
     QStringList getCurrentCurrencyFormats() const;
+    int getPrimaryKeyColumnIndex() const; // Nuevo método para obtener índice de Primary Key
 
 signals:
     void switchToDataView();
     void tableDesignChanged(const QStringList &fieldNames, const QStringList &fieldTypes);
     void tableDesignChangedWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats);
+    void foreignKeyRemoved(const QString &tableName, const QString &fieldName); // Nueva señal para FK eliminada
 
 private slots:
     void onCellChanged(int row, int column);
@@ -102,6 +104,7 @@ private slots:
     void onDataTypeChanged(const QString &text);
     void onDescriptionChanged();
     void onRequiredChanged(bool checked);
+    void onForeignKeyChanged(bool checked);
     void onDefaultValueChanged(const QString &text);
     void onDataViewClicked();
     void onDesignViewClicked();
@@ -161,6 +164,7 @@ private:
     QComboBox *dataTypeCombo;
     QTextEdit *descriptionEdit;
     QCheckBox *requiredCheck;
+    QCheckBox *foreignKeyCheck;
     QLineEdit *defaultValueEdit;
     
     // Propiedades específicas por tipo de dato

@@ -689,7 +689,12 @@ void TableEditor::showTableView(const QString &tableName)
                     d.fieldTypes = fieldTypes;
                     // Si existe su TableData, sincronizar
                     if (tableDatas.contains(tableName) && tableDatas.value(tableName)) {
-                        tableDatas.value(tableName)->setupDataView(fieldNames, fieldTypes);
+                        // Obtener el índice de Primary Key del TableView actual
+                        int primaryKeyIndex = -1;
+                        if (tableViews.contains(tableName) && tableViews.value(tableName)) {
+                            primaryKeyIndex = tableViews.value(tableName)->getPrimaryKeyColumnIndex();
+                        }
+                        tableDatas.value(tableName)->setupDataView(fieldNames, fieldTypes, primaryKeyIndex);
                     }
                     // Emitir señal de que los campos cambiaron
                     emit tableFieldsChanged(tableName);
@@ -704,10 +709,23 @@ void TableEditor::showTableView(const QString &tableName)
                     d.fieldTypes = fieldTypes;
                     // Si existe su TableData, sincronizar con formatos de moneda
                     if (tableDatas.contains(tableName) && tableDatas.value(tableName)) {
-                        tableDatas.value(tableName)->setupDataViewWithFormats(fieldNames, fieldTypes, currencyFormats);
+                        // Obtener el índice de Primary Key del TableView actual
+                        int primaryKeyIndex = -1;
+                        if (tableViews.contains(tableName) && tableViews.value(tableName)) {
+                            primaryKeyIndex = tableViews.value(tableName)->getPrimaryKeyColumnIndex();
+                        }
+                        tableDatas.value(tableName)->setupDataViewWithFormats(fieldNames, fieldTypes, currencyFormats, primaryKeyIndex);
                     }
                     // Emitir señal de que los campos cambiaron
                     emit tableFieldsChanged(tableName);
+                }, Qt::UniqueConnection);
+        
+        // Conectar señal para Foreign Key eliminada
+        connect(view, &TableView::foreignKeyRemoved, this,
+                [this](const QString &tableName, const QString &fieldName) {
+                    qDebug() << "DEBUG: Foreign Key eliminada en tabla:" << tableName << "campo:" << fieldName;
+                    // Emitir señal para notificar a RelationshipsView
+                    emit foreignKeyRemoved(tableName, fieldName);
                 }, Qt::UniqueConnection);
 
         tableViews.insert(tableName, view);
@@ -729,7 +747,12 @@ void TableEditor::showTableView(const QString &tableName)
         // Si ya hay diseño guardado, aplicarlo
         if (tableDesigns.contains(tableName)) {
             const auto &d = tableDesigns.value(tableName);
-            data->setupDataView(d.fieldNames, d.fieldTypes);
+            // Obtener el índice de Primary Key del TableView actual
+            int primaryKeyIndex = -1;
+            if (tableViews.contains(tableName) && tableViews.value(tableName)) {
+                primaryKeyIndex = tableViews.value(tableName)->getPrimaryKeyColumnIndex();
+            }
+            data->setupDataView(d.fieldNames, d.fieldTypes, primaryKeyIndex);
         }
         tableDatas.insert(tableName, data);
     }
@@ -793,7 +816,12 @@ void TableEditor::showTableDataView(const QString &tableName)
 
         if (tableDesigns.contains(tableName)) {
             const auto &d = tableDesigns.value(tableName);
-            tableDatas[tableName]->setupDataView(d.fieldNames, d.fieldTypes);
+            // Obtener el índice de Primary Key del TableView actual
+            int primaryKeyIndex = -1;
+            if (tableViews.contains(tableName) && tableViews.value(tableName)) {
+                primaryKeyIndex = tableViews.value(tableName)->getPrimaryKeyColumnIndex();
+            }
+            tableDatas[tableName]->setupDataView(d.fieldNames, d.fieldTypes, primaryKeyIndex);
         }
     }
 
@@ -853,8 +881,12 @@ void TableEditor::switchToDataView()
             qDebug() << "DEBUG: fieldTypes:" << fieldTypes;
             qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
             
+            // Obtener el índice de Primary Key
+            int primaryKeyIndex = view->getPrimaryKeyColumnIndex();
+            qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyIndex;
+            
             // Actualizar la vista de datos con los formatos más recientes
-            data->setupDataViewWithFormats(fieldNames, fieldTypes, currencyFormats);
+            data->setupDataViewWithFormats(fieldNames, fieldTypes, currencyFormats, primaryKeyIndex);
         }
     }
 
@@ -934,6 +966,54 @@ QStringList TableEditor::getTableFieldsWithKeys(const QString &tableName) const 
     
     // Si no encontramos la TableView, retornar los campos sin llaves
     return getTableFields(tableName);
+}
+
+QStringList TableEditor::getTableForeignKeys(const QString &tableName) const {
+    QStringList foreignKeys;
+    
+    // Buscar la TableView correspondiente en el mapa tableViews
+    if (tableViews.contains(tableName)) {
+        TableView* tableView = tableViews.value(tableName);
+        if (tableView) {
+            // Obtener todos los nombres de campos con sus iconos
+            QStringList allFieldNames = tableView->getAllFieldNames();
+            
+            // Filtrar solo los que tienen el icono de Foreign Key (🔗)
+            for (const QString &fieldName : allFieldNames) {
+                if (fieldName.startsWith("🔗 ")) {
+                    // Remover el icono para obtener solo el nombre del campo
+                    QString cleanFieldName = fieldName.mid(3); // Remover "🔗 "
+                    foreignKeys.append(cleanFieldName);
+                }
+            }
+        }
+    }
+    
+    return foreignKeys;
+}
+
+QStringList TableEditor::getTablePrimaryKeys(const QString &tableName) const {
+    QStringList primaryKeys;
+    
+    // Buscar la TableView correspondiente en el mapa tableViews
+    if (tableViews.contains(tableName)) {
+        TableView* tableView = tableViews.value(tableName);
+        if (tableView) {
+            // Obtener todos los nombres de campos con sus iconos
+            QStringList allFieldNames = tableView->getAllFieldNames();
+            
+            // Filtrar solo los que tienen el icono de Primary Key (🔑)
+            for (const QString &fieldName : allFieldNames) {
+                if (fieldName.startsWith("🔑 ")) {
+                    // Remover el icono para obtener solo el nombre del campo
+                    QString cleanFieldName = fieldName.mid(3); // Remover "🔑 "
+                    primaryKeys.append(cleanFieldName);
+                }
+            }
+        }
+    }
+    
+    return primaryKeys;
 }
 
 void TableEditor::showTableContextMenu(const QPoint &pos)
@@ -1073,7 +1153,7 @@ void TableEditor::showTableOptionsMenu(const QString &tableName, const QPoint &p
     );
     
     // Add edit name action
-    QAction *editAction = new QAction("✏️  Editar nombre", &optionsMenu);
+    QAction *editAction = new QAction("Editar nombre", &optionsMenu);
     connect(editAction, &QAction::triggered, this, [this, tableName]() {
         bool ok;
         QString newName = QInputDialog::getText(this, "Editar Nombre de Tabla", 

@@ -41,8 +41,8 @@ public:
     ~TableData();
 
     // Configurar la vista de datos basada en campos de diseño
-    void setupDataView(const QStringList &fieldNames, const QStringList &fieldTypes);
-    void setupDataViewWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats);
+    void setupDataView(const QStringList &fieldNames, const QStringList &fieldTypes, int primaryKeyColumn = -1);
+    void setupDataViewWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, int primaryKeyColumn = -1);
     
     // Configurar nombre de tabla
     void setTableName(const QString &tableName);
@@ -104,6 +104,7 @@ private:
     QStringList savedCurrencyFormats; // Formatos de moneda para cada campo
     QString currentTableName;
     int nextPersonId;
+    int primaryKeyColumnIndex; // Índice de la columna Primary Key (-1 si no hay)
     
     // Delegates para estilo consistente con TableView
     DataFieldDelegate *dataFieldDelegate;

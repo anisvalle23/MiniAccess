@@ -87,12 +87,15 @@ public:
     QStringList getCreatedTables() const;
     QStringList getTableFields(const QString &tableName) const;
     QStringList getTableFieldsWithKeys(const QString &tableName) const; // Nuevo método que incluye las llaves
+    QStringList getTableForeignKeys(const QString &tableName) const; // Método para obtener solo los Foreign Keys
+    QStringList getTablePrimaryKeys(const QString &tableName) const; // Método para obtener solo los Primary Keys
 
 signals:
     void tableCreated(const QString &tableName);
     void tableDeleted(const QString &tableName);
     void tableFieldsChanged(const QString &tableName); // Nueva señal para cambios en campos
     void tableRenamed(const QString &oldName, const QString &newName); // Nueva señal para renombrado
+    void foreignKeyRemoved(const QString &tableName, const QString &fieldName); // Nueva señal para FK eliminada
 
 private slots:
     void onCreateTableClicked();

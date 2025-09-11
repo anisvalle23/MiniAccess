@@ -294,6 +294,7 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
 TableData::TableData(QWidget *parent) : QWidget(parent)
 {
     currentTableName = "Nueva Tabla";
+    primaryKeyColumnIndex = -1; // No Primary Key por defecto
     
     // Crear delegate para estilo consistente
     dataFieldDelegate = new DataFieldDelegate(this);
@@ -546,10 +547,14 @@ void TableData::setupTableForPersonData()
     setupDataView(defaultFields, defaultTypes);
 }
 
-void TableData::setupDataView(const QStringList &fieldNames, const QStringList &fieldTypes)
+void TableData::setupDataView(const QStringList &fieldNames, const QStringList &fieldTypes, int primaryKeyColumn)
 {
     qDebug() << "DEBUG: Configurando vista de datos con campos:" << fieldNames;
     qDebug() << "DEBUG: Tipos de campos recibidos:" << fieldTypes;
+    qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
+    
+    // Guardar el índice de Primary Key
+    primaryKeyColumnIndex = primaryKeyColumn;
     
     // Verificar que tengamos la misma cantidad de nombres y tipos
     if (fieldNames.size() != fieldTypes.size()) {
@@ -723,19 +728,20 @@ void TableData::configureColumnWidths()
     }
 }
 
-void TableData::setupDataViewWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats)
+void TableData::setupDataViewWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, int primaryKeyColumn)
 {
     qDebug() << "DEBUG: setupDataViewWithFormats llamado con:";
     qDebug() << "DEBUG: fieldNames:" << fieldNames;
     qDebug() << "DEBUG: fieldTypes:" << fieldTypes;
     qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
+    qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
     
     // Guardar los formatos de moneda
     savedCurrencyFormats = currencyFormats;
     qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
     
     // Llamar al método base para hacer la configuración normal
-    setupDataView(fieldNames, fieldTypes);
+    setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
     
     // Aplicar formatos específicos de moneda después de la configuración básica
     applyCurrencyFormats();
@@ -862,6 +868,76 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
     if (col >= savedFieldTypes.size() || col >= savedFieldNames.size()) {
         qDebug() << "DEBUG: Column index" << col << "out of range. savedFieldTypes size:" << savedFieldTypes.size() << "savedFieldNames size:" << savedFieldNames.size();
         return;
+    }
+    
+    // *** VALIDACIÓN DE PRIMARY KEY ÚNICO ***
+    if (primaryKeyColumnIndex >= 0 && col == primaryKeyColumnIndex) {
+        QString newValue = item->text().trimmed();
+        if (!newValue.isEmpty()) {
+            // Buscar si ya existe este valor en otra fila de la misma columna
+            for (int r = 0; r < dataTable->rowCount(); r++) {
+                if (r == row) continue; // Saltar la fila actual
+                
+                QTableWidgetItem *otherItem = dataTable->item(r, col);
+                if (otherItem && !otherItem->toolTip().contains("Ejemplo")) {
+                    QString otherValue = otherItem->text().trimmed();
+                    if (otherValue == newValue) {
+                        // ¡Valor duplicado encontrado!
+                        // Usar QTimer::singleShot para mover el mensaje al main thread
+                        QTimer::singleShot(0, this, [this, newValue, item]() {
+                            QMessageBox msgBox(this);
+                            msgBox.setWindowTitle("Primary Key duplicado");
+                            msgBox.setIcon(QMessageBox::Warning);
+                            msgBox.setText(QString("El valor '%1' ya existe en el campo Primary Key.\n"
+                                                  "Los campos Primary Key deben ser únicos y no se pueden repetir.\n\n"
+                                                  "Por favor, ingrese un valor diferente.")
+                                                  .arg(newValue));
+                            msgBox.setStandardButtons(QMessageBox::Ok);
+                            msgBox.setStyleSheet(
+                                "QMessageBox {"
+                                "background-color: white;"
+                                "min-width: 400px;"
+                                "min-height: 200px;"
+                                "}"
+                                "QMessageBox QLabel {"
+                                "color: black;"
+                                "font-size: 16px;"
+                                "padding: 10px;"
+                                "}"
+                                "QPushButton {"
+                                "background-color: #ef4444;"
+                                "color: white;"
+                                "font-size: 16px;"
+                                "font-weight: bold;"
+                                "min-width: 120px;"
+                                "min-height: 44px;"
+                                "border: none;"
+                                "padding: 10px 16px;"
+                                "border-radius: 6px;"
+                                "}"
+                                "QPushButton:hover {"
+                                "background-color: #dc2626;"
+                                "}"
+                            );
+                            msgBox.exec();
+                        });
+                        
+                        // Bloquear señales y restaurar valor anterior
+                        dataTable->blockSignals(true);
+                        item->setText(""); // Limpiar el campo
+                        dataTable->blockSignals(false);
+                        
+                        // Enfocar el campo para facilitar corrección usando QTimer también
+                        QTimer::singleShot(100, this, [this, item]() {
+                            dataTable->setCurrentItem(item);
+                            dataTable->editItem(item);
+                        });
+                        return; // Salir sin procesar más
+                    }
+                }
+            }
+            qDebug() << "DEBUG: Primary Key value '" << newValue << "' is unique - OK";
+        }
     }
     
     // Aplicar formato automático para campos de moneda con formato dinámico

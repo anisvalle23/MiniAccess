@@ -326,6 +326,9 @@ void MainWindow::createMainContent()
     // Connect table renaming for real-time updates
     connect(tableEditorView, &TableEditor::tableRenamed,
             relationshipsView, &RelationshipsView::onTableRenamed);
+    // Connect Foreign Key removal for relationship cleanup
+    connect(tableEditorView, &TableEditor::foreignKeyRemoved,
+            relationshipsView, &RelationshipsView::onForeignKeyRemoved);
     
     // Add views to stacked widget
     stackedWidget->addWidget(homeView);     // Index 0

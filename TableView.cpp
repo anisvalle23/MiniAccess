@@ -586,7 +586,7 @@ void TableView::createPropertiesArea()
     centerColumn->addWidget(defaultValueEdit);
     
     // Campo requerido
-    requiredCheck = new QCheckBox("Campo Requerido");
+    requiredCheck = new QCheckBox("Primary Key");
     requiredCheck->setStyleSheet(
         "QCheckBox {"
         "color: #475569;"
@@ -599,6 +599,21 @@ void TableView::createPropertiesArea()
         "}"
     );
     centerColumn->addWidget(requiredCheck);
+    
+    // Campo Foreign Key
+    foreignKeyCheck = new QCheckBox("Foreign Key");
+    foreignKeyCheck->setStyleSheet(
+        "QCheckBox {"
+        "color: #475569;"
+        "font-weight: bold;"
+        "margin-top: 10px;"
+        "}"
+        "QCheckBox::indicator {"
+        "width: 18px;"
+        "height: 18px;"
+        "}"
+    );
+    centerColumn->addWidget(foreignKeyCheck);
     
     // Columna derecha
     QVBoxLayout *rightColumn = new QVBoxLayout();
@@ -635,6 +650,7 @@ void TableView::createPropertiesArea()
     connect(dataTypeCombo, &QComboBox::currentTextChanged, this, &TableView::onDataTypeChanged);
     connect(defaultValueEdit, &QLineEdit::textChanged, this, &TableView::onDefaultValueChanged);
     connect(requiredCheck, &QCheckBox::toggled, this, &TableView::onRequiredChanged);
+    connect(foreignKeyCheck, &QCheckBox::toggled, this, &TableView::onForeignKeyChanged);
     connect(descriptionEdit, &QTextEdit::textChanged, this, &TableView::onDescriptionChanged);
 }
 
@@ -711,6 +727,7 @@ void TableView::updatePropertiesForRow(int row)
     descriptionEdit->blockSignals(true);
     defaultValueEdit->blockSignals(true);
     requiredCheck->blockSignals(true);
+    foreignKeyCheck->blockSignals(true);
     
     // Obtener datos de la fila
     QTableWidgetItem *nameItem = tableWidget->item(row, 0);
@@ -737,6 +754,11 @@ void TableView::updatePropertiesForRow(int row)
     bool isPrimaryKey = (primaryKeyRow == row);
     requiredCheck->setChecked(isPrimaryKey);
     
+    // Verificar si esta fila es una Foreign Key (basándose en el icono)
+    QString fieldName = nameItem ? nameItem->text() : "";
+    bool isForeignKey = fieldName.startsWith("🔗 ");
+    foreignKeyCheck->setChecked(isForeignKey);
+    
     // Actualizar propiedades específicas según el tipo de dato
     updateSpecificProperties(dataType);
     
@@ -746,6 +768,7 @@ void TableView::updatePropertiesForRow(int row)
     descriptionEdit->blockSignals(false);
     defaultValueEdit->blockSignals(false);
     requiredCheck->blockSignals(false);
+    foreignKeyCheck->blockSignals(false);
     
     // Actualizar propiedades específicas según el tipo de dato seleccionado
     updateSpecificProperties(dataType);
@@ -902,9 +925,106 @@ void TableView::onRequiredChanged(bool required)
     }
 }
 
+void TableView::onForeignKeyChanged(bool isForeignKey)
+{
+    if (currentSelectedRow < 0) return;
+    
+    QTableWidgetItem *fieldNameItem = tableWidget->item(currentSelectedRow, 0);
+    if (!fieldNameItem) return;
+    
+    QString fieldName = fieldNameItem->text();
+    
+    if (isForeignKey) {
+        // Remover cualquier icono de foreign key existente primero
+        if (fieldName.startsWith("🔗 ")) {
+            fieldName = fieldName.mid(3); // Remover "🔗 "
+        }
+        // También remover icono de primary key si existe (para evitar conflictos visuales)
+        if (fieldName.startsWith("🔑 ")) {
+            fieldName = fieldName.mid(3); // Remover "🔑 "
+        }
+        
+        // Agregar el icono de foreign key
+        fieldNameItem->setText("🔗 " + fieldName);
+        fieldNameItem->setToolTip("Campo Foreign Key - Referencia a otra tabla");
+        
+        qDebug() << "DEBUG: Campo marcado como Foreign Key:" << fieldName << "en fila:" << currentSelectedRow;
+        
+    } else {
+        // Remover el icono de foreign key
+        if (fieldName.startsWith("🔗 ")) {
+            fieldName = fieldName.mid(3); // Remover "🔗 "
+            fieldNameItem->setText(fieldName);
+            fieldNameItem->setToolTip("");
+            
+            qDebug() << "DEBUG: Foreign Key removida del campo:" << fieldName;
+            
+            // Emitir señal para notificar que se eliminó una Foreign Key
+            emit foreignKeyRemoved(currentTableName, fieldName);
+        }
+    }
+}
+
 void TableView::onDataViewClicked()
 {
-    qDebug() << "DEBUG: Cambiando a Vista Datos";
+    qDebug() << "DEBUG: Intentando cambiar a Vista Datos";
+    
+    // Validación: verificar si existe una Primary Key
+    if (primaryKeyRow == -1) {
+        // No hay Primary Key definida, mostrar mensaje de validación
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("⚠️ Primary Key Requerida");
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setText("<h3>Primary Key Requerida</h3>");
+        msgBox.setInformativeText(
+            "Esta tabla no tiene definida una Primary Key.<br><br>"
+            "⚠️ <b>Debe seleccionar un campo como Primary Key antes de continuar.</b><br><br>"
+            "Para definir una Primary Key:<br>"
+            "1. Seleccione un campo en la tabla<br>"
+            "2. Marque la casilla 'Primary Key' en las propiedades<br>"
+            "3. Intente cambiar a Vista de Datos nuevamente"
+        );
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.button(QMessageBox::Ok)->setText("Entendido");
+        
+        // Estilo del mensaje
+        msgBox.setStyleSheet(
+            "QMessageBox {"
+                "background-color: white;"
+                "min-width: 450px;"
+                "min-height: 200px;"
+            "}"
+            "QMessageBox QLabel {"
+                "color: #0b0f19;"
+                "font-size: 14px;"
+            "}"
+            "QPushButton {"
+                "background-color: #f59e0b;"
+                "color: white;"
+                "font-size: 14px;"
+                "font-weight: 600;"
+                "min-width: 120px;"
+                "min-height: 36px;"
+                "padding: 6px 12px;"
+                "border-radius: 10px;"
+                "border: 2px solid #d97706;"
+            "}"
+            "QPushButton:hover {"
+                "background-color: #d97706;"
+                "border-color: #b45309;"
+            "}"
+            "QPushButton:pressed {"
+                "background-color: #b45309;"
+            "}"
+        );
+        
+        msgBox.exec();
+        
+        qDebug() << "DEBUG: Cambio a Vista Datos bloqueado - No hay Primary Key";
+        return; // No permitir el cambio
+    }
+    
+    qDebug() << "DEBUG: Primary Key encontrada en fila:" << primaryKeyRow << "- Cambiando a Vista Datos";
     emit switchToDataView();
 }
 
@@ -1707,6 +1827,21 @@ QStringList TableView::getCurrentCurrencyFormats() const
     
     qDebug() << "DEBUG: getCurrentCurrencyFormats() returning:" << currencyFormats;
     return currencyFormats;
+}
+
+int TableView::getPrimaryKeyColumnIndex() const
+{
+    // Retorna el índice de la columna que es Primary Key, o -1 si no hay Primary Key
+    if (primaryKeyRow == -1) {
+        qDebug() << "DEBUG: No hay Primary Key definida";
+        return -1;
+    }
+    
+    // En nuestro diseño, primaryKeyRow indica qué fila de la tabla de diseño es la Primary Key
+    // Pero en la vista de datos, esa fila se convierte en una columna
+    // Por lo tanto, primaryKeyRow en diseño = índice de columna en datos
+    qDebug() << "DEBUG: Primary Key está en la fila de diseño:" << primaryKeyRow << "-> Columna de datos:" << primaryKeyRow;
+    return primaryKeyRow;
 }
 
 void TableView::createSpecificPropertiesWidgets()
