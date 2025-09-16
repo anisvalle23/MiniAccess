@@ -38,7 +38,113 @@ void RelationshipsView::setTableEditor(TableEditor *editor)
     tableEditor = editor;
     
     // Reload tables when editor is set
+
+    if (tableEditor) {
+        // 🔹 Esto ya lo usas para refrescar campos cuando cambian
+        connect(tableEditor, &TableEditor::tableFieldsChanged,
+                this, &RelationshipsView::onTableFieldsChanged, Qt::UniqueConnection);
+
+        // 🔹 Aquí añadís la conexión para rename
+        connect(tableEditor, &TableEditor::tableRenamed,
+                this, &RelationshipsView::applyTableRenameImmediate, Qt::UniqueConnection);
+    }
+
+
     loadTables();
+}
+
+// En RelationshipsView.cpp
+void RelationshipsView::applyTableRenameImmediate(const QString& oldName, const QString& newName)
+{
+    if (oldName == newName || oldName.isEmpty() || newName.isEmpty()) return;
+
+    // 1) Cache internos
+    int idxAvail = availableTables.indexOf(oldName);
+    if (idxAvail >= 0) availableTables[idxAvail] = newName;
+
+    if (tableFields.contains(oldName)) {
+        tableFields[newName] = tableFields.take(oldName); // mueve la entrada
+    }
+
+    // 2) Listado de tablas (texto y UserRole)
+    for (int i = 0; i < tablesListWidget->count(); ++i) {
+        QListWidgetItem *it = tablesListWidget->item(i);
+        if (!it) continue;
+        if (it->data(Qt::UserRole).toString() == oldName) {
+            it->setData(Qt::UserRole, newName);
+            it->setText(newName);
+        } else if (it->text() == oldName) {
+            it->setText(newName);
+        }
+    }
+
+    // 3) Combos (mantener selección si aplica)
+    auto replaceCombo = [](QComboBox* c, const QString& oldT, const QString& newT){
+        if (!c) return;
+        int idx = c->findText(oldT);
+        if (idx >= 0) c->setItemText(idx, newT);
+        // reafirma selección si ya estaba en ese índice
+        if (c->currentIndex() == idx) c->setCurrentIndex(idx);
+    };
+    replaceCombo(sourceTableCombo, oldName, newName);
+    replaceCombo(targetTableCombo, oldName, newName);
+
+    // 4) Items del diseñador (solo cambia el título visible)
+    for (auto *item : tableItems) {
+        if (item && item->getTableName() == oldName) {
+            item->setTableName(newName); // actualiza nombre visual
+            item->update();              // repinta
+        }
+    }
+
+    // 5) Relaciones visuales: reposicionar por si cambió el ancho del texto
+    for (auto *line : relationshipLines) {
+        if (line) line->updatePosition();
+    }
+
+    // 6) Lista de relaciones: si guardás solo texto, reemplaza allí;
+    //    si guardás datos, actualiza el data y vuelve a formatear el texto.
+    for (int i = 0; i < relationshipsListWidget->count(); ++i) {
+        QListWidgetItem *it = relationshipsListWidget->item(i);
+        if (!it) continue;
+
+        // A) Si manejas solo texto "A → B (tipo)":
+        QString txt = it->text();
+        if (txt.contains(oldName)) {
+            txt.replace(oldName, newName);
+            it->setText(txt);
+        }
+
+        // B) (RECOMENDADO) Si guardas en UserRole un mapa/JSON con {src,dst,type}:
+        // QVariantMap m = it->data(Qt::UserRole).toMap();
+        // if (m.value("src").toString() == oldName) m["src"] = newName;
+        // if (m.value("dst").toString() == oldName) m["dst"] = newName;
+        // it->setData(Qt::UserRole, m);
+        // it->setText(QString("%1 → %2 (%3)").arg(m["src"].toString(), m["dst"].toString(), m["type"].toString()));
+    }
+
+    // 7) Defensa: elimina entradas huérfanas si algo quedó inconsistente
+    for (int i = relationshipsListWidget->count() - 1; i >= 0; --i) {
+        QListWidgetItem *it = relationshipsListWidget->item(i);
+        if (!it) continue;
+
+        const QString txt = it->text(); // "A → B (tipo)"
+        int arrow = txt.indexOf(u" → ");
+        int paren = txt.lastIndexOf(u"(");
+        if (arrow < 0 || paren < 0) continue;
+
+        const QString A = txt.left(arrow).trimmed();
+        const QString B = txt.mid(arrow + 3, paren - (arrow + 3)).trimmed();
+
+        if (!availableTables.contains(A) || !availableTables.contains(B)) {
+            delete relationshipsListWidget->takeItem(i);
+        }
+    }
+
+    // 8) Si hay items en diseño, forzá repintado (suave y sin parpadeo)
+    if (designerScene) designerScene->update();
+
+    qDebug() << "DEBUG: applyTableRenameImmediate OK:" << oldName << "->" << newName;
 }
 
 void RelationshipsView::setupUI()

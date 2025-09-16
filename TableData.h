@@ -118,6 +118,9 @@ private:
     
     // Delegates para estilo consistente con TableView
     DataFieldDelegate *dataFieldDelegate;
+
+    mutable QLabel *m_warnLabel = nullptr;
+    mutable QTimer *m_warnTimer = nullptr;
 };
 
 #endif // TABLEDATA_H

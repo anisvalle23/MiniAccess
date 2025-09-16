@@ -8,6 +8,7 @@
 #include <QInputDialog>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QDialogButtonBox>
 
 TableEditor::TableEditor(QWidget *parent)
     : QWidget(parent), isDarkTheme(false)
@@ -1169,13 +1170,64 @@ void TableEditor::onDeleteTableClicked()
 void TableEditor::deleteTable(const QString &tableName)
 {
     // Show confirmation dialog
-    QMessageBox::StandardButton reply;
-    reply = QMessageBox::question(this, "Confirmar Eliminación", 
-                                 QString("¿Está seguro de que desea eliminar la tabla '%1'?\n\nEsta acción no se puede deshacer.").arg(tableName),
-                                 QMessageBox::Yes | QMessageBox::No);
-    
-    if (reply != QMessageBox::Yes) {
-        return;
+    QDialog dlg(this);
+    dlg.setWindowTitle("Confirmar Eliminación");
+    dlg.setModal(true);
+    dlg.setSizeGripEnabled(false);
+
+    // Layout principal
+    QHBoxLayout *row = new QHBoxLayout;
+    QVBoxLayout *col = new QVBoxLayout(&dlg);
+    col->setContentsMargins(16,16,16,16);
+    col->setSpacing(12);
+
+    // Icono estilo "pregunta"
+    QLabel *iconLbl = new QLabel;
+    QPixmap px = style()->standardIcon(QStyle::SP_MessageBoxQuestion).pixmap(40, 40);
+    iconLbl->setPixmap(px);
+    iconLbl->setFixedSize(44,44);
+    iconLbl->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+
+    // Texto
+    QLabel *txt = new QLabel(
+        QString("¿Está seguro de que desea eliminar la tabla '%1'?\n\n"
+                "Esta acción no se puede deshacer.").arg(tableName));
+    txt->setWordWrap(true);
+
+    // Armar fila icono + texto
+    row->addWidget(iconLbl, 0, Qt::AlignTop);
+    row->addWidget(txt, 1);
+
+    // Botonera
+    QDialogButtonBox *box = new QDialogButtonBox(QDialogButtonBox::Yes | QDialogButtonBox::No);
+    QPushButton *yesBtn = box->button(QDialogButtonBox::Yes);
+    QPushButton *noBtn  = box->button(QDialogButtonBox::No);
+    yesBtn->setText("Sí");
+    noBtn->setText("No");
+    box->setCenterButtons(false);
+
+    // Estilos (BOTONES TEXTO NEGRO)
+    dlg.setStyleSheet(
+        "QDialog { background:#FFFFFF; }"
+        "QLabel { color:#111827; font-family:'Inter'; font-size:14px; }"
+        "QDialogButtonBox QPushButton {"
+        "background:#F3F4F6; border:1px solid #D1D5DB; border-radius:6px;"
+        "color:#111827; font-family:'Inter'; font-size:13px; font-weight:500;"
+        "padding:8px 16px; min-width:80px; }"
+        "QDialogButtonBox QPushButton:hover { background:#E5E7EB; }"
+        "QDialogButtonBox QPushButton:pressed { background:#D1D5DB; }"
+        "QDialogButtonBox QPushButton:disabled { background:#F9FAFB; color:#9CA3AF; border:1px solid #E5E7EB; }"
+        );
+
+    // Conexiones aceptar/cancelar
+    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    QObject::connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    col->addLayout(row);
+    col->addWidget(box, 0, Qt::AlignRight);
+
+    if (dlg.exec() != QDialog::Accepted) {
+        return; // usuario canceló
     }
     
     // Remove from table tree
@@ -1255,34 +1307,83 @@ void TableEditor::showTableOptionsMenu(const QString &tableName, const QPoint &p
     // Add edit name action
     QAction *editAction = new QAction("Editar nombre", &optionsMenu);
     connect(editAction, &QAction::triggered, this, [this, tableName]() {
-        bool ok;
-        QString newName = QInputDialog::getText(this, "Editar Nombre de Tabla", 
-                                              "Nuevo nombre:", QLineEdit::Normal, 
-                                              tableName, &ok);
-        if (ok && !newName.isEmpty() && newName != tableName) {
-            QString trimmedNewName = newName.trimmed();
-            
-            // Validar que el nuevo nombre sea válido
-            if (!isValidTableName(trimmedNewName)) {
-                showStyledMessageBox("Nombre Inválido", 
-                    "El nombre de la tabla debe:\n"
-                    "• Contener solo letras, números, espacios y guiones bajos\n"
-                    "• No comenzar con un número\n"
-                    "• No estar vacío\n\n"
-                    "Por favor elige un nombre válido.");
-                return;
-            }
-            
-            // Check if name already exists
-            QStringList existingTables = getCreatedTables();
-            for (const QString &existingTable : existingTables) {
-                if (existingTable.toLower() == trimmedNewName.toLower()) {
-                    showStyledMessageBox("Nombre Duplicado", 
-                        QString("Ya existe una tabla con el nombre '%1'.\n\nPor favor elige un nombre diferente.").arg(existingTable));
+        // ==== Dialogo personalizado (no nativo) ====
+        QDialog dlg(this);
+        dlg.setWindowTitle("Editar Nombre de Tabla");
+        dlg.setModal(true);
+        dlg.setSizeGripEnabled(false);
+
+        QVBoxLayout *v = new QVBoxLayout(&dlg);
+        v->setContentsMargins(16,16,16,16);
+        v->setSpacing(12);
+
+        QLabel *lbl = new QLabel("Nuevo nombre:");
+        QLineEdit *edit = new QLineEdit(tableName);
+        edit->setPlaceholderText("Ingresa el nuevo nombre");
+
+        // Botonera OK/Cancel
+        QDialogButtonBox *box = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+        QPushButton *okBtn = box->button(QDialogButtonBox::Ok);
+        QPushButton *cancelBtn = box->button(QDialogButtonBox::Cancel);
+
+        // Estilos: botones con TEXTO NEGRO
+        dlg.setStyleSheet(
+            "QDialog { background:#FFFFFF; }"
+            "QLabel { color:#111827; font-family:'Inter'; font-size:14px; }"
+            "QLineEdit { background:#FFFFFF; border:1px solid #D1D5DB; border-radius:6px; padding:10px; font-size:14px; color:#111827; }"
+            "QLineEdit:focus { border-color:#A4373A; }"
+            "QDialogButtonBox QPushButton {"
+            "background:#F3F4F6; border:1px solid #D1D5DB; border-radius:6px;"
+            "color:#111827; font-family:'Inter'; font-size:13px; font-weight:500; padding:8px 16px; }"
+            "QDialogButtonBox QPushButton:hover { background:#E5E7EB; }"
+            "QDialogButtonBox QPushButton:pressed { background:#D1D5DB; }"
+            "QDialogButtonBox QPushButton:disabled { background:#F9FAFB; color:#9CA3AF; border:1px solid #E5E7EB; }"
+            );
+
+        v->addWidget(lbl);
+        v->addWidget(edit);
+        v->addWidget(box);
+
+        // Validación igual a tu isValidTableName() + evitar duplicados
+        auto validate = [this, edit, tableName]() {
+            const QString newName = edit->text().trimmed();
+            if (!isValidTableName(newName)) return false;
+            // no permitir duplicados (ignorando mayúsculas)
+            for (const auto &t : getCreatedTables())
+                if (t.compare(newName, Qt::CaseInsensitive) == 0 && t != tableName) return false;
+            return true;
+        };
+
+        okBtn->setEnabled(validate());
+
+        connect(edit, &QLineEdit::textChanged, &dlg, [okBtn, validate]() {
+            okBtn->setEnabled(validate());
+        });
+        connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+        connect(box, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+        if (dlg.exec() == QDialog::Accepted) {
+            const QString newName = edit->text().trimmed();
+            if (newName != tableName) {
+                if (!isValidTableName(newName)) {
+                    showStyledMessageBox("Nombre Inválido",
+                                         "El nombre de la tabla debe:\n"
+                                         "• Contener solo letras, números, espacios y guiones bajos\n"
+                                         "• No comenzar con un número\n"
+                                         "• No estar vacío\n\n"
+                                         "Por favor elige un nombre válido.");
                     return;
                 }
+                // Duplicados otra vez por seguridad
+                for (const auto &t : getCreatedTables()) {
+                    if (t.compare(newName, Qt::CaseInsensitive) == 0) {
+                        showStyledMessageBox("Nombre Duplicado",
+                                             QString("Ya existe una tabla con el nombre '%1'.\n\nPor favor elige un nombre diferente.").arg(t));
+                        return;
+                    }
+                }
+                renameTable(tableName, newName);
             }
-            renameTable(tableName, trimmedNewName);
         }
     });
     
@@ -1498,45 +1599,63 @@ void TableEditor::renameTable(const QString &oldName, const QString &newName)
 
 void TableEditor::showStyledMessageBox(const QString &title, const QString &message, QMessageBox::Icon icon)
 {
-    QMessageBox msgBox(this);
-    msgBox.setWindowTitle(title);
-    msgBox.setText(message);
-    msgBox.setIcon(icon);
-    msgBox.setStandardButtons(QMessageBox::Ok);
-    
-    // Aplicar estilo moderno al mensaje
-    msgBox.setStyleSheet(
-        "QMessageBox {"
-            "background-color: #FFFFFF;"
-            "color: #111827;"
-            "font-family: 'Inter';"
-            "font-size: 14px;"
-        "}"
-        "QMessageBox QLabel {"
-            "color: #111827;"
-            "font-size: 14px;"
-            "padding: 10px;"
-        "}"
-        "QPushButton {"
-            "background-color: #1F2937;"
-            "border: none;"
-            "border-radius: 6px;"
-            "color: #FFFFFF;"
-            "font-family: 'Inter';"
-            "font-size: 13px;"
-            "font-weight: 500;"
-            "padding: 8px 16px;"
-            "min-width: 80px;"
-        "}"
-        "QPushButton:hover {"
-            "background-color: #374151;"
-        "}"
-        "QPushButton:pressed {"
-            "background-color: #4B5563;"
-        "}"
-    );
-    
-    msgBox.exec();
+    QDialog dlg(this);
+    dlg.setWindowTitle(title);
+    dlg.setModal(true);
+    dlg.setSizeGripEnabled(false);
+
+    // Layouts
+    QVBoxLayout *root = new QVBoxLayout(&dlg);
+    root->setContentsMargins(16,16,16,16);
+    root->setSpacing(12);
+
+    QHBoxLayout *row = new QHBoxLayout;
+
+    // Icono según 'icon'
+    QLabel *iconLbl = new QLabel;
+    QStyle::StandardPixmap sp = QStyle::SP_MessageBoxInformation;
+    switch (icon) {
+    case QMessageBox::Warning:  sp = QStyle::SP_MessageBoxWarning; break;
+    case QMessageBox::Critical: sp = QStyle::SP_MessageBoxCritical; break;
+    case QMessageBox::Question: sp = QStyle::SP_MessageBoxQuestion; break;
+    case QMessageBox::Information:
+    default: sp = QStyle::SP_MessageBoxInformation; break;
+    }
+    QPixmap px = style()->standardIcon(sp).pixmap(40, 40);
+    iconLbl->setPixmap(px);
+    iconLbl->setFixedSize(44,44);
+    iconLbl->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+
+    // Texto
+    QLabel *txt = new QLabel(message);
+    txt->setWordWrap(true);
+
+    row->addWidget(iconLbl, 0, Qt::AlignTop);
+    row->addWidget(txt, 1);
+
+    // Botón OK
+    QDialogButtonBox *box = new QDialogButtonBox(QDialogButtonBox::Ok);
+    QPushButton *okBtn = box->button(QDialogButtonBox::Ok);
+    okBtn->setText("OK");
+
+    // Estilos (BOTONES TEXTO NEGRO)
+    dlg.setStyleSheet(
+        "QDialog { background:#FFFFFF; }"
+        "QLabel { color:#111827; font-family:'Inter'; font-size:14px; }"
+        "QDialogButtonBox QPushButton {"
+        "background:#F3F4F6; border:1px solid #D1D5DB; border-radius:6px;"
+        "color:#111827; font-family:'Inter'; font-size:13px; font-weight:500;"
+        "padding:8px 16px; min-width:80px; }"
+        "QDialogButtonBox QPushButton:hover { background:#E5E7EB; }"
+        "QDialogButtonBox QPushButton:pressed { background:#D1D5DB; }"
+        );
+
+    QObject::connect(box, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+
+    root->addLayout(row);
+    root->addWidget(box, 0, Qt::AlignRight);
+
+    dlg.exec();
 }
 
 bool TableEditor::isValidTableName(const QString &name)

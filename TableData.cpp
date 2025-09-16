@@ -9,6 +9,8 @@
 #include <QCalendarWidget>
 #include <QTimer>
 #include <QToolTip>
+#include <QApplication>
+#include <QScreen>
 
 // Implementación del DataFieldDelegate
 QWidget *DataFieldDelegate::createEditor(QWidget *parent,
@@ -1487,15 +1489,51 @@ QString TableData::getTextSizeForColumn(int column) const {
 }
 
 void TableData::showSoftWarning(int row, int col, const QString& msg) const {
-    if (!dataTable) return;
-    // marcar rojo suave
-    markCellInvalid(row, col, msg);
+    if (!m_warnLabel) {
+        // SIN padre: evitamos pasar 'this' (que es const aquí)
+        m_warnLabel = new QLabel(nullptr);
+        m_warnLabel->setObjectName("softWarn");
+        m_warnLabel->setStyleSheet(
+            "QLabel#softWarn {"
+            "  background: #111827;"
+            "  color: white;"
+            "  border: 1px solid #374151;"
+            "  border-radius: 8px;"
+            "  padding: 8px 12px;"
+            "  font-family: 'Inter';"
+            "  font-size: 13px;"
+            "}"
+            );
+        m_warnLabel->setWindowFlags(Qt::ToolTip);
+        m_warnLabel->setAttribute(Qt::WA_TransparentForMouseEvents);
+    }
+    if (!m_warnTimer) {
+        // cuelga el timer del label para limpiar juntos
+        m_warnTimer = new QTimer(m_warnLabel);
+        m_warnTimer->setSingleShot(true);
+        QObject::connect(m_warnTimer, &QTimer::timeout, m_warnLabel, &QLabel::hide);
+    }
 
-    // calcular posición de la celda y mostrar tooltip no modal
-    const QModelIndex idx = dataTable->model()->index(row, col);
-    QRect vr = dataTable->visualRect(idx);
-    QPoint pos = dataTable->viewport()->mapToGlobal(vr.center());
-    QToolTip::showText(pos, msg, dataTable);
+    m_warnLabel->setText(msg);
+    m_warnLabel->adjustSize();
+
+    // Posicionar cerca de la celda
+    if (dataTable) {
+        const QModelIndex ix = dataTable->model()->index(row, col);
+        const QRect cellRect = dataTable->visualRect(ix);
+        QPoint global = dataTable->viewport()->mapToGlobal(cellRect.bottomRight());
+        global += QPoint(-m_warnLabel->width(), 8);
+
+        const QRect screenGeo = QApplication::primaryScreen()->availableGeometry();
+        const int x = std::clamp(global.x(), screenGeo.left(),  screenGeo.right()  - m_warnLabel->width());
+        const int y = std::clamp(global.y(), screenGeo.top(),   screenGeo.bottom() - m_warnLabel->height());
+        m_warnLabel->move(QPoint(x, y));
+    } else {
+        m_warnLabel->move(QCursor::pos() + QPoint(12, 12));
+    }
+
+    m_warnLabel->show();
+    m_warnTimer->start(2000); // fijo: 6 s
 }
 
 bool TableData::isValueValidForType(const QString& type, const QString& value) const {
