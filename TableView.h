@@ -92,6 +92,9 @@ public:
     QStringList getCurrentMillaresDecimals() const; // Nuevo método para obtener decimales de millares
     QStringList getCurrentTextSizes() const; // Nuevo método para obtener tamaños de texto
     int getPrimaryKeyColumnIndex() const; // Nuevo método para obtener índice de Primary Key
+    
+    // Método para recibir resultado de validación de duplicados
+    void setUniqueValidationResult(const QString &fieldName, bool hasDuplicates);
 
 signals:
     void switchToDataView();
@@ -99,6 +102,7 @@ signals:
     void tableDesignChangedWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats);
     void tableDesignChangedWithFormatsAndDecimals(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals);
     void foreignKeyRemoved(const QString &tableName, const QString &fieldName); // Nueva señal para FK eliminada
+    void checkUniqueFieldDuplicates(const QString &fieldName, int fieldIndex); // Nueva señal para validar duplicados
 
 private slots:
     void onCellChanged(int row, int column);
@@ -108,6 +112,7 @@ private slots:
     void onDescriptionChanged();
     void onRequiredChanged(bool checked);
     void onForeignKeyChanged(bool checked);
+    void onUniqueChanged(bool checked);
     void onDefaultValueChanged(const QString &text);
     void onDataViewClicked();
     void onDesignViewClicked();
@@ -147,6 +152,7 @@ private:
     
     // Método para validar integridad de llave primaria
     void validatePrimaryKeyIntegrity();
+    bool checkForDuplicates(const QString &fieldName);
     
     // UI Components
     QVBoxLayout *mainLayout;
@@ -169,6 +175,7 @@ private:
     QTextEdit *descriptionEdit;
     QCheckBox *requiredCheck;
     QCheckBox *foreignKeyCheck;
+    QCheckBox *uniqueCheck;
     QLineEdit *defaultValueEdit;
     
     // Propiedades específicas por tipo de dato
@@ -200,6 +207,7 @@ private:
     int currentSelectedRow;
     int primaryKeyRow; // Fila que contiene la llave primaria (-1 si no hay)
     QList<int> foreignKeyRows; // Lista de filas que son Foreign Keys
+    QList<int> uniqueKeyRows; // Lista de filas que son campos únicos
     
     // Almacenar formatos de moneda por campo
     QStringList fieldCurrencyFormats;

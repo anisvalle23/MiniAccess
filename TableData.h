@@ -52,6 +52,9 @@ public:
     // Obtener datos ingresados
     QList<QStringList> getAllPersonData() const;
     
+    // Verificar duplicados en una columna específica
+    bool hasColumnDuplicates(int columnIndex) const;
+    
     // Limpiar todos los datos
     void clearAllData();
     QString fieldTypeForColumn(int col) const;

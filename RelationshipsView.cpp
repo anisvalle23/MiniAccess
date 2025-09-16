@@ -1142,6 +1142,13 @@ void RelationshipsView::onCreateRelationship()
             }
         }
         
+        // *** NUEVA VALIDACIÓN: TIPOS DE DATOS COMPATIBLES ***
+        // Validar que las Primary Keys y Foreign Keys tengan tipos de datos compatibles
+        if (!validateDataTypeCompatibility(sourceTable, targetTable, shortType)) {
+            // La función validateDataTypeCompatibility mostrará el mensaje de error apropiado
+            return;
+        }
+        
         // Si llegamos aquí, todas las validaciones pasaron
         qDebug() << "DEBUG: Validaciones de" << shortType << "pasaron correctamente entre" << sourceTable << "y" << targetTable;
     }
@@ -1834,6 +1841,140 @@ void RelationshipDesignerView::dropEvent(QDropEvent *event)
         relationshipsView->addTableToDesigner(tableName, scenePos);
         event->acceptProposedAction();
     }
+}
+
+bool RelationshipsView::validateDataTypeCompatibility(const QString &sourceTable, const QString &targetTable, const QString &relationshipType)
+{
+    if (!tableEditor) {
+        return true; // Si no hay tableEditor, no podemos validar pero permitimos continuar
+    }
+    
+    QStringList sourcePrimaryKeys = tableEditor->getTablePrimaryKeys(sourceTable);
+    QStringList targetPrimaryKeys = tableEditor->getTablePrimaryKeys(targetTable);
+    QStringList sourceForeignKeys = tableEditor->getTableForeignKeys(sourceTable);
+    QStringList targetForeignKeys = tableEditor->getTableForeignKeys(targetTable);
+    
+    QStringList incompatibleFields;
+    QString validationMessage;
+    
+    if (relationshipType == "1:1") {
+        // En 1:1, verificar que las PKs/FKs que se van a relacionar tengan tipos compatibles
+        for (const QString &sourcePK : sourcePrimaryKeys) {
+            QString sourcePKType = tableEditor->getFieldType(sourceTable, sourcePK);
+            
+            for (const QString &targetFK : targetForeignKeys) {
+                QString targetFKType = tableEditor->getFieldType(targetTable, targetFK);
+                
+                if (!sourcePKType.isEmpty() && !targetFKType.isEmpty() && sourcePKType != targetFKType) {
+                    incompatibleFields.append(QString("🔑 %1.%2 (%3) ↔ 🔗 %4.%5 (%6)")
+                                            .arg(sourceTable, sourcePK, sourcePKType, targetTable, targetFK, targetFKType));
+                }
+            }
+        }
+        
+        // También verificar la dirección opuesta
+        for (const QString &targetPK : targetPrimaryKeys) {
+            QString targetPKType = tableEditor->getFieldType(targetTable, targetPK);
+            
+            for (const QString &sourceFK : sourceForeignKeys) {
+                QString sourceFKType = tableEditor->getFieldType(sourceTable, sourceFK);
+                
+                if (!targetPKType.isEmpty() && !sourceFKType.isEmpty() && targetPKType != sourceFKType) {
+                    incompatibleFields.append(QString("🔑 %1.%2 (%3) ↔ 🔗 %4.%5 (%6)")
+                                            .arg(targetTable, targetPK, targetPKType, sourceTable, sourceFK, sourceFKType));
+                }
+            }
+        }
+        
+    } else if (relationshipType == "1:N") {
+        // En 1:N, verificar que la PK del lado "uno" sea compatible con las FKs del lado "muchos"
+        for (const QString &sourcePK : sourcePrimaryKeys) {
+            QString sourcePKType = tableEditor->getFieldType(sourceTable, sourcePK);
+            
+            for (const QString &targetFK : targetForeignKeys) {
+                QString targetFKType = tableEditor->getFieldType(targetTable, targetFK);
+                
+                if (!sourcePKType.isEmpty() && !targetFKType.isEmpty() && sourcePKType != targetFKType) {
+                    incompatibleFields.append(QString("🔑 %1.%2 (%3) ↔ 🔗 %4.%5 (%6)")
+                                            .arg(sourceTable, sourcePK, sourcePKType, targetTable, targetFK, targetFKType));
+                }
+            }
+        }
+        
+    } else if (relationshipType == "N:M") {
+        // En N:M, buscar la tabla intermedia y verificar sus FKs con las PKs de ambas tablas
+        QStringList allTables = tableEditor->getCreatedTables();
+        
+        for (const QString &tableName : allTables) {
+            if (tableName == sourceTable || tableName == targetTable) continue;
+            
+            QStringList tableFKs = tableEditor->getTableForeignKeys(tableName);
+            if (tableFKs.size() >= 2) {
+                // Esta podría ser la tabla intermedia, verificar tipos
+                for (const QString &fk : tableFKs) {
+                    QString fkType = tableEditor->getFieldType(tableName, fk);
+                    
+                    // Verificar compatibilidad con sourceTable PKs
+                    for (const QString &sourcePK : sourcePrimaryKeys) {
+                        QString sourcePKType = tableEditor->getFieldType(sourceTable, sourcePK);
+                        if (!fkType.isEmpty() && !sourcePKType.isEmpty() && fkType != sourcePKType) {
+                            incompatibleFields.append(QString("🔑 %1.%2 (%3) ↔ 🔗 %4.%5 (%6)")
+                                                    .arg(sourceTable, sourcePK, sourcePKType, tableName, fk, fkType));
+                        }
+                    }
+                    
+                    // Verificar compatibilidad con targetTable PKs
+                    for (const QString &targetPK : targetPrimaryKeys) {
+                        QString targetPKType = tableEditor->getFieldType(targetTable, targetPK);
+                        if (!fkType.isEmpty() && !targetPKType.isEmpty() && fkType != targetPKType) {
+                            incompatibleFields.append(QString("🔑 %1.%2 (%3) ↔ 🔗 %4.%5 (%6)")
+                                                    .arg(targetTable, targetPK, targetPKType, tableName, fk, fkType));
+                        }
+                    }
+                }
+                break; // Solo verificar la primera tabla intermedia encontrada
+            }
+        }
+    }
+    
+    // Si hay incompatibilidades, mostrar mensaje de error
+    if (!incompatibleFields.isEmpty()) {
+        QMessageBox msgBox;
+        msgBox.setIcon(QMessageBox::Critical);
+        msgBox.setWindowTitle("❌ Error de Tipos de Datos");
+        msgBox.setText("<h3>Tipos de Datos Incompatibles</h3>");
+        msgBox.setInformativeText(
+            QString("No se puede crear la relación <b>%1</b> porque los tipos de datos de los campos clave no son compatibles.<br><br>"
+                   "🚫 <b>Incompatibilidades encontradas:</b><br>"
+                   "• %2<br><br>"
+                   "📘 <b>Explicación:</b><br>"
+                   "Para establecer una relación válida, los campos Primary Key y Foreign Key "
+                   "que se van a conectar deben tener exactamente el mismo tipo de dato.<br><br>"
+                   "✅ <b>Solución:</b><br>"
+                   "1. Vaya a la vista de diseño de las tablas afectadas<br>"
+                   "2. Modifique los tipos de datos para que coincidan<br>"
+                   "3. Guarde los cambios<br>"
+                   "4. Regrese e intente crear la relación nuevamente<br><br>"
+                   "<b>Ejemplos de tipos compatibles:</b><br>"
+                   "• texto ↔ texto<br>"
+                   "• número ↔ número<br>"
+                   "• fecha ↔ fecha")
+                   .arg(relationshipType)
+                   .arg(incompatibleFields.join("<br>• "))
+        );
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.button(QMessageBox::Ok)->setText("Entendido");
+        msgBox.setStyleSheet(
+            "QMessageBox { background-color: white; min-width: 650px; min-height: 450px; }"
+            "QMessageBox QLabel { color: black; font-size: 14px; }"
+            "QPushButton { background-color: #E53E3E; color: white; font-size: 14px; font-weight: bold; min-width: 120px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+            "QPushButton:hover { background-color: #C53030; }"
+        );
+        msgBox.exec();
+        return false;
+    }
+    
+    return true; // Todos los tipos son compatibles
 }
 
 void RelationshipsView::onTableRenamed(const QString &oldName, const QString &newName)

@@ -748,6 +748,22 @@ void TableEditor::showTableView(const QString &tableName)
                     emit foreignKeyRemoved(tableName, fieldName);
                 }, Qt::UniqueConnection);
 
+        // Conectar señal para validar campos únicos
+        connect(view, &TableView::checkUniqueFieldDuplicates, this,
+                [this, tableName](const QString &fieldName, int columnIndex) {
+                    bool hasDuplicates = false;
+                    
+                    // Verificar si existe la instancia de TableData para esta tabla
+                    if (tableDatas.contains(tableName) && tableDatas.value(tableName)) {
+                        hasDuplicates = tableDatas.value(tableName)->hasColumnDuplicates(columnIndex);
+                    }
+                    
+                    // Responder al TableView con el resultado de la validación
+                    if (tableViews.contains(tableName) && tableViews.value(tableName)) {
+                        tableViews.value(tableName)->setUniqueValidationResult(fieldName, hasDuplicates);
+                    }
+                }, Qt::UniqueConnection);
+
         tableViews.insert(tableName, view);
     }
 
@@ -1065,6 +1081,39 @@ QStringList TableEditor::getTablePrimaryAndForeignKeys(const QString &tableName)
     }
     
     return primaryAndForeignKeys;
+}
+
+QString TableEditor::getFieldType(const QString &tableName, const QString &fieldName) const {
+    if (tableViews.contains(tableName)) {
+        TableView* tableView = tableViews.value(tableName);
+        if (tableView) {
+            QStringList fieldNames = tableView->getCurrentFieldNames();
+            QStringList fieldTypes = tableView->getCurrentFieldTypes();
+            
+            // Buscar el índice del campo (limpiando iconos si es necesario)
+            for (int i = 0; i < fieldNames.size(); ++i) {
+                QString cleanFieldName = fieldNames[i];
+                cleanFieldName.remove("🔑 ");
+                cleanFieldName.remove("🔗 ");
+                cleanFieldName = cleanFieldName.trimmed();
+                
+                if (cleanFieldName == fieldName && i < fieldTypes.size()) {
+                    return fieldTypes[i];
+                }
+            }
+        }
+    }
+    return QString(); // Retorna cadena vacía si no encuentra el campo
+}
+
+QStringList TableEditor::getTableFieldTypes(const QString &tableName) const {
+    if (tableViews.contains(tableName)) {
+        TableView* tableView = tableViews.value(tableName);
+        if (tableView) {
+            return tableView->getCurrentFieldTypes();
+        }
+    }
+    return QStringList(); // Retorna lista vacía si no encuentra la tabla
 }
 
 void TableEditor::showTableContextMenu(const QPoint &pos)

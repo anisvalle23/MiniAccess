@@ -1813,3 +1813,35 @@ void TableData::updateTheme(bool isDark)
         headerWidget->update();
     }
 }
+
+bool TableData::hasColumnDuplicates(int columnIndex) const
+{
+    if (!dataTable || columnIndex < 0 || columnIndex >= dataTable->columnCount()) {
+        return false;
+    }
+    
+    QSet<QString> uniqueValues;
+    
+    for (int row = 0; row < dataTable->rowCount(); row++) {
+        // Ignorar la fila de ejemplo
+        QTableWidgetItem *firstItem = dataTable->item(row, 0);
+        if (firstItem && firstItem->toolTip().contains("Ejemplo")) {
+            continue;
+        }
+        
+        QTableWidgetItem *item = dataTable->item(row, columnIndex);
+        if (item) {
+            QString value = item->text().trimmed();
+            
+            // Ignorar valores vacíos
+            if (!value.isEmpty()) {
+                if (uniqueValues.contains(value)) {
+                    return true; // Se encontró un duplicado
+                }
+                uniqueValues.insert(value);
+            }
+        }
+    }
+    
+    return false; // No se encontraron duplicados
+}

@@ -207,6 +207,7 @@ TableView::TableView(QWidget *parent) : QWidget(parent)
     currentSelectedRow = -1;
     primaryKeyRow = -1; // No hay llave primaria inicialmente
     foreignKeyRows.clear(); // No hay foreign keys inicialmente
+    uniqueKeyRows.clear(); // No hay campos únicos inicialmente
     isDarkTheme = false;
     currentTableName = "Nueva Tabla";
     
@@ -619,6 +620,21 @@ void TableView::createPropertiesArea()
     );
     centerColumn->addWidget(foreignKeyCheck);
     
+    // Campo Unique
+    uniqueCheck = new QCheckBox("Unique");
+    uniqueCheck->setStyleSheet(
+        "QCheckBox {"
+        "color: #475569;"
+        "font-weight: bold;"
+        "margin-top: 10px;"
+        "}"
+        "QCheckBox::indicator {"
+        "width: 18px;"
+        "height: 18px;"
+        "}"
+    );
+    centerColumn->addWidget(uniqueCheck);
+    
     // Columna derecha
     QVBoxLayout *rightColumn = new QVBoxLayout();
     rightColumn->setSpacing(10);
@@ -655,6 +671,7 @@ void TableView::createPropertiesArea()
     connect(defaultValueEdit, &QLineEdit::textChanged, this, &TableView::onDefaultValueChanged);
     connect(requiredCheck, &QCheckBox::toggled, this, &TableView::onRequiredChanged);
     connect(foreignKeyCheck, &QCheckBox::toggled, this, &TableView::onForeignKeyChanged);
+    connect(uniqueCheck, &QCheckBox::toggled, this, &TableView::onUniqueChanged);
     connect(descriptionEdit, &QTextEdit::textChanged, this, &TableView::onDescriptionChanged);
 }
 
@@ -732,6 +749,7 @@ void TableView::updatePropertiesForRow(int row)
     defaultValueEdit->blockSignals(true);
     requiredCheck->blockSignals(true);
     foreignKeyCheck->blockSignals(true);
+    uniqueCheck->blockSignals(true);
     
     // Obtener datos de la fila
     QTableWidgetItem *nameItem = tableWidget->item(row, 0);
@@ -767,6 +785,10 @@ void TableView::updatePropertiesForRow(int row)
     bool isForeignKey = foreignKeyRows.contains(row);
     foreignKeyCheck->setChecked(isForeignKey);
     
+    // Verificar si esta fila es Unique (usando la lista interna)
+    bool isUnique = uniqueKeyRows.contains(row);
+    uniqueCheck->setChecked(isUnique);
+    
     // Actualizar propiedades específicas según el tipo de dato
     updateSpecificProperties(dataType);
     
@@ -777,6 +799,7 @@ void TableView::updatePropertiesForRow(int row)
     defaultValueEdit->blockSignals(false);
     requiredCheck->blockSignals(false);
     foreignKeyCheck->blockSignals(false);
+    uniqueCheck->blockSignals(false);
     
     // Actualizar propiedades específicas según el tipo de dato seleccionado
     updateSpecificProperties(dataType);
@@ -940,23 +963,46 @@ void TableView::onRequiredChanged(bool required)
             cleanFieldName = fieldName;
             
             // Método simple y robusto para limpiar todos los iconos
+            cleanFieldName = cleanFieldName.remove("🔑🔗🔶");
             cleanFieldName = cleanFieldName.remove("🔑🔗");
+            cleanFieldName = cleanFieldName.remove("🔑🔶");
+            cleanFieldName = cleanFieldName.remove("🔗🔶");
             cleanFieldName = cleanFieldName.remove("🔑");  
             cleanFieldName = cleanFieldName.remove("🔗");
+            cleanFieldName = cleanFieldName.remove("🔶");
             cleanFieldName = cleanFieldName.trimmed();
             
-            // Verificar si también es Foreign Key (usando la lista interna)
+            // Verificar si también es Foreign Key y/o Unique
             bool isForeignKey = foreignKeyRows.contains(currentSelectedRow);
+            bool isUnique = uniqueKeyRows.contains(currentSelectedRow);
             
-            if (isForeignKey) {
-                // Si también es Foreign Key, mostrar ambos iconos
-                fieldNameItem->setText("🔑🔗 " + cleanFieldName);
-                fieldNameItem->setToolTip("Campo Primary Key y Foreign Key - Clave única que referencia otra tabla");
+            // Construir el texto con todos los iconos apropiados
+            QString newText = cleanFieldName;
+            QString toolTip = "";
+            
+            if (isForeignKey && isUnique) {
+                // PK + FK + Unique
+                newText = "🔑🔗🔶 " + cleanFieldName;
+                toolTip = "Campo Primary Key, Foreign Key y Unique";
+            } else if (isForeignKey) {
+                // PK + FK
+                newText = "🔑🔗 " + cleanFieldName;
+                toolTip = "Campo Primary Key y Foreign Key - Clave única que referencia otra tabla";
+            } else if (isUnique) {
+                // PK + Unique
+                newText = "🔑🔶 " + cleanFieldName;
+                toolTip = "Campo Primary Key y Unique";
             } else {
                 // Solo Primary Key
-                fieldNameItem->setText("🔑 " + cleanFieldName);
-                fieldNameItem->setToolTip("Campo Llave Primaria - Requerido y único");
+                newText = "🔑 " + cleanFieldName;
+                toolTip = "Campo Llave Primaria - Requerido y único";
             }
+            
+            // Bloquear señales del tableWidget para evitar bucles infinitos
+            tableWidget->blockSignals(true);
+            fieldNameItem->setText(newText);
+            fieldNameItem->setToolTip(toolTip);
+            tableWidget->blockSignals(false);
             
             qDebug() << "DEBUG: Campo marcado como llave primaria:" << cleanFieldName << "en fila:" << currentSelectedRow;
         }
@@ -975,24 +1021,42 @@ void TableView::onRequiredChanged(bool required)
                 QString cleanFieldName = fieldName;
                 
                 // Limpiar todos los iconos
+                cleanFieldName = cleanFieldName.remove("🔑🔗🔶");
                 cleanFieldName = cleanFieldName.remove("🔑🔗");
+                cleanFieldName = cleanFieldName.remove("🔑🔶");
+                cleanFieldName = cleanFieldName.remove("🔗🔶");
                 cleanFieldName = cleanFieldName.remove("🔑");  
-                cleanFieldName = cleanFieldName.remove("�");
+                cleanFieldName = cleanFieldName.remove("🔗");
+                cleanFieldName = cleanFieldName.remove("🔶");
                 cleanFieldName = cleanFieldName.trimmed();
                 
-                // Verificar si también era Foreign Key (usando la lista interna)
+                // Verificar si también era Foreign Key y/o Unique
                 bool wasForeignKey = foreignKeyRows.contains(currentSelectedRow);
+                bool wasUnique = uniqueKeyRows.contains(currentSelectedRow);
                 
                 // Actualizar el campo según corresponda
-                if (wasForeignKey) {
-                    // Si también era Foreign Key, mantener solo el icono FK
-                    fieldNameItem->setText("🔗 " + cleanFieldName);
-                    fieldNameItem->setToolTip("Campo Foreign Key - Referencia a otra tabla");
-                } else {
-                    // Solo era Primary Key, quitar todo
-                    fieldNameItem->setText(cleanFieldName);
-                    fieldNameItem->setToolTip("");
+                QString newText = cleanFieldName;
+                QString toolTip = "";
+                
+                if (wasForeignKey && wasUnique) {
+                    // Era PK + FK + Unique, ahora es FK + Unique
+                    newText = "🔗🔶 " + cleanFieldName;
+                    toolTip = "Campo Foreign Key y Unique";
+                } else if (wasForeignKey) {
+                    // Era PK + FK, ahora es solo FK
+                    newText = "🔗 " + cleanFieldName;
+                    toolTip = "Campo Foreign Key - Referencia a otra tabla";
+                } else if (wasUnique) {
+                    // Era PK + Unique, ahora es solo Unique
+                    newText = "🔶 " + cleanFieldName;
+                    toolTip = "Campo Unique - Valores únicos, no se permiten duplicados";
                 }
+                
+                // Bloquear señales del tableWidget para evitar bucles infinitos
+                tableWidget->blockSignals(true);
+                fieldNameItem->setText(newText);
+                fieldNameItem->setToolTip(toolTip);
+                tableWidget->blockSignals(false);
                 
                 qDebug() << "DEBUG: Llave primaria removida del campo:" << cleanFieldName;
             }
@@ -1033,13 +1097,18 @@ void TableView::onForeignKeyChanged(bool isForeignKey)
     cleanFieldName = fieldName;
     
     // Método simple y robusto para limpiar todos los iconos
+    cleanFieldName = cleanFieldName.remove("🔑🔗🔶");
     cleanFieldName = cleanFieldName.remove("🔑🔗");
+    cleanFieldName = cleanFieldName.remove("🔑🔶");
+    cleanFieldName = cleanFieldName.remove("🔗🔶");
     cleanFieldName = cleanFieldName.remove("🔑");  
     cleanFieldName = cleanFieldName.remove("🔗");
+    cleanFieldName = cleanFieldName.remove("🔶");
     cleanFieldName = cleanFieldName.trimmed();
     
-    // Verificar si este campo es también Primary Key
+    // Verificar si este campo es también Primary Key y/o Unique
     bool isPrimaryKey = (primaryKeyRow == currentSelectedRow);
+    bool isUnique = uniqueKeyRows.contains(currentSelectedRow);
     
     if (isForeignKey) {
         // Agregar a la lista de Foreign Keys si no está ya
@@ -1048,15 +1117,32 @@ void TableView::onForeignKeyChanged(bool isForeignKey)
         }
         
         // Mostrar el icono apropiado
-        if (isPrimaryKey) {
-            // Si también es Primary Key, mostrar ambos iconos
-            fieldNameItem->setText("🔑🔗 " + cleanFieldName);
-            fieldNameItem->setToolTip("Campo Primary Key con Foreign Key - Clave única que también referencia otra tabla");
+        QString newText = cleanFieldName;
+        QString toolTip = "";
+        
+        if (isPrimaryKey && isUnique) {
+            // PK + FK + Unique
+            newText = "🔑🔗🔶 " + cleanFieldName;
+            toolTip = "Campo Primary Key, Foreign Key y Unique";
+        } else if (isPrimaryKey) {
+            // PK + FK
+            newText = "🔑🔗 " + cleanFieldName;
+            toolTip = "Campo Primary Key con Foreign Key - Clave única que también referencia otra tabla";
+        } else if (isUnique) {
+            // FK + Unique
+            newText = "🔗🔶 " + cleanFieldName;
+            toolTip = "Campo Foreign Key y Unique - Referencia única a otra tabla";
         } else {
             // Solo Foreign Key
-            fieldNameItem->setText("🔗 " + cleanFieldName);
-            fieldNameItem->setToolTip("Campo Foreign Key - Referencia a otra tabla");
+            newText = "🔗 " + cleanFieldName;
+            toolTip = "Campo Foreign Key - Referencia a otra tabla";
         }
+        
+        // Bloquear señales del tableWidget para evitar bucles infinitos
+        tableWidget->blockSignals(true);
+        fieldNameItem->setText(newText);
+        fieldNameItem->setToolTip(toolTip);
+        tableWidget->blockSignals(false);
         
         qDebug() << "DEBUG: Campo marcado como Foreign Key:" << cleanFieldName << "en fila:" << currentSelectedRow;
         
@@ -1065,20 +1151,196 @@ void TableView::onForeignKeyChanged(bool isForeignKey)
         foreignKeyRows.removeAll(currentSelectedRow);
         
         // Remover el icono de foreign key
-        if (isPrimaryKey) {
-            // Si sigue siendo Primary Key, restaurar solo el icono de PK
-            fieldNameItem->setText("🔑 " + cleanFieldName);
-            fieldNameItem->setToolTip("Campo Primary Key - Clave única e irrepetible");
-        } else {
-            // No es ni PK ni FK, solo el nombre limpio
-            fieldNameItem->setText(cleanFieldName);
-            fieldNameItem->setToolTip("");
+        QString newText = cleanFieldName;
+        QString toolTip = "";
+        
+        if (isPrimaryKey && isUnique) {
+            // Era PK + FK + Unique, ahora es PK + Unique
+            newText = "🔑🔶 " + cleanFieldName;
+            toolTip = "Campo Primary Key y Unique";
+        } else if (isPrimaryKey) {
+            // Era PK + FK, ahora es solo PK
+            newText = "🔑 " + cleanFieldName;
+            toolTip = "Campo Primary Key - Clave única e irrepetible";
+        } else if (isUnique) {
+            // Era FK + Unique, ahora es solo Unique
+            newText = "🔶 " + cleanFieldName;
+            toolTip = "Campo Unique - Valores únicos, no se permiten duplicados";
         }
+        // Si no es ni PK ni Unique, se queda solo con el nombre limpio
+        
+        // Bloquear señales del tableWidget para evitar bucles infinitos
+        tableWidget->blockSignals(true);
+        fieldNameItem->setText(newText);
+        fieldNameItem->setToolTip(toolTip);
+        tableWidget->blockSignals(false);
         
         qDebug() << "DEBUG: Foreign Key removida del campo:" << cleanFieldName;
         
         // Emitir señal para notificar que se eliminó una Foreign Key
         emit foreignKeyRemoved(currentTableName, cleanFieldName);
+    }
+}
+
+void TableView::onUniqueChanged(bool isUnique)
+{
+    if (currentSelectedRow < 0) {
+        qDebug() << "DEBUG: No hay fila seleccionada para cambiar unique";
+        return;
+    }
+    
+    if (!tableWidget) {
+        qDebug() << "ERROR: tableWidget is null";
+        return;
+    }
+    
+    if (currentSelectedRow >= tableWidget->rowCount()) {
+        qDebug() << "ERROR: currentSelectedRow out of bounds:" << currentSelectedRow << "rowCount:" << tableWidget->rowCount();
+        return;
+    }
+    
+    QTableWidgetItem *fieldNameItem = tableWidget->item(currentSelectedRow, 0);
+    if (!fieldNameItem) {
+        qDebug() << "ERROR: fieldNameItem is null for row:" << currentSelectedRow;
+        return;
+    }
+    
+    QString fieldName = fieldNameItem->text();
+    
+    // Verificar que el campo tenga un nombre
+    if (fieldName.trimmed().isEmpty()) {
+        qDebug() << "DEBUG: Campo sin nombre, no se puede marcar como unique";
+        // Revertir el checkbox
+        uniqueCheck->blockSignals(true);
+        uniqueCheck->setChecked(false);
+        uniqueCheck->blockSignals(false);
+        return;
+    }
+    
+    // Obtener el nombre limpio del campo (sin iconos)
+    QString cleanFieldName = fieldName;
+    
+    // Método robusto para limpiar todos los iconos posibles
+    cleanFieldName = cleanFieldName.remove("🔑🔗");
+    cleanFieldName = cleanFieldName.remove("🔑");  
+    cleanFieldName = cleanFieldName.remove("🔗");
+    cleanFieldName = cleanFieldName.remove("🔶");  // Icono para unique
+    cleanFieldName = cleanFieldName.trimmed();
+    
+    // Verificar si este campo es también Primary Key y/o Foreign Key
+    bool isPrimaryKey = (primaryKeyRow == currentSelectedRow);
+    bool isForeignKey = foreignKeyRows.contains(currentSelectedRow);
+    
+    if (isUnique) {
+        qDebug() << "DEBUG: Marcando campo como unique:" << cleanFieldName;
+        
+        // Agregar a la lista de campos únicos si no está ya
+        if (!uniqueKeyRows.contains(currentSelectedRow)) {
+            uniqueKeyRows.append(currentSelectedRow);
+            qDebug() << "DEBUG: Agregado a uniqueKeyRows:" << currentSelectedRow;
+        }
+        
+        // Validar que no haya duplicados si este campo ya tiene datos
+        qDebug() << "DEBUG: Verificando duplicados...";
+        bool hasDuplicates = checkForDuplicates(cleanFieldName);
+        qDebug() << "DEBUG: hasDuplicates =" << hasDuplicates;
+        if (hasDuplicates) {
+            // Mostrar mensaje de advertencia
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("⚠️ Datos Duplicados");
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setText("<h3>Campo Unique con Datos Duplicados</h3>");
+            msgBox.setInformativeText(
+                QString("El campo <b>'%1'</b> contiene datos duplicados.<br><br>"
+                        "⚠️ <b>Los campos marcados como Unique no pueden tener valores repetidos.</b><br><br>"
+                        "Puede:<br>"
+                        "• Quitar la marca de Unique para permitir duplicados<br>"
+                        "• Modificar los datos para que sean únicos").arg(cleanFieldName)
+            );
+            msgBox.setStandardButtons(QMessageBox::Ok);
+            
+            // Estilo del mensaje
+            msgBox.setStyleSheet(
+                "QMessageBox {"
+                "background-color: white;"
+                "min-width: 460px;"
+                "min-height: 180px;"
+                "}"
+                "QMessageBox QLabel {"
+                "color: #0b0f19;"
+                "font-size: 14px;"
+                "}"
+            );
+            
+            msgBox.exec();
+        }
+        
+        // Mostrar el icono apropiado combinando con PK y FK
+        QString newText = cleanFieldName;
+        QString toolTip = "";
+        
+        if (isPrimaryKey && isForeignKey) {
+            // PK + FK + Unique
+            newText = "🔑🔗🔶 " + cleanFieldName;
+            toolTip = "Campo Primary Key, Foreign Key y Unique - Clave única que también referencia otra tabla";
+        } else if (isPrimaryKey) {
+            // PK + Unique (redundante pero lo mostramos)
+            newText = "🔑🔶 " + cleanFieldName;
+            toolTip = "Campo Primary Key y Unique - Clave única e irrepetible";
+        } else if (isForeignKey) {
+            // FK + Unique
+            newText = "🔗🔶 " + cleanFieldName;
+            toolTip = "Campo Foreign Key y Unique - Referencia única a otra tabla";
+        } else {
+            // Solo Unique
+            newText = "🔶 " + cleanFieldName;
+            toolTip = "Campo Unique - Valores únicos, no se permiten duplicados";
+        }
+        
+        // Bloquear señales del tableWidget para evitar bucles infinitos
+        tableWidget->blockSignals(true);
+        fieldNameItem->setText(newText);
+        fieldNameItem->setToolTip(toolTip);
+        tableWidget->blockSignals(false);
+        
+        qDebug() << "DEBUG: Campo marcado como Unique:" << cleanFieldName << "en fila:" << currentSelectedRow;
+        
+    } else {
+        qDebug() << "DEBUG: Desmarcando campo unique:" << cleanFieldName;
+        
+        // Remover de la lista de campos únicos
+        uniqueKeyRows.removeAll(currentSelectedRow);
+        qDebug() << "DEBUG: Removido de uniqueKeyRows:" << currentSelectedRow;
+        
+        // Remover el icono de unique y actualizar el texto
+        QString newText = cleanFieldName;
+        QString toolTip = "";
+        
+        if (isPrimaryKey && isForeignKey) {
+            // PK + FK (sin Unique)
+            newText = "🔑🔗 " + cleanFieldName;
+            toolTip = "Campo Primary Key con Foreign Key - Clave única que también referencia otra tabla";
+        } else if (isPrimaryKey) {
+            // Solo PK
+            newText = "🔑 " + cleanFieldName;
+            toolTip = "Campo Primary Key - Clave única e irrepetible";
+        } else if (isForeignKey) {
+            // Solo FK
+            newText = "🔗 " + cleanFieldName;
+            toolTip = "Campo Foreign Key - Referencia a otra tabla";
+        } else {
+            // Sin propiedades especiales
+            newText = cleanFieldName;
+            toolTip = "";
+        }
+        
+        // Bloquear señales del tableWidget para evitar bucles infinitos
+        tableWidget->blockSignals(true);
+        fieldNameItem->setText(newText);
+        fieldNameItem->setToolTip(toolTip);
+        tableWidget->blockSignals(false);
+        
+        qDebug() << "DEBUG: Unique removido del campo:" << cleanFieldName;
     }
 }
 
@@ -1181,6 +1443,13 @@ void TableView::onAddRowClicked()
     for (int i = 0; i < foreignKeyRows.size(); i++) {
         if (foreignKeyRows[i] >= insertRow) {
             foreignKeyRows[i]++;
+        }
+    }
+    
+    // Ajustar uniqueKeyRows si es necesario
+    for (int i = 0; i < uniqueKeyRows.size(); i++) {
+        if (uniqueKeyRows[i] >= insertRow) {
+            uniqueKeyRows[i]++;
         }
     }
     
@@ -1471,6 +1740,16 @@ void TableView::onDeleteRowClicked()
     }
     qDebug() << "DEBUG: Foreign Keys tras eliminar fila:" << foreignKeyRows;
     
+    // Ajustar las filas de Unique Keys
+    for (int i = uniqueKeyRows.size() - 1; i >= 0; i--) {
+        if (uniqueKeyRows[i] > selectedRow) {
+            uniqueKeyRows[i]--;  // Ajustar índice hacia arriba
+        } else if (uniqueKeyRows[i] == selectedRow) {
+            uniqueKeyRows.removeAt(i);  // Remover el Unique que se está eliminando
+        }
+    }
+    qDebug() << "DEBUG: Unique Keys tras eliminar fila:" << uniqueKeyRows;
+    
     // Ajustar listas de configuración de campos
     if (selectedRow < fieldCurrencyFormats.size()) {
         fieldCurrencyFormats.removeAt(selectedRow);
@@ -1585,12 +1864,41 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
             }
         }
         
-        // Si llegamos aquí, no hay duplicados. Restaurar el icono de llave si este es el campo llave primaria
-        if (primaryKeyRow == row) {
-            if (!cleanFieldName.isEmpty() && !fieldName.startsWith("🔑 ")) {
-                item->setText("🔑 " + cleanFieldName);
-                item->setToolTip("Campo Llave Primaria - Requerido y único");
+        // Si llegamos aquí, no hay duplicados. Restaurar todos los iconos apropiados
+        if (!cleanFieldName.isEmpty()) {
+            bool isPrimaryKey = (primaryKeyRow == row);
+            bool isForeignKey = foreignKeyRows.contains(row);
+            bool isUnique = uniqueKeyRows.contains(row);
+            
+            QString newText = cleanFieldName;
+            QString toolTip = "";
+            
+            // Construir el texto con todos los iconos apropiados
+            if (isPrimaryKey && isForeignKey && isUnique) {
+                newText = "🔑🔗🔶 " + cleanFieldName;
+                toolTip = "Campo Primary Key, Foreign Key y Unique";
+            } else if (isPrimaryKey && isForeignKey) {
+                newText = "🔑🔗 " + cleanFieldName;
+                toolTip = "Campo Primary Key con Foreign Key";
+            } else if (isPrimaryKey && isUnique) {
+                newText = "🔑🔶 " + cleanFieldName;
+                toolTip = "Campo Primary Key y Unique";
+            } else if (isForeignKey && isUnique) {
+                newText = "�🔶 " + cleanFieldName;
+                toolTip = "Campo Foreign Key y Unique";
+            } else if (isPrimaryKey) {
+                newText = "🔑 " + cleanFieldName;
+                toolTip = "Campo Llave Primaria - Requerido y único";
+            } else if (isForeignKey) {
+                newText = "🔗 " + cleanFieldName;
+                toolTip = "Campo Foreign Key - Referencia a otra tabla";
+            } else if (isUnique) {
+                newText = "🔶 " + cleanFieldName;
+                toolTip = "Campo Unique - Valores únicos, no se permiten duplicados";
             }
+            
+            item->setText(newText);
+            item->setToolTip(toolTip);
         }
     }
     
@@ -2794,5 +3102,139 @@ void TableView::validatePrimaryKeyIntegrity()
         primaryKeyItem->setText("🔑 " + fieldName);
         primaryKeyItem->setToolTip("Campo Llave Primaria - Requerido y único");
         qDebug() << "DEBUG: Icono de llave primaria restaurado para:" << fieldName;
+    }
+}
+
+bool TableView::checkForDuplicates(const QString &fieldName)
+{
+    qDebug() << "DEBUG: Verificando duplicados para campo:" << fieldName;
+    
+    // Encontrar el índice de la columna de este campo
+    int fieldIndex = -1;
+    QStringList currentFields = getCurrentFieldNames();
+    
+    for (int i = 0; i < currentFields.size(); i++) {
+        if (currentFields[i] == fieldName) {
+            fieldIndex = i;
+            break;
+        }
+    }
+    
+    if (fieldIndex == -1) {
+        qDebug() << "DEBUG: Campo no encontrado en la lista de campos actuales";
+        return false;
+    }
+    
+    // Emitir señal para que el TableEditor/TableData verifique duplicados
+    emit checkUniqueFieldDuplicates(fieldName, fieldIndex);
+    
+    // Por ahora retornamos false y esperamos la respuesta asíncrona
+    // La validación real se manejará en setUniqueValidationResult()
+    return false;
+}
+
+void TableView::setUniqueValidationResult(const QString &fieldName, bool hasDuplicates)
+{
+    qDebug() << "DEBUG: Resultado de validación unique para" << fieldName << ":" << hasDuplicates;
+    
+    if (hasDuplicates) {
+        // Buscar la fila del campo para desmarcarlo
+        int fieldRow = -1;
+        for (int row = 0; row < tableWidget->rowCount(); row++) {
+            QTableWidgetItem *item = tableWidget->item(row, 0);
+            if (item) {
+                QString itemText = item->text();
+                // Limpiar iconos para comparar
+                QString cleanText = itemText;
+                cleanText = cleanText.remove("🔑🔗🔶");
+                cleanText = cleanText.remove("🔑🔗");
+                cleanText = cleanText.remove("🔑🔶");
+                cleanText = cleanText.remove("🔗🔶");
+                cleanText = cleanText.remove("🔑");
+                cleanText = cleanText.remove("🔗");
+                cleanText = cleanText.remove("🔶");
+                cleanText = cleanText.trimmed();
+                
+                if (cleanText == fieldName) {
+                    fieldRow = row;
+                    break;
+                }
+            }
+        }
+        
+        if (fieldRow != -1) {
+            // Mostrar mensaje de error más específico
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("⚠️ Datos Duplicados Detectados");
+            msgBox.setIcon(QMessageBox::Warning);
+            msgBox.setText("<h3>Campo Unique con Valores Duplicados</h3>");
+            msgBox.setInformativeText(
+                QString("El campo <b>'%1'</b> contiene valores duplicados en los datos existentes.<br><br>"
+                        "❌ <b>Los campos Unique no pueden tener valores repetidos.</b><br><br>"
+                        "Opciones disponibles:<br>"
+                        "• <b>Limpiar datos duplicados</b> y luego marcar como Unique<br>"
+                        "• <b>Mantener los datos actuales</b> sin restricción de unicidad<br><br>"
+                        "Se ha revertido la marca de Unique automáticamente.").arg(fieldName)
+            );
+            msgBox.setStandardButtons(QMessageBox::Ok);
+            
+            // Estilo del mensaje
+            msgBox.setStyleSheet(
+                "QMessageBox {"
+                "background-color: white;"
+                "min-width: 480px;"
+                "min-height: 200px;"
+                "}"
+                "QMessageBox QLabel {"
+                "color: #0b0f19;"
+                "font-size: 14px;"
+                "}"
+            );
+            
+            msgBox.exec();
+            
+            // Revertir automáticamente la marca de unique
+            uniqueKeyRows.removeAll(fieldRow);
+            
+            // Actualizar el checkbox en la interfaz
+            if (fieldRow == currentSelectedRow) {
+                uniqueCheck->blockSignals(true);
+                uniqueCheck->setChecked(false);
+                uniqueCheck->blockSignals(false);
+            }
+            
+            // Actualizar el icono del campo
+            QTableWidgetItem *fieldItem = tableWidget->item(fieldRow, 0);
+            if (fieldItem) {
+                bool isPrimaryKey = (primaryKeyRow == fieldRow);
+                bool isForeignKey = foreignKeyRows.contains(fieldRow);
+                
+                QString newText = fieldName;
+                QString toolTip = "";
+                
+                if (isPrimaryKey && isForeignKey) {
+                    newText = "🔑🔗 " + fieldName;
+                    toolTip = "Campo Primary Key con Foreign Key";
+                } else if (isPrimaryKey) {
+                    newText = "🔑 " + fieldName;
+                    toolTip = "Campo Primary Key - Clave única e irrepetible";
+                } else if (isForeignKey) {
+                    newText = "🔗 " + fieldName;
+                    toolTip = "Campo Foreign Key - Referencia a otra tabla";
+                } else {
+                    newText = fieldName;
+                    toolTip = "";
+                }
+                
+                tableWidget->blockSignals(true);
+                fieldItem->setText(newText);
+                fieldItem->setToolTip(toolTip);
+                tableWidget->blockSignals(false);
+            }
+            
+            qDebug() << "DEBUG: Campo" << fieldName << "revertido de unique debido a duplicados";
+        }
+    } else {
+        qDebug() << "DEBUG: Campo" << fieldName << "validado como único correctamente";
     }
 }
