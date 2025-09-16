@@ -102,44 +102,49 @@ void RelationshipsView::applyTableRenameImmediate(const QString& oldName, const 
         if (line) line->updatePosition();
     }
 
-    // 6) Lista de relaciones: si guardás solo texto, reemplaza allí;
-    //    si guardás datos, actualiza el data y vuelve a formatear el texto.
+    // 6) Lista de relaciones: actualizar nombres de tablas en el texto (SIN ELIMINAR relaciones)
+    qDebug() << "DEBUG: Actualizando" << relationshipsListWidget->count() << "relaciones para cambio de nombre:" << oldName << "->" << newName;
+    
     for (int i = 0; i < relationshipsListWidget->count(); ++i) {
         QListWidgetItem *it = relationshipsListWidget->item(i);
         if (!it) continue;
 
-        // A) Si manejas solo texto "A → B (tipo)":
-        QString txt = it->text();
-        if (txt.contains(oldName)) {
-            txt.replace(oldName, newName);
-            it->setText(txt);
+        QString txt = it->text(); // "A → B (tipo)"
+        QString originalText = txt;
+        
+        // Parsear la relación para actualizar los nombres de tabla de forma precisa
+        int arrowPos = txt.indexOf(" → ");
+        if (arrowPos >= 0) {
+            QString leftPart = txt.left(arrowPos).trimmed();
+            QString rightPart = txt.mid(arrowPos + 3).trimmed();
+            
+            // Extraer la tabla destino (antes del paréntesis)
+            int parenPos = rightPart.lastIndexOf("(");
+            QString targetTable = parenPos >= 0 ? rightPart.left(parenPos).trimmed() : rightPart;
+            QString typeAndParen = parenPos >= 0 ? rightPart.mid(parenPos) : "";
+            
+            // Actualizar los nombres si coinciden
+            bool updated = false;
+            if (leftPart == oldName) {
+                leftPart = newName;
+                updated = true;
+            }
+            if (targetTable == oldName) {
+                targetTable = newName;
+                updated = true;
+            }
+            
+            // Reconstruir el texto si se actualizó
+            if (updated) {
+                QString newText = QString("%1 → %2 %3").arg(leftPart, targetTable, typeAndParen);
+                it->setText(newText);
+                qDebug() << "DEBUG: Relación actualizada de:" << originalText << "a:" << newText;
+            }
         }
-
-        // B) (RECOMENDADO) Si guardas en UserRole un mapa/JSON con {src,dst,type}:
-        // QVariantMap m = it->data(Qt::UserRole).toMap();
-        // if (m.value("src").toString() == oldName) m["src"] = newName;
-        // if (m.value("dst").toString() == oldName) m["dst"] = newName;
-        // it->setData(Qt::UserRole, m);
-        // it->setText(QString("%1 → %2 (%3)").arg(m["src"].toString(), m["dst"].toString(), m["type"].toString()));
     }
 
-    // 7) Defensa: elimina entradas huérfanas si algo quedó inconsistente
-    for (int i = relationshipsListWidget->count() - 1; i >= 0; --i) {
-        QListWidgetItem *it = relationshipsListWidget->item(i);
-        if (!it) continue;
-
-        const QString txt = it->text(); // "A → B (tipo)"
-        int arrow = txt.indexOf(u" → ");
-        int paren = txt.lastIndexOf(u"(");
-        if (arrow < 0 || paren < 0) continue;
-
-        const QString A = txt.left(arrow).trimmed();
-        const QString B = txt.mid(arrow + 3, paren - (arrow + 3)).trimmed();
-
-        if (!availableTables.contains(A) || !availableTables.contains(B)) {
-            delete relationshipsListWidget->takeItem(i);
-        }
-    }
+    // 7) NO eliminar relaciones - solo actualizar referencias visuales
+    // (Comentado el código de eliminación para preservar las relaciones existentes)
 
     // 8) Si hay items en diseño, forzá repintado (suave y sin parpadeo)
     if (designerScene) designerScene->update();
@@ -685,7 +690,10 @@ void RelationshipsView::loadTables()
 
 void RelationshipsView::loadRelationships()
 {
-    relationshipsListWidget->clear();
+    // NO limpiar la lista de relaciones existentes
+    // Las relaciones se mantienen y solo se actualizan cuando sea necesario
+    // relationshipsListWidget->clear(); // COMENTADO para preservar relaciones
+    
     // Las relaciones se mostrarán solo cuando se vayan creando
     // No hay relaciones predeterminadas, todo será dinámico
 }
@@ -854,26 +862,10 @@ void RelationshipsView::refreshTableList()
         tableItems.removeAll(item);
         delete item;
     }
-    
-    // Also remove relationship lines that reference deleted tables
-    QList<RelationshipLine*> linesToRemove;
-    for (auto *line : relationshipLines) {
-        QString sourceTableName = line->getSourceTable()->getTableName();
-        QString targetTableName = line->getTargetTable()->getTableName();
-        
-        if (!availableTables.contains(sourceTableName) || !availableTables.contains(targetTableName)) {
-            linesToRemove.append(line);
-        }
-    }
-    
-    // Remove invalid relationship lines
-    for (auto *line : linesToRemove) {
-        designerScene->removeItem(line);
-        relationshipLines.removeAll(line);
-        delete line;
-    }
-    
-    // Update existing table items with new field information
+
+    // NO eliminar líneas de relación automáticamente durante refresh
+    // (Las relaciones se actualizan por applyTableRenameImmediate cuando hay rename)
+    // Las líneas de relación solo se eliminan explícitamente por el usuario    // Update existing table items with new field information
     for (auto *item : tableItems) {
         QString tableName = item->getTableName();
         if (tableFields.contains(tableName)) {
