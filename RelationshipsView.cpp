@@ -382,8 +382,8 @@ void RelationshipsView::createRelationshipDesigner()
     QWidget *instructionCard = new QWidget();
     instructionCard->setStyleSheet(
         "QWidget {"
-            "background: #E8F5E8;"
-            "border: 1px solid #C8E6C9;"
+            "background: #FFEBEE;"
+            "border: 1px solid #FFCDD2;"
             "border-radius: 6px;"
             "padding: 8px;"
         "}"
@@ -392,7 +392,7 @@ void RelationshipsView::createRelationshipDesigner()
     cardLayout->setMargin(8);
     
     QLabel *instructionText = new QLabel("💡 Arrastra tablas desde la lista izquierda aquí para conectarlas");
-    instructionText->setStyleSheet("color: #2E7D32; font-size: 11px; font-weight: 500;");
+    instructionText->setStyleSheet("color: #C62828; font-size: 11px; font-weight: 500;");
     instructionText->setWordWrap(true);
     
     cardLayout->addWidget(instructionText);
@@ -444,26 +444,60 @@ void RelationshipsView::createPropertiesPanel()
     propertiesLayout = new QVBoxLayout(propertiesPanel);
     propertiesLayout->setContentsMargins(10, 10, 10, 10);
     
-    propertiesGroup = new QGroupBox("⚙️ Nueva Relación");
-    propertiesGroup->setFont(QFont("Inter", 12, QFont::Bold));
+    // Create a container for the title and info button
+    QWidget *titleContainer = new QWidget();
+    QHBoxLayout *titleLayout = new QHBoxLayout(titleContainer);
+    titleLayout->setContentsMargins(0, 0, 0, 0);
+    titleLayout->setSpacing(8);
+    
+    // Title label
+    QLabel *titleLabel = new QLabel("⚙️ Nueva Relación");
+    titleLabel->setFont(QFont("Inter", 12, QFont::Bold));
+    titleLabel->setStyleSheet("color: #C62828; background: transparent;");
+    
+    // Info button - más visible y enfocado
+    QPushButton *infoButton = new QPushButton("�");
+    infoButton->setFixedSize(36, 36);
+    infoButton->setStyleSheet(
+        "QPushButton {"
+            "background: #FF9800;"
+            "color: white;"
+            "border: 3px solid #F57C00;"
+            "border-radius: 18px;"
+            "font-size: 18px;"
+            "font-weight: bold;"
+        "}"
+        "QPushButton:hover {"
+            "background: #F57C00;"
+            "border: 3px solid #E65100;"
+            "transform: scale(1.15);"
+        "}"
+        "QPushButton:pressed {"
+            "background: #E65100;"
+        "}"
+    );
+    infoButton->setToolTip("💡 Guía de relaciones y validaciones");
+    
+    titleLayout->addWidget(titleLabel);
+    titleLayout->addWidget(infoButton);
+    titleLayout->addStretch();
+    
+    propertiesGroup = new QGroupBox();
     propertiesGroup->setStyleSheet(
         "QGroupBox {"
             "font-weight: bold;"
-            "border: 1px solid #E8F5E8;"
+            "border: 1px solid #FFEBEE;"
             "border-radius: 8px;"
             "margin-top: 12px;"
-            "background: #F9FFF9;"
-        "}"
-        "QGroupBox::title {"
-            "subcontrol-origin: margin;"
-            "left: 12px;"
-            "padding: 0 6px;"
-            "color: #2E7D32;"
-            "background: white;"
+            "background: #FFFAFA;"
+            "padding-top: 10px;"
         "}"
     );
     QVBoxLayout *groupLayout = new QVBoxLayout(propertiesGroup);
     groupLayout->setSpacing(12);
+    
+    // Add title container as first element
+    groupLayout->addWidget(titleContainer);
     
     // SOLO LO ESENCIAL - Tipo de relación
     relationshipTypeLabel = new QLabel("Tipo:");
@@ -535,19 +569,8 @@ void RelationshipsView::createPropertiesPanel()
         "}"
     );
     
-    // Información simple
-    QLabel *infoLabel = new QLabel(
-        "<b>Tipos de Relaciones:</b><br>"
-        "• <b>1:1</b> - Uno a uno<br>"
-        "• <b>1:N</b> - Uno a muchos<br>"
-        "• <b>N:M</b> - Muchos a muchos<br><br>"
-        "<b>Validaciones de Llaves:</b><br>"
-        "• <b>1:1</b> → Un campo puede ser Primary Key y Foreign Key al mismo tiempo.<br>"
-        "• <b>1:N</b> → La Foreign Key no debe ser Primary Key en el lado muchos.<br>"
-        "• <b>N:M</b> → Las Foreign Keys en la tabla intermedia pueden formar una Primary Key compuesta."
-    );
-    infoLabel->setStyleSheet("color: #666; font-size: 10px; margin: 8px 0;");
-    infoLabel->setWordWrap(true);
+    // Información simple - REMOVIDA DEL LAYOUT PRINCIPAL
+    // Se mostrará en ventana emergente al hacer clic en el botón de información
     
     // Agregar al layout
     groupLayout->addWidget(relationshipTypeLabel);
@@ -566,11 +589,12 @@ void RelationshipsView::createPropertiesPanel()
     groupLayout->addWidget(targetFieldCombo);
     groupLayout->addSpacing(12);
     groupLayout->addWidget(applyChangesBtn);
-    groupLayout->addSpacing(8);
-    groupLayout->addWidget(infoLabel);
     groupLayout->addStretch();
     
     propertiesLayout->addWidget(propertiesGroup);
+    
+    // Connect info button
+    connect(infoButton, &QPushButton::clicked, this, &RelationshipsView::onInfoButtonClicked);
     
     // Connect table combo changes to update field combos - SIMPLIFICADO
     connect(sourceTableCombo, QOverload<const QString &>::of(&QComboBox::currentTextChanged),
@@ -1840,6 +1864,71 @@ void RelationshipsView::onTableCloseRequested(TableGraphicsItem* table)
     delete table;
     
     qDebug() << "DEBUG: Tabla" << tableName << "cerrada individualmente del diseñador";
+}
+
+void RelationshipsView::onInfoButtonClicked()
+{
+    QMessageBox msgBox;
+    msgBox.setIcon(QMessageBox::Information);
+    msgBox.setWindowTitle("ℹ️ Guía de Relaciones");
+    msgBox.setText("<h3>📚 Guía de Relaciones y Validaciones</h3>");
+    
+    QString detailedInfo = 
+        "<h4>🔗 <b>Tipos de Relaciones:</b></h4>"
+        "<p><b>• 1:1 (Uno a Uno)</b> - Cada registro se relaciona con exactamente uno<br>"
+        "<b>• 1:N (Uno a Muchos)</b> - Un registro se relaciona con múltiples<br>"
+        "<b>• N:M (Muchos a Muchos)</b> - Múltiples registros se relacionan con múltiples</p>"
+        
+        "<h4>🔑 <b>Validaciones por Tipo:</b></h4>"
+        "<p><b>📍 Relación 1:1:</b> Un campo puede ser PK y FK simultáneamente<br>"
+        "<b>📍 Relación 1:N:</b> FK en lado 'muchos', no puede ser PK<br>"
+        "<b>📍 Relación N:M:</b> Requiere tabla intermedia</p>"
+        
+        "<h4>✅ <b>Ejemplos:</b></h4>"
+        "<p><b>🏢 1:1:</b> Empleado → Credencial<br>"
+        "<b>👨‍🏫 1:N:</b> Profesor → Cursos<br>"
+        "<b>📚 N:M:</b> Estudiantes ↔ Cursos</p>"
+        
+        "<h4>🚨 <b>Validaciones:</b></h4>"
+        "<p>• Nomenclatura FK relacionada con tabla<br>"
+        "• Tipos de datos compatibles<br>"
+        "• No relaciones duplicadas</p>";
+    
+    msgBox.setInformativeText(detailedInfo);
+    msgBox.setStandardButtons(QMessageBox::Ok);
+    msgBox.button(QMessageBox::Ok)->setText("Entendido");
+    
+    // Style the message box - más compacto
+    msgBox.setStyleSheet(
+        "QMessageBox {"
+            "background-color: white;"
+            "min-width: 450px;"
+            "max-width: 500px;"
+            "min-height: 350px;"
+            "max-height: 400px;"
+        "}"
+        "QMessageBox QLabel {"
+            "color: black;"
+            "font-size: 12px;"
+            "margin: 8px;"
+        "}"
+        "QMessageBox QPushButton {"
+            "background-color: #2196F3;"
+            "color: white;"
+            "font-size: 13px;"
+            "font-weight: bold;"
+            "min-width: 100px;"
+            "min-height: 35px;"
+            "border: none;"
+            "border-radius: 6px;"
+            "padding: 6px;"
+        "}"
+        "QMessageBox QPushButton:hover {"
+            "background-color: #1976D2;"
+        "}"
+    );
+    
+    msgBox.exec();
 }
 
 // TableGraphicsItem Implementation

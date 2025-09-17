@@ -85,6 +85,7 @@ private slots:
     void showTableDetails(const QString &tableName);
     void addTableToDesigner(const QString &tableName, const QPoint &position);
     void onTableCloseRequested(TableGraphicsItem* table); // New slot for handling table close
+    void onInfoButtonClicked(); // New slot for info button
 
 private:
     void setupUI();
