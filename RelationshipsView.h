@@ -84,6 +84,7 @@ private slots:
     void onRelationshipLineDoubleClicked(RelationshipLine* line);
     void showTableDetails(const QString &tableName);
     void addTableToDesigner(const QString &tableName, const QPoint &position);
+    void onTableCloseRequested(TableGraphicsItem* table); // New slot for handling table close
 
 private:
     void setupUI();
@@ -183,8 +184,10 @@ private:
 };
 
 // Custom graphics items for the visual designer
-class TableGraphicsItem : public QGraphicsRectItem
+class TableGraphicsItem : public QObject, public QGraphicsRectItem
 {
+    Q_OBJECT
+    
 public:
     TableGraphicsItem(const QString &tableName, const QRectF &rect, QGraphicsItem *parent = nullptr);
     TableGraphicsItem(const QString &tableName, QGraphicsItem *parent = nullptr);
@@ -194,10 +197,15 @@ public:
     void setFieldsWithKeys(const QStringList &fields, const QStringList &primaryKeys, const QStringList &foreignKeys);
     void updateTheme(bool isDark);
     
+signals:
+    void closeRequested(TableGraphicsItem* table);
+    
 protected:
     void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
     QVariant itemChange(GraphicsItemChange change, const QVariant &value) override;
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;
+    void hoverEnterEvent(QGraphicsSceneHoverEvent *event) override;
+    void hoverLeaveEvent(QGraphicsSceneHoverEvent *event) override;
     
 private:
     QString tableName;
@@ -207,6 +215,8 @@ private:
     QGraphicsTextItem *nameText;
     QList<QGraphicsTextItem*> fieldTexts;
     bool isDarkTheme;
+    bool isHovered;
+    QRectF getCloseButtonRect() const;
 };
 
 class RelationshipLine : public QObject, public QGraphicsLineItem

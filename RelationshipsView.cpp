@@ -836,6 +836,11 @@ void RelationshipsView::addTableToDesigner(const QString &tableName, const QPoin
     }
     
     tableItem->updateTheme(isDarkTheme);
+    
+    // Connect close button signal
+    connect(tableItem, &TableGraphicsItem::closeRequested,
+            this, &RelationshipsView::onTableCloseRequested);
+    
     designerScene->addItem(tableItem);
     tableItems.append(tableItem);
 }
@@ -872,6 +877,11 @@ void RelationshipsView::addTableToDesigner(const QString &tableName, const QPoin
     }
     
     newTableItem->updateTheme(isDarkTheme);
+    
+    // Connect close button signal
+    connect(newTableItem, &TableGraphicsItem::closeRequested,
+            this, &RelationshipsView::onTableCloseRequested);
+    
     designerScene->addItem(newTableItem);
     tableItems.append(newTableItem);
     
@@ -1785,13 +1795,61 @@ void RelationshipsView::updatePropertiesPanel(const QString &selectedItem)
     // descriptionEdit->setText(description);
 }
 
+void RelationshipsView::onTableCloseRequested(TableGraphicsItem* table)
+{
+    if (!table) return;
+    
+    QString tableName = table->getTableName();
+    
+    // Remove any relationship lines connected to this table
+    QList<RelationshipLine*> linesToRemove;
+    for (auto *line : relationshipLines) {
+        if (line && (line->getSourceTable() == table || line->getTargetTable() == table)) {
+            linesToRemove.append(line);
+        }
+    }
+    
+    // Remove relationship lines from scene and list
+    for (auto *line : linesToRemove) {
+        designerScene->removeItem(line);
+        relationshipLines.removeAll(line);
+        
+        // Also remove from relationships list widget
+        QString sourceTable = line->getSourceTable()->getTableName();
+        QString targetTable = line->getTargetTable()->getTableName();
+        QString relationshipType = line->getRelationshipType();
+        
+        // Find and remove the corresponding item from relationships list
+        for (int i = 0; i < relationshipsListWidget->count(); ++i) {
+            QListWidgetItem *item = relationshipsListWidget->item(i);
+            QString itemText = item->text();
+            
+            // Check if this relationship involves the table being closed
+            if (itemText.contains(sourceTable) && itemText.contains(targetTable)) {
+                delete relationshipsListWidget->takeItem(i);
+                break;
+            }
+        }
+        
+        delete line;
+    }
+    
+    // Remove table from scene and list
+    designerScene->removeItem(table);
+    tableItems.removeAll(table);
+    delete table;
+    
+    qDebug() << "DEBUG: Tabla" << tableName << "cerrada individualmente del diseñador";
+}
+
 // TableGraphicsItem Implementation
 TableGraphicsItem::TableGraphicsItem(const QString &tableName, const QRectF &rect, QGraphicsItem *parent)
-    : QGraphicsRectItem(rect, parent), tableName(tableName), isDarkTheme(false)
+    : QGraphicsRectItem(rect, parent), tableName(tableName), isDarkTheme(false), isHovered(false)
 {
     setFlag(QGraphicsItem::ItemIsMovable);
     setFlag(QGraphicsItem::ItemIsSelectable);
     setFlag(QGraphicsItem::ItemSendsGeometryChanges);
+    setAcceptHoverEvents(true); // Enable hover events for close button
     
     nameText = new QGraphicsTextItem(tableName, this);
     nameText->setPos(rect.x() + 5, rect.y() + 5);
@@ -1802,11 +1860,12 @@ TableGraphicsItem::TableGraphicsItem(const QString &tableName, const QRectF &rec
 }
 
 TableGraphicsItem::TableGraphicsItem(const QString &tableName, QGraphicsItem *parent)
-    : QGraphicsRectItem(QRectF(0, 0, 150, 100), parent), tableName(tableName), isDarkTheme(false)
+    : QGraphicsRectItem(QRectF(0, 0, 150, 100), parent), tableName(tableName), isDarkTheme(false), isHovered(false)
 {
     setFlag(QGraphicsItem::ItemIsMovable);
     setFlag(QGraphicsItem::ItemIsSelectable);
     setFlag(QGraphicsItem::ItemSendsGeometryChanges);
+    setAcceptHoverEvents(true); // Enable hover events for close button
     
     nameText = new QGraphicsTextItem(tableName, this);
     nameText->setPos(5, 5);
@@ -1951,6 +2010,7 @@ void TableGraphicsItem::paint(QPainter *painter, const QStyleOptionGraphicsItem 
     
     painter->setRenderHint(QPainter::Antialiasing);
     
+    // Draw table background
     if (isDarkTheme) {
         painter->setPen(QPen(QColor("#606060"), 1));
         painter->setBrush(QBrush(QColor("#404040")));
@@ -1964,6 +2024,57 @@ void TableGraphicsItem::paint(QPainter *painter, const QStyleOptionGraphicsItem 
     // Draw header separator
     painter->drawLine(rect().x(), rect().y() + 20, 
                      rect().x() + rect().width(), rect().y() + 20);
+    
+    // Draw close button (X) when hovered or always visible
+    if (isHovered || true) { // Always show close button for better UX
+        QRectF closeRect = getCloseButtonRect();
+        
+        // Draw close button background
+        QColor closeButtonColor = isHovered ? QColor("#FF4444") : QColor("#CCCCCC");
+        if (isDarkTheme) {
+            closeButtonColor = isHovered ? QColor("#FF4444") : QColor("#666666");
+        }
+        
+        painter->setBrush(QBrush(closeButtonColor));
+        painter->setPen(QPen(closeButtonColor, 1));
+        painter->drawEllipse(closeRect);
+        
+        // Draw X symbol
+        painter->setPen(QPen(QColor("white"), 2));
+        float margin = 3;
+        painter->drawLine(closeRect.x() + margin, closeRect.y() + margin,
+                         closeRect.x() + closeRect.width() - margin, 
+                         closeRect.y() + closeRect.height() - margin);
+        painter->drawLine(closeRect.x() + closeRect.width() - margin, closeRect.y() + margin,
+                         closeRect.x() + margin, 
+                         closeRect.y() + closeRect.height() - margin);
+    }
+}
+
+QRectF TableGraphicsItem::getCloseButtonRect() const
+{
+    // Position close button at top-right corner
+    float buttonSize = 16;
+    float margin = 5;
+    return QRectF(rect().x() + rect().width() - buttonSize - margin, 
+                  rect().y() + margin, 
+                  buttonSize, buttonSize);
+}
+
+void TableGraphicsItem::hoverEnterEvent(QGraphicsSceneHoverEvent *event)
+{
+    Q_UNUSED(event)
+    isHovered = true;
+    update(); // Trigger repaint to show hover effect
+    QGraphicsRectItem::hoverEnterEvent(event);
+}
+
+void TableGraphicsItem::hoverLeaveEvent(QGraphicsSceneHoverEvent *event)
+{
+    Q_UNUSED(event)
+    isHovered = false;
+    update(); // Trigger repaint to remove hover effect
+    QGraphicsRectItem::hoverLeaveEvent(event);
 }
 
 QVariant TableGraphicsItem::itemChange(GraphicsItemChange change, const QVariant &value)
@@ -1984,8 +2095,18 @@ QVariant TableGraphicsItem::itemChange(GraphicsItemChange change, const QVariant
 
 void TableGraphicsItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
 {
-    Q_UNUSED(event)
-    // Handle table selection
+    if (event->button() == Qt::LeftButton) {
+        // Check if click is on close button
+        QRectF closeRect = getCloseButtonRect();
+        if (closeRect.contains(event->pos())) {
+            // Emit signal to request table closure
+            emit closeRequested(this);
+            event->accept();
+            return;
+        }
+    }
+    
+    // Handle normal table selection and movement
     QGraphicsRectItem::mousePressEvent(event);
 }
 
