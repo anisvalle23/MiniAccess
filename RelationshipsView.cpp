@@ -495,6 +495,15 @@ void RelationshipsView::createPropertiesPanel()
     targetTableLabel->setStyleSheet("color: #2C3E50; font-weight: 500;");
     targetTableCombo = new QComboBox();
     
+    // Campos de origen y destino
+    sourceFieldLabel = new QLabel("Campo de:");
+    sourceFieldLabel->setStyleSheet("color: #2C3E50; font-weight: 500;");
+    sourceFieldCombo = new QComboBox();
+    
+    targetFieldLabel = new QLabel("A campo:");
+    targetFieldLabel->setStyleSheet("color: #2C3E50; font-weight: 500;");
+    targetFieldCombo = new QComboBox();
+    
     QString comboStyle = 
         "QComboBox {"
             "border: 1px solid #E3F2FD;"
@@ -506,6 +515,8 @@ void RelationshipsView::createPropertiesPanel()
         
     sourceTableCombo->setStyleSheet(comboStyle);
     targetTableCombo->setStyleSheet(comboStyle);
+    sourceFieldCombo->setStyleSheet(comboStyle);
+    targetFieldCombo->setStyleSheet(comboStyle);
     
     // Botón para crear
     applyChangesBtn = new QPushButton("✅ Crear Relación");
@@ -545,8 +556,14 @@ void RelationshipsView::createPropertiesPanel()
     groupLayout->addWidget(sourceTableLabel);
     groupLayout->addWidget(sourceTableCombo);
     groupLayout->addSpacing(4);
+    groupLayout->addWidget(sourceFieldLabel);
+    groupLayout->addWidget(sourceFieldCombo);
+    groupLayout->addSpacing(8);
     groupLayout->addWidget(targetTableLabel);
     groupLayout->addWidget(targetTableCombo);
+    groupLayout->addSpacing(4);
+    groupLayout->addWidget(targetFieldLabel);
+    groupLayout->addWidget(targetFieldCombo);
     groupLayout->addSpacing(12);
     groupLayout->addWidget(applyChangesBtn);
     groupLayout->addSpacing(8);
@@ -557,18 +574,10 @@ void RelationshipsView::createPropertiesPanel()
     
     // Connect table combo changes to update field combos - SIMPLIFICADO
     connect(sourceTableCombo, QOverload<const QString &>::of(&QComboBox::currentTextChanged),
-            [this](const QString &tableName) {
-                if (tableFields.contains(tableName)) {
-                    // Auto-populate fields when table is selected
-                }
-            });
+            this, &RelationshipsView::updateSourceFields);
     
     connect(targetTableCombo, QOverload<const QString &>::of(&QComboBox::currentTextChanged),
-            [this](const QString &tableName) {
-                if (tableFields.contains(tableName)) {
-                    // Auto-populate fields when table is selected
-                }
-            });
+            this, &RelationshipsView::updateTargetFields);
     
     // Connect apply button to create relationship function
     connect(applyChangesBtn, &QPushButton::clicked, this, &RelationshipsView::onCreateRelationship);
@@ -648,6 +657,8 @@ void RelationshipsView::loadTables()
     tablesListWidget->clear();
     sourceTableCombo->clear();
     targetTableCombo->clear();
+    sourceFieldCombo->clear();
+    targetFieldCombo->clear();
     
     // Get tables from TableEditor if available
     if (tableEditor) {
@@ -703,6 +714,78 @@ void RelationshipsView::loadRelationships()
     // No hay relaciones predeterminadas, todo será dinámico
 }
 
+void RelationshipsView::updateSourceFields(const QString &tableName)
+{
+    sourceFieldCombo->clear();
+    
+    if (tableName.isEmpty() || !tableFields.contains(tableName)) {
+        return;
+    }
+    
+    QStringList fields = tableFields[tableName];
+    
+    for (const QString &field : fields) {
+        QString displayText = field;
+        
+        // Agregar indicadores de PK/FK si están disponibles
+        if (tableEditor) {
+            QStringList pkFields = tableEditor->getTablePrimaryKeys(tableName);
+            QStringList fkFields = tableEditor->getTableForeignKeys(tableName);
+            
+            if (pkFields.contains(field) && fkFields.contains(field)) {
+                displayText = "🔑🔗 " + field + " (PK+FK)";
+            } else if (pkFields.contains(field)) {
+                displayText = "🔑 " + field + " (PK)";
+            } else if (fkFields.contains(field)) {
+                displayText = "🔗 " + field + " (FK)";
+            }
+        }
+        
+        sourceFieldCombo->addItem(displayText, field);
+    }
+    
+    // Seleccionar el primer campo por defecto
+    if (sourceFieldCombo->count() > 0) {
+        sourceFieldCombo->setCurrentIndex(0);
+    }
+}
+
+void RelationshipsView::updateTargetFields(const QString &tableName)
+{
+    targetFieldCombo->clear();
+    
+    if (tableName.isEmpty() || !tableFields.contains(tableName)) {
+        return;
+    }
+    
+    QStringList fields = tableFields[tableName];
+    
+    for (const QString &field : fields) {
+        QString displayText = field;
+        
+        // Agregar indicadores de PK/FK si están disponibles
+        if (tableEditor) {
+            QStringList pkFields = tableEditor->getTablePrimaryKeys(tableName);
+            QStringList fkFields = tableEditor->getTableForeignKeys(tableName);
+            
+            if (pkFields.contains(field) && fkFields.contains(field)) {
+                displayText = "🔑🔗 " + field + " (PK+FK)";
+            } else if (pkFields.contains(field)) {
+                displayText = "🔑 " + field + " (PK)";
+            } else if (fkFields.contains(field)) {
+                displayText = "🔗 " + field + " (FK)";
+            }
+        }
+        
+        targetFieldCombo->addItem(displayText, field);
+    }
+    
+    // Seleccionar el primer campo por defecto
+    if (targetFieldCombo->count() > 0) {
+        targetFieldCombo->setCurrentIndex(0);
+    }
+}
+
 void RelationshipsView::addTableToDesigner(const QString &tableName, const QPointF &position)
 {
     // Verificar si la tabla ya existe en el diseñador
@@ -733,7 +816,11 @@ void RelationshipsView::addTableToDesigner(const QString &tableName, const QPoin
     
     if (tableFields.contains(tableName)) {
         QStringList fields = tableFields[tableName];
-        if (!fields.isEmpty()) {
+        if (!fields.isEmpty() && tableEditor) {
+            QStringList pkFields = tableEditor->getTablePrimaryKeys(tableName);
+            QStringList fkFields = tableEditor->getTableForeignKeys(tableName);
+            tableItem->setFieldsWithKeys(fields, pkFields, fkFields);
+        } else if (!fields.isEmpty()) {
             tableItem->setFields(fields);
         }
     }
@@ -765,7 +852,11 @@ void RelationshipsView::addTableToDesigner(const QString &tableName, const QPoin
     // Set fields for the new table item
     if (tableFields.contains(tableName)) {
         QStringList fields = tableFields[tableName];
-        if (!fields.isEmpty()) {
+        if (!fields.isEmpty() && tableEditor) {
+            QStringList pkFields = tableEditor->getTablePrimaryKeys(tableName);
+            QStringList fkFields = tableEditor->getTableForeignKeys(tableName);
+            newTableItem->setFieldsWithKeys(fields, pkFields, fkFields);
+        } else if (!fields.isEmpty()) {
             newTableItem->setFields(fields);
         }
     }
@@ -836,6 +927,8 @@ void RelationshipsView::refreshTableList()
     // Store current selections to restore them if possible
     QString currentSourceTable = sourceTableCombo->currentText();
     QString currentTargetTable = targetTableCombo->currentText();
+    QString currentSourceField = sourceFieldCombo->currentData().toString();
+    QString currentTargetField = targetFieldCombo->currentData().toString();
     
     // Reload tables from TableEditor
     loadTables();
@@ -845,11 +938,25 @@ void RelationshipsView::refreshTableList()
     int sourceIndex = sourceTableCombo->findText(currentSourceTable);
     if (sourceIndex >= 0) {
         sourceTableCombo->setCurrentIndex(sourceIndex);
+        // Update fields for restored table selection
+        updateSourceFields(currentSourceTable);
+        // Restore field selection if it still exists
+        int fieldIndex = sourceFieldCombo->findData(currentSourceField);
+        if (fieldIndex >= 0) {
+            sourceFieldCombo->setCurrentIndex(fieldIndex);
+        }
     }
     
     int targetIndex = targetTableCombo->findText(currentTargetTable);
     if (targetIndex >= 0) {
         targetTableCombo->setCurrentIndex(targetIndex);
+        // Update fields for restored table selection
+        updateTargetFields(currentTargetTable);
+        // Restore field selection if it still exists
+        int fieldIndex = targetFieldCombo->findData(currentTargetField);
+        if (fieldIndex >= 0) {
+            targetFieldCombo->setCurrentIndex(fieldIndex);
+        }
     }
     
     // Update the visual designer by clearing items that no longer exist
@@ -876,7 +983,13 @@ void RelationshipsView::refreshTableList()
         if (tableFields.contains(tableName)) {
             QStringList fields = tableFields[tableName];
             // Force update fields even if previously empty
-            item->setFields(fields);
+            if (tableEditor) {
+                QStringList pkFields = tableEditor->getTablePrimaryKeys(tableName);
+                QStringList fkFields = tableEditor->getTableForeignKeys(tableName);
+                item->setFieldsWithKeys(fields, pkFields, fkFields);
+            } else {
+                item->setFields(fields);
+            }
         } else if (tableEditor) {
             // Try to get fields directly from tableEditor if not in our cache
             QStringList fields = tableEditor->getTableFields(tableName);
@@ -889,7 +1002,9 @@ void RelationshipsView::refreshTableList()
             }
             if (!validFields.isEmpty()) {
                 tableFields[tableName] = validFields;
-                item->setFields(validFields);
+                QStringList pkFields = tableEditor->getTablePrimaryKeys(tableName);
+                QStringList fkFields = tableEditor->getTableForeignKeys(tableName);
+                item->setFieldsWithKeys(validFields, pkFields, fkFields);
             }
         }
     }
@@ -1469,10 +1584,20 @@ void RelationshipsView::onTableFieldsChanged(const QString &tableName)
     // Update any existing table items in the designer
     for (auto *item : tableItems) {
         if (item->getTableName() == tableName) {
-            item->setFields(validFields);
+            QStringList pkFields = tableEditor->getTablePrimaryKeys(tableName);
+            QStringList fkFields = tableEditor->getTableForeignKeys(tableName);
+            item->setFieldsWithKeys(validFields, pkFields, fkFields);
             // Force a scene update to show changes immediately
             item->update();
         }
+    }
+    
+    // Update field combos if this table is currently selected
+    if (sourceTableCombo->currentText() == tableName) {
+        updateSourceFields(tableName);
+    }
+    if (targetTableCombo->currentText() == tableName) {
+        updateTargetFields(tableName);
     }
 }
 
@@ -1675,6 +1800,57 @@ void TableGraphicsItem::setFields(const QStringList &fields)
     
     for (int i = 0; i < fields.size(); ++i) {
         QGraphicsTextItem *fieldText = new QGraphicsTextItem(fields[i], this);
+        fieldText->setFont(fieldFont);
+        fieldText->setPos(rect().x() + 10, rect().y() + 25 + i * 15);
+        
+        // Apply current theme to new field text
+        if (isDarkTheme) {
+            fieldText->setDefaultTextColor(QColor("#CCCCCC"));
+        } else {
+            fieldText->setDefaultTextColor(QColor("#666666"));
+        }
+        
+        fieldTexts.append(fieldText);
+    }
+    
+    // Adjust rectangle size based on content
+    qreal height = qMax(30 + fields.size() * 15, 60); // Minimum height of 60
+    setRect(rect().x(), rect().y(), rect().width(), height);
+    
+    // Force update to show changes immediately
+    update();
+}
+
+void TableGraphicsItem::setFieldsWithKeys(const QStringList &fields, const QStringList &primaryKeys, const QStringList &foreignKeys)
+{
+    this->fields = fields;
+    this->primaryKeys = primaryKeys;
+    this->foreignKeys = foreignKeys;
+    
+    // Clear existing field texts
+    for (auto *text : fieldTexts) {
+        delete text;
+    }
+    fieldTexts.clear();
+    
+    // Add field texts with key indicators
+    QFont fieldFont;
+    fieldFont.setPointSize(8);
+    
+    for (int i = 0; i < fields.size(); ++i) {
+        QString fieldName = fields[i];
+        QString displayText = fieldName;
+        
+        // Add key indicators
+        if (primaryKeys.contains(fieldName) && foreignKeys.contains(fieldName)) {
+            displayText = "🔑🔗 " + fieldName; // PK + FK
+        } else if (primaryKeys.contains(fieldName)) {
+            displayText = "🔑 " + fieldName; // PK only
+        } else if (foreignKeys.contains(fieldName)) {
+            displayText = "🔗 " + fieldName; // FK only
+        }
+        
+        QGraphicsTextItem *fieldText = new QGraphicsTextItem(displayText, this);
         fieldText->setFont(fieldFont);
         fieldText->setPos(rect().x() + 10, rect().y() + 25 + i * 15);
         

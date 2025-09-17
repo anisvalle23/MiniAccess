@@ -95,6 +95,8 @@ private:
     void styleComponents();
     void loadTables();
     void loadRelationships();
+    void updateSourceFields(const QString &tableName);
+    void updateTargetFields(const QString &tableName);
     void createRelationshipBetweenTables(const QString &table1, const QString &table2, 
                                        const QString &relationship_type);
     void updatePropertiesPanel(const QString &selectedItem);
@@ -188,6 +190,7 @@ public:
     void setTableName(const QString &name);
     QString getTableName() const;
     void setFields(const QStringList &fields);
+    void setFieldsWithKeys(const QStringList &fields, const QStringList &primaryKeys, const QStringList &foreignKeys);
     void updateTheme(bool isDark);
     
 protected:
@@ -198,6 +201,8 @@ protected:
 private:
     QString tableName;
     QStringList fields;
+    QStringList primaryKeys;
+    QStringList foreignKeys;
     QGraphicsTextItem *nameText;
     QList<QGraphicsTextItem*> fieldTexts;
     bool isDarkTheme;

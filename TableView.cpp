@@ -2206,6 +2206,68 @@ QStringList TableView::getAllFieldNames() const
     return fieldNames;
 }
 
+QStringList TableView::getPrimaryKeyFieldNames() const
+{
+    QStringList primaryKeyFields;
+    
+    // Verificar que la tabla existe y tiene filas
+    if (!tableWidget || tableWidget->rowCount() == 0) {
+        return primaryKeyFields;
+    }
+    
+    // Si hay una fila marcada como Primary Key
+    if (primaryKeyRow >= 0 && primaryKeyRow < tableWidget->rowCount()) {
+        QTableWidgetItem *item = tableWidget->item(primaryKeyRow, 0);
+        if (item && !item->text().trimmed().isEmpty()) {
+            QString fieldName = item->text().trimmed();
+            
+            // Remover el icono de llave si existe para obtener el nombre limpio
+            if (fieldName.startsWith("🔑 ")) {
+                fieldName = fieldName.mid(3);
+            }
+            
+            if (!fieldName.isEmpty()) {
+                primaryKeyFields << fieldName;
+            }
+        }
+    }
+    
+    return primaryKeyFields;
+}
+
+QStringList TableView::getForeignKeyFieldNames() const
+{
+    QStringList foreignKeyFields;
+    
+    // Verificar que la tabla existe y tiene filas
+    if (!tableWidget || tableWidget->rowCount() == 0) {
+        return foreignKeyFields;
+    }
+    
+    // Recorrer todas las filas marcadas como Foreign Key
+    for (int row : foreignKeyRows) {
+        if (row >= 0 && row < tableWidget->rowCount()) {
+            QTableWidgetItem *item = tableWidget->item(row, 0);
+            if (item && !item->text().trimmed().isEmpty()) {
+                QString fieldName = item->text().trimmed();
+                
+                // Remover el icono de llave si existe para obtener el nombre limpio
+                if (fieldName.startsWith("🔗 ")) {
+                    fieldName = fieldName.mid(3);
+                } else if (fieldName.startsWith("🔑🔗 ")) {
+                    fieldName = fieldName.mid(5);
+                }
+                
+                if (!fieldName.isEmpty()) {
+                    foreignKeyFields << fieldName;
+                }
+            }
+        }
+    }
+    
+    return foreignKeyFields;
+}
+
 QStringList TableView::getCurrentFieldTypes() const
 {
     QStringList fieldTypes;

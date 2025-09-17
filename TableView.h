@@ -94,6 +94,10 @@ public:
     int getPrimaryKeyColumnIndex() const; // Nuevo método para obtener índice de Primary Key
     QList<int> getUniqueKeyColumnIndexes() const; // Nuevo método para obtener índices de campos únicos
     
+    // Métodos para obtener nombres de campos con llaves
+    QStringList getPrimaryKeyFieldNames() const; // Obtener nombres de campos que son Primary Key
+    QStringList getForeignKeyFieldNames() const; // Obtener nombres de campos que son Foreign Key
+    
     // Método para recibir resultado de validación de duplicados
     void setUniqueValidationResult(const QString &fieldName, bool hasDuplicates);
 

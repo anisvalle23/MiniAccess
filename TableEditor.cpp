@@ -1113,17 +1113,8 @@ QStringList TableEditor::getTableForeignKeys(const QString &tableName) const {
     if (tableViews.contains(tableName)) {
         TableView* tableView = tableViews.value(tableName);
         if (tableView) {
-            // Obtener todos los nombres de campos con sus iconos
-            QStringList allFieldNames = tableView->getAllFieldNames();
-            
-            // Filtrar solo los que tienen el icono de Foreign Key (🔗)
-            for (const QString &fieldName : allFieldNames) {
-                if (fieldName.startsWith("🔗 ")) {
-                    // Remover el icono para obtener solo el nombre del campo
-                    QString cleanFieldName = fieldName.mid(3); // Remover "🔗 "
-                    foreignKeys.append(cleanFieldName);
-                }
-            }
+            // Usar el nuevo método que trabaja con las variables internas
+            foreignKeys = tableView->getForeignKeyFieldNames();
         }
     }
     
@@ -1137,17 +1128,8 @@ QStringList TableEditor::getTablePrimaryKeys(const QString &tableName) const {
     if (tableViews.contains(tableName)) {
         TableView* tableView = tableViews.value(tableName);
         if (tableView) {
-            // Obtener todos los nombres de campos con sus iconos
-            QStringList allFieldNames = tableView->getAllFieldNames();
-            
-            // Filtrar solo los que tienen el icono de Primary Key (🔑)
-            for (const QString &fieldName : allFieldNames) {
-                if (fieldName.startsWith("🔑 ")) {
-                    // Remover el icono para obtener solo el nombre del campo
-                    QString cleanFieldName = fieldName.mid(3); // Remover "🔑 "
-                    primaryKeys.append(cleanFieldName);
-                }
-            }
+            // Usar el nuevo método que trabaja con las variables internas
+            primaryKeys = tableView->getPrimaryKeyFieldNames();
         }
     }
     
