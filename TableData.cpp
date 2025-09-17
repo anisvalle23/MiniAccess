@@ -851,6 +851,34 @@ void TableData::setupDataViewWithTextSizes(const QStringList &fieldNames, const 
     applyCurrencyFormats();
 }
 
+void TableData::setupDataViewWithUniqueFields(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QList<int> &uniqueColumns, int primaryKeyColumn)
+{
+    qDebug() << "DEBUG: setupDataViewWithUniqueFields llamado con:";
+    qDebug() << "DEBUG: fieldNames:" << fieldNames;
+    qDebug() << "DEBUG: fieldTypes:" << fieldTypes;
+    qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
+    qDebug() << "DEBUG: millaresDecimals:" << millaresDecimals;
+    qDebug() << "DEBUG: textSizes:" << textSizes;
+    qDebug() << "DEBUG: uniqueColumns:" << uniqueColumns;
+    qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
+    
+    // Guardar los formatos de moneda, decimales, tamaños de texto y campos únicos
+    savedCurrencyFormats = currencyFormats;
+    savedMillaresDecimals = millaresDecimals;
+    savedTextSizes = textSizes;
+    savedUniqueColumns = uniqueColumns;
+    qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
+    qDebug() << "DEBUG: Decimales guardados en savedMillaresDecimals:" << savedMillaresDecimals;
+    qDebug() << "DEBUG: Tamaños guardados en savedTextSizes:" << savedTextSizes;
+    qDebug() << "DEBUG: Campos únicos guardados en savedUniqueColumns:" << savedUniqueColumns;
+    
+    // Llamar al método base para hacer la configuración normal
+    setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
+    
+    // Aplicar formatos específicos de moneda después de la configuración básica
+    applyCurrencyFormats();
+}
+
 void TableData::addPersonRow(const QStringList &personData)
 {
     int newRow = dataTable->rowCount();
@@ -1001,6 +1029,78 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
                 }
             }
             qDebug() << "DEBUG: Primary Key value '" << newValue << "' is unique - OK";
+        }
+    }
+    
+    // *** VALIDACIÓN DE CAMPOS ÚNICOS ***
+    if (savedUniqueColumns.contains(col)) {
+        QString newValue = item->text().trimmed();
+        if (!newValue.isEmpty()) {
+            // Buscar si ya existe este valor en otra fila de la misma columna
+            for (int r = 0; r < dataTable->rowCount(); r++) {
+                if (r == row) continue; // Saltar la fila actual
+                
+                QTableWidgetItem *otherItem = dataTable->item(r, col);
+                if (otherItem && !otherItem->toolTip().contains("Ejemplo")) {
+                    QString otherValue = otherItem->text().trimmed();
+                    if (otherValue == newValue) {
+                        // ¡Valor duplicado encontrado en campo único!
+                        QString fieldName = (col < savedFieldNames.size()) ? savedFieldNames.at(col) : QString("Campo %1").arg(col + 1);
+                        
+                        // Usar QTimer::singleShot para mover el mensaje al main thread
+                        QTimer::singleShot(0, this, [this, newValue, fieldName, item]() {
+                            QMessageBox msgBox(this);
+                            msgBox.setWindowTitle("Campo Único duplicado");
+                            msgBox.setIcon(QMessageBox::Warning);
+                            msgBox.setText(QString("El valor '%1' ya existe en el campo '%2'.\n"
+                                                  "Los campos marcados como Únicos no pueden tener valores repetidos.\n\n"
+                                                  "Por favor, ingrese un valor diferente.")
+                                                  .arg(newValue, fieldName));
+                            msgBox.setStandardButtons(QMessageBox::Ok);
+                            msgBox.setStyleSheet(
+                                "QMessageBox {"
+                                "background-color: white;"
+                                "min-width: 400px;"
+                                "min-height: 200px;"
+                                "}"
+                                "QMessageBox QLabel {"
+                                "color: black;"
+                                "font-size: 16px;"
+                                "padding: 10px;"
+                                "}"
+                                "QPushButton {"
+                                "background-color: #f59e0b;"
+                                "color: white;"
+                                "font-size: 16px;"
+                                "font-weight: bold;"
+                                "min-width: 120px;"
+                                "min-height: 44px;"
+                                "border: none;"
+                                "padding: 10px 16px;"
+                                "border-radius: 6px;"
+                                "}"
+                                "QPushButton:hover {"
+                                "background-color: #d97706;"
+                                "}"
+                            );
+                            msgBox.exec();
+                        });
+                        
+                        // Bloquear señales y restaurar valor anterior
+                        dataTable->blockSignals(true);
+                        item->setText(""); // Limpiar el campo
+                        dataTable->blockSignals(false);
+                        
+                        // Enfocar el campo para facilitar corrección usando QTimer también
+                        QTimer::singleShot(100, this, [this, item]() {
+                            dataTable->setCurrentItem(item);
+                            dataTable->editItem(item);
+                        });
+                        return; // Salir sin procesar más
+                    }
+                }
+            }
+            qDebug() << "DEBUG: Unique field value '" << newValue << "' in column" << col << "is unique - OK";
         }
     }
     

@@ -2350,6 +2350,20 @@ int TableView::getPrimaryKeyColumnIndex() const
     return primaryKeyRow;
 }
 
+QList<int> TableView::getUniqueKeyColumnIndexes() const
+{
+    // Retorna la lista de índices de columnas que son campos únicos
+    qDebug() << "DEBUG: Campos únicos en filas de diseño:" << uniqueKeyRows;
+    
+    // En nuestro diseño, uniqueKeyRows indica qué filas de la tabla de diseño son campos únicos
+    // Pero en la vista de datos, esas filas se convierten en columnas
+    // Por lo tanto, uniqueKeyRows en diseño = índices de columnas en datos
+    QList<int> uniqueColumns = uniqueKeyRows;
+    qDebug() << "DEBUG: Campos únicos como columnas de datos:" << uniqueColumns;
+    
+    return uniqueColumns;
+}
+
 QStringList TableView::getCurrentTextSizes() const
 {
     QStringList textSizes;

@@ -319,7 +319,7 @@ void MainWindow::createMainContent()
     connect(tableEditorView, &TableEditor::tableCreated, 
             relationshipsView, &RelationshipsView::refreshTableList);
     connect(tableEditorView, &TableEditor::tableDeleted,
-            relationshipsView, &RelationshipsView::refreshTableList);
+            relationshipsView, &RelationshipsView::onTableDeleted);
     // Connect field changes for real-time updates
     connect(tableEditorView, &TableEditor::tableFieldsChanged,
             relationshipsView, &RelationshipsView::onTableFieldsChanged);

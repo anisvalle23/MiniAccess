@@ -14,6 +14,7 @@
 #include <QDrag>
 #include <QMimeData>
 #include <QDebug>
+#include <QTimer>
 #include <cmath>
 
 RelationshipsView::RelationshipsView(QWidget *parent)
@@ -47,6 +48,10 @@ void RelationshipsView::setTableEditor(TableEditor *editor)
         // 🔹 Aquí añadís la conexión para rename
         connect(tableEditor, &TableEditor::tableRenamed,
                 this, &RelationshipsView::applyTableRenameImmediate, Qt::UniqueConnection);
+        
+        // 🔹 Nueva conexión para manejar tabla eliminada
+        connect(tableEditor, &TableEditor::tableDeleted,
+                this, &RelationshipsView::onTableDeleted, Qt::UniqueConnection);
     }
 
 
@@ -2084,4 +2089,139 @@ void RelationshipsView::onTableRenamed(const QString &oldName, const QString &ne
     refreshTableList();
     
     qDebug() << "DEBUG RelationshipsView: Lista de tablas actualizada después del renombrado";
+}
+
+void RelationshipsView::onTableDeleted(const QString &tableName)
+{
+    qDebug() << "DEBUG RelationshipsView: Tabla eliminada:" << tableName;
+    
+    // 1. PRIMERO: Eliminar las líneas de relación visuales de forma segura
+    QList<RelationshipLine*> linesToRemove;
+    for (auto *line : relationshipLines) {
+        if (line && line->getSourceTable() && line->getTargetTable() &&
+            (line->getSourceTable()->getTableName() == tableName || 
+             line->getTargetTable()->getTableName() == tableName)) {
+            linesToRemove.append(line);
+        }
+    }
+    
+    // Eliminar líneas de relación de forma segura
+    for (auto *line : linesToRemove) {
+        if (line && designerScene) {
+            designerScene->removeItem(line);
+            relationshipLines.removeAll(line);
+            line->deleteLater(); // Usar deleteLater() para evitar crashes
+        }
+    }
+    
+    // 2. SEGUNDO: Eliminar items de tabla del diseñador de forma segura
+    QList<TableGraphicsItem*> itemsToRemove;
+    for (auto *item : tableItems) {
+        if (item && item->getTableName() == tableName) {
+            itemsToRemove.append(item);
+        }
+    }
+    
+    for (auto *item : itemsToRemove) {
+        if (item && designerScene) {
+            designerScene->removeItem(item);
+            tableItems.removeAll(item);
+            delete item; // Eliminar directamente ya que TableGraphicsItem no hereda de QObject
+        }
+    }
+    
+    // 3. Eliminar relaciones de la lista de relaciones
+    QStringList relationshipsToRemove;
+    for (int i = relationshipsListWidget->count() - 1; i >= 0; --i) {
+        QListWidgetItem *item = relationshipsListWidget->item(i);
+        if (item) {
+            QString relationshipText = item->text();
+            
+            // Verificar si la relación involucra la tabla eliminada
+            if (relationshipText.contains(tableName)) {
+                // Parsear para obtener las tablas exactas
+                QStringList parts = relationshipText.split(" → ");
+                if (parts.size() == 2) {
+                    QString sourceTable = parts[0].trimmed();
+                    QString targetPart = parts[1].trimmed();
+                    QString targetTable = targetPart.split(" (")[0].trimmed();
+                    
+                    if (sourceTable == tableName || targetTable == tableName) {
+                        relationshipsToRemove << relationshipText;
+                        delete relationshipsListWidget->takeItem(i);
+                        qDebug() << "DEBUG: Relación eliminada:" << relationshipText;
+                    }
+                }
+            }
+        }
+    }
+    
+    // 4. Eliminar la tabla de las listas internas
+    availableTables.removeAll(tableName);
+    tableFields.remove(tableName);
+    
+    // 5. Eliminar de la lista visual de tablas
+    for (int i = tablesListWidget->count() - 1; i >= 0; --i) {
+        QListWidgetItem *item = tablesListWidget->item(i);
+        if (item && (item->text() == tableName || item->data(Qt::UserRole).toString() == tableName)) {
+            delete tablesListWidget->takeItem(i);
+        }
+    }
+    
+    // 6. Eliminar de los combos de selección de forma segura
+    int sourceIndex = sourceTableCombo->findText(tableName);
+    if (sourceIndex >= 0) {
+        sourceTableCombo->removeItem(sourceIndex);
+    }
+    
+    int targetIndex = targetTableCombo->findText(tableName);
+    if (targetIndex >= 0) {
+        targetTableCombo->removeItem(targetIndex);
+    }
+    
+    // 7. Agregar mensaje informativo si no quedan tablas
+    if (tablesListWidget->count() == 0) {
+        QListWidgetItem *item = new QListWidgetItem("📝 No hay tablas creadas");
+        item->setFlags(Qt::NoItemFlags);
+        item->setForeground(QColor("#999999"));
+        tablesListWidget->addItem(item);
+    }
+    
+    // 8. Actualizar la vista del diseñador de forma segura
+    if (designerScene) {
+        designerScene->update();
+    }
+    
+    // 9. Mostrar mensaje de confirmación si se eliminaron relaciones (sin bloquear)
+    if (!relationshipsToRemove.isEmpty()) {
+        // Usar QTimer para mostrar el mensaje después de que se complete la eliminación
+        QTimer::singleShot(100, this, [this, tableName, relationshipsToRemove]() {
+            QMessageBox msgBox;
+            msgBox.setIcon(QMessageBox::Information);
+            msgBox.setWindowTitle("🗑️ Tabla y Relaciones Eliminadas");
+            msgBox.setText("<h3>Tabla Eliminada Exitosamente</h3>");
+            msgBox.setInformativeText(
+                QString("La tabla '<b>%1</b>' ha sido eliminada junto con todas sus relaciones.<br><br>"
+                       "🗑️ <b>Relaciones eliminadas (%2):</b><br>"
+                       "• %3<br><br>"
+                       "✅ La tabla fue removida del diseñador visual<br>"
+                       "✅ Todas las conexiones fueron limpiadas<br>"
+                       "✅ Las tablas restantes permanecen intactas")
+                       .arg(tableName)
+                       .arg(relationshipsToRemove.size())
+                       .arg(relationshipsToRemove.join("<br>• "))
+            );
+            msgBox.setStandardButtons(QMessageBox::Ok);
+            msgBox.button(QMessageBox::Ok)->setText("Entendido");
+            msgBox.setStyleSheet(
+                "QMessageBox { background-color: white; min-width: 450px; min-height: 300px; }"
+                "QMessageBox QLabel { color: black; font-size: 14px; }"
+                "QPushButton { background-color: #E53E3E; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+                "QPushButton:hover { background-color: #C53030; }"
+            );
+            msgBox.exec();
+        });
+    }
+    
+    qDebug() << "DEBUG: Tabla" << tableName << "completamente eliminada del RelationshipsView";
 }

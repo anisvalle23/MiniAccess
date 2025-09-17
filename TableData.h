@@ -45,6 +45,7 @@ public:
     void setupDataViewWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, int primaryKeyColumn = -1);
     void setupDataViewWithFormatsAndDecimals(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, int primaryKeyColumn = -1);
     void setupDataViewWithTextSizes(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, int primaryKeyColumn = -1);
+    void setupDataViewWithUniqueFields(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QList<int> &uniqueColumns, int primaryKeyColumn = -1);
     
     // Configurar nombre de tabla
     void setTableName(const QString &tableName);
@@ -112,6 +113,7 @@ private:
     QStringList savedCurrencyFormats; // Formatos de moneda para cada campo
     QStringList savedMillaresDecimals; // Decimales de millares para cada campo
     QStringList savedTextSizes; // Tamaños de texto para cada campo
+    QList<int> savedUniqueColumns; // Índices de columnas que deben ser únicas
     QString currentTableName;
     int nextPersonId;
     int primaryKeyColumnIndex; // Índice de la columna Primary Key (-1 si no hay)

@@ -92,6 +92,7 @@ public:
     QStringList getCurrentMillaresDecimals() const; // Nuevo método para obtener decimales de millares
     QStringList getCurrentTextSizes() const; // Nuevo método para obtener tamaños de texto
     int getPrimaryKeyColumnIndex() const; // Nuevo método para obtener índice de Primary Key
+    QList<int> getUniqueKeyColumnIndexes() const; // Nuevo método para obtener índices de campos únicos
     
     // Método para recibir resultado de validación de duplicados
     void setUniqueValidationResult(const QString &fieldName, bool hasDuplicates);
