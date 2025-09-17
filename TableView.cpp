@@ -199,6 +199,34 @@ void FieldNameDelegate::updateEditorGeometry(QWidget *editor, const QStyleOption
     Q_UNUSED(index)
     editor->setGeometry(option.rect);
 }
+static QString normalizeDataType(const QString& raw) {
+    QString t = raw.trimmed();
+
+    // Normaliza variantes que escribes en la tabla
+    if (t.compare("Texto largo / Párrafo", Qt::CaseInsensitive) == 0)
+        return "Texto largo";
+    if (t.compare("Texto corto (hasta N caracteres)", Qt::CaseInsensitive) == 0
+        || t.compare("Texto corto", Qt::CaseInsensitive) == 0)
+        return "Texto corto";
+    if (t.compare("Sí / No", Qt::CaseInsensitive) == 0
+        || t.compare("Si / No", Qt::CaseInsensitive) == 0
+        || t.compare("Booleano", Qt::CaseInsensitive) == 0)
+        return "Sí / No";
+    if (t.compare("Decimal", Qt::CaseInsensitive) == 0
+        || t.compare("Decimales", Qt::CaseInsensitive) == 0)
+        return "Decimales";
+    if (t.compare("Moneda", Qt::CaseInsensitive) == 0
+        || t.compare("moneda", Qt::CaseInsensitive) == 0)
+        return "moneda";
+    if (t.compare("Fecha", Qt::CaseInsensitive) == 0
+        || t.compare("fecha", Qt::CaseInsensitive) == 0)
+        return "fecha";
+    if (t.compare("Entero", Qt::CaseInsensitive) == 0)
+        return "Entero";
+
+    // Por defecto deja igual
+    return t;
+}
 
 // TableView Implementation - SOLO PARA VISTA DISEÑO
 TableView::TableView(QWidget *parent) : QWidget(parent)
@@ -722,10 +750,61 @@ void TableView::setupDesignTable()
 // Event Handlers
 void TableView::onCellChanged(int row, int column)
 {
-    // Si se escribió en la primera columna, asegurar que hay filas vacías
+    // Mantén tu lógica actual para nombre (crear fila vacía, etc.)
     if (column == 0) {
         ensureEmptyRowExists();
     }
+
+    // Si no es la fila seleccionada, no sincronizamos propiedades
+    if (row != currentSelectedRow) return;
+
+    // Nombre → fieldNameEdit
+    if (column == 0) {
+        if (auto *nameItem = tableWidget->item(row, 0)) {
+            QString name = nameItem->text();
+            // Limpia emojis si los tuviera:
+            if (name.startsWith("🔑🔗 ")) name = name.mid(4);
+            else if (name.startsWith("🔑 ")) name = name.mid(3);
+            else if (name.startsWith("🔗 ")) name = name.mid(3);
+
+            fieldNameEdit->blockSignals(true);
+            fieldNameEdit->setText(name);
+            fieldNameEdit->blockSignals(false);
+        }
+    }
+
+    // Tipo → dataTypeCombo + propiedades específicas
+    // --- Sincronizar: cuando el tipo cambia en la tabla, reflejarlo en Propiedades ---
+    if (column == 1) {
+        // Asegura que la fila actual sea la seleccionada (por si el editor no movió selección)
+        currentSelectedRow = row;
+
+        if (auto *typeItem = tableWidget->item(row, 1)) {
+            const QString norm = normalizeDataType(typeItem->text());
+
+            // Actualiza el combo de propiedades sin disparar su slot
+            dataTypeCombo->blockSignals(true);
+            int idx = dataTypeCombo->findText(norm, Qt::MatchExactly);
+            if (idx >= 0) dataTypeCombo->setCurrentIndex(idx);
+            dataTypeCombo->blockSignals(false);
+
+            // Muestra el panel específico correcto
+            updateSpecificProperties(norm);
+        }
+    }
+
+
+    // Descripción → descriptionEdit
+    if (column == 2) {
+        if (auto *descItem = tableWidget->item(row, 2)) {
+            descriptionEdit->blockSignals(true);
+            descriptionEdit->setPlainText(descItem->text());
+            descriptionEdit->blockSignals(false);
+        }
+    }
+
+    // Mantén tu emisión si la necesitas
+    // emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
 }
 
 void TableView::onCellSelectionChanged()
@@ -750,48 +829,45 @@ void TableView::updatePropertiesForRow(int row)
     requiredCheck->blockSignals(true);
     foreignKeyCheck->blockSignals(true);
     uniqueCheck->blockSignals(true);
-    
+
     // Obtener datos de la fila
     QTableWidgetItem *nameItem = tableWidget->item(row, 0);
     QTableWidgetItem *typeItem = tableWidget->item(row, 1);
     QTableWidgetItem *descItem = tableWidget->item(row, 2);
-    
-    // Actualizar propiedades - remover iconos para mostrar nombre limpio en el campo de edición
+
+    // Nombre (limpiar iconos 🔑 / 🔗 / 🔶)
     QString displayName = nameItem ? nameItem->text() : "";
-    // Remover iconos combinados (🔑🔗) o individuales (🔑 o 🔗)
-    if (displayName.startsWith("🔑🔗 ")) {
-        displayName = displayName.mid(4); // Remover "🔑🔗 "
-    } else if (displayName.startsWith("🔑 ")) {
-        displayName = displayName.mid(3); // Remover "🔑 "
-    } else if (displayName.startsWith("🔗 ")) {
-        displayName = displayName.mid(3); // Remover "🔗 "
-    }
+    if (displayName.startsWith("🔑🔗🔶 ")) displayName = displayName.mid(5);
+    else if (displayName.startsWith("🔑🔗 ")) displayName = displayName.mid(4);
+    else if (displayName.startsWith("🔑🔶 ")) displayName = displayName.mid(4);
+    else if (displayName.startsWith("🔗🔶 ")) displayName = displayName.mid(4);
+    else if (displayName.startsWith("🔑 "))   displayName = displayName.mid(3);
+    else if (displayName.startsWith("🔗 "))   displayName = displayName.mid(3);
+    else if (displayName.startsWith("🔶 "))   displayName = displayName.mid(3);
     fieldNameEdit->setText(displayName);
-    
-    QString dataType = typeItem ? typeItem->text() : "TEXT";
-    int index = dataTypeCombo->findText(dataType);
-    if (index >= 0) {
-        dataTypeCombo->setCurrentIndex(index);
-    }
-    
+
+    // Tipo (normalizado) → combo
+    QString dataType = typeItem ? normalizeDataType(typeItem->text()) : QString("Texto largo");
+    int idx = dataTypeCombo->findText(dataType, Qt::MatchExactly);
+    if (idx >= 0) dataTypeCombo->setCurrentIndex(idx);
+
+    // Descripción
     descriptionEdit->setPlainText(descItem ? descItem->text() : "");
+
+    // Valor por defecto (por ahora no se usa, pero mantenemos limpio el UI)
     defaultValueEdit->setText("");
-    
-    // Verificar si esta fila es la llave primaria
-    bool isPrimaryKey = (primaryKeyRow == row);
+
+    // Checks PK / FK / Unique
+    const bool isPrimaryKey = (primaryKeyRow == row);
+    const bool isForeignKey = foreignKeyRows.contains(row);
+    const bool isUnique     = uniqueKeyRows.contains(row);
     requiredCheck->setChecked(isPrimaryKey);
-    
-    // Verificar si esta fila es una Foreign Key (usando la lista interna)
-    bool isForeignKey = foreignKeyRows.contains(row);
     foreignKeyCheck->setChecked(isForeignKey);
-    
-    // Verificar si esta fila es Unique (usando la lista interna)
-    bool isUnique = uniqueKeyRows.contains(row);
     uniqueCheck->setChecked(isUnique);
-    
-    // Actualizar propiedades específicas según el tipo de dato
+
+    // Propiedades específicas según tipo
     updateSpecificProperties(dataType);
-    
+
     // Reactivar señales
     fieldNameEdit->blockSignals(false);
     dataTypeCombo->blockSignals(false);
@@ -800,9 +876,6 @@ void TableView::updatePropertiesForRow(int row)
     requiredCheck->blockSignals(false);
     foreignKeyCheck->blockSignals(false);
     uniqueCheck->blockSignals(false);
-    
-    // Actualizar propiedades específicas según el tipo de dato seleccionado
-    updateSpecificProperties(dataType);
 }
 
 void TableView::onFieldNameChanged(const QString &text)
@@ -1416,10 +1489,10 @@ void TableView::onDesignViewClicked()
 void TableView::onAddRowClicked()
 {
     qDebug() << "DEBUG: Agregar fila después de la seleccionada";
-    
+
     int selectedRow = tableWidget->currentRow();
     int insertRow;
-    
+
     if (selectedRow == -1) {
         // Si no hay fila seleccionada, agregar al final
         insertRow = tableWidget->rowCount();
@@ -1429,44 +1502,44 @@ void TableView::onAddRowClicked()
         insertRow = selectedRow + 1;
         qDebug() << "DEBUG: Fila seleccionada:" << selectedRow << ", insertando en posición:" << insertRow;
     }
-    
+
     // Insertar nueva fila
     tableWidget->insertRow(insertRow);
-    
+
     // Ajustar primaryKeyRow si es necesario
     if (primaryKeyRow != -1 && primaryKeyRow >= insertRow) {
         primaryKeyRow++;
         qDebug() << "DEBUG: Ajustando primaryKeyRow a:" << primaryKeyRow;
     }
-    
+
     // Ajustar foreignKeyRows si es necesario
     for (int i = 0; i < foreignKeyRows.size(); i++) {
         if (foreignKeyRows[i] >= insertRow) {
             foreignKeyRows[i]++;
         }
     }
-    
+
     // Ajustar uniqueKeyRows si es necesario
     for (int i = 0; i < uniqueKeyRows.size(); i++) {
         if (uniqueKeyRows[i] >= insertRow) {
             uniqueKeyRows[i]++;
         }
     }
-    
+
     // Ajustar listas de configuración de campos
     fieldCurrencyFormats.insert(insertRow, "Lempiras (Lps)");
     fieldMillaresDecimals.insert(insertRow, "2");
     fieldTextSizes.insert(insertRow, "255");
-    
+
     // Crear items para la nueva fila
     for (int col = 0; col < tableWidget->columnCount(); col++) {
         QTableWidgetItem *item = new QTableWidgetItem("");
-        
+
         // Configurar fuente más grande para mejor legibilidad
         QFont itemFont = item->font();
         itemFont.setPointSize(14);
         item->setFont(itemFont);
-        
+
         // Solo la primera columna está habilitada inicialmente
         if (col == 0) {
             item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
@@ -1475,16 +1548,16 @@ void TableView::onAddRowClicked()
             item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
             item->setBackground(QBrush(QColor(245, 245, 245))); // Deshabilitada
         }
-        
+
         tableWidget->setItem(insertRow, col, item);
     }
-    
+
     // Seleccionar la nueva fila
     tableWidget->setCurrentCell(insertRow, 0);
-    
+
     // Emitir señal para actualizar vista de datos
     emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
-    
+
     qDebug() << "DEBUG: Fila agregada exitosamente en posición:" << insertRow;
 }
 
@@ -1729,7 +1802,7 @@ void TableView::onDeleteRowClicked()
         else if (primaryKeyRow == selectedRow) primaryKeyRow = -1;
         qDebug() << "DEBUG: Ajustando primaryKeyRow a:" << primaryKeyRow;
     }
-    
+
     // Ajustar las filas de Foreign Keys
     for (int i = foreignKeyRows.size() - 1; i >= 0; i--) {
         if (foreignKeyRows[i] > selectedRow) {
@@ -1739,7 +1812,7 @@ void TableView::onDeleteRowClicked()
         }
     }
     qDebug() << "DEBUG: Foreign Keys tras eliminar fila:" << foreignKeyRows;
-    
+
     // Ajustar las filas de Unique Keys
     for (int i = uniqueKeyRows.size() - 1; i >= 0; i--) {
         if (uniqueKeyRows[i] > selectedRow) {
@@ -1749,7 +1822,7 @@ void TableView::onDeleteRowClicked()
         }
     }
     qDebug() << "DEBUG: Unique Keys tras eliminar fila:" << uniqueKeyRows;
-    
+
     // Ajustar listas de configuración de campos
     if (selectedRow < fieldCurrencyFormats.size()) {
         fieldCurrencyFormats.removeAt(selectedRow);
@@ -1917,16 +1990,17 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
                 nextItem->setFont(itemFont);
                 
                 // Establecer valores por defecto según la columna
-                if (col == 0 && nextItem->text().isEmpty()) { // Si se escribió en "Nombre del Campo"
-                    nextItem->setText("Texto largo / Párrafo"); // Tipo de datos por defecto
+                if (col == 0 && nextItem->text().isEmpty()) {
+                    nextItem->setText("Texto largo"); // <-- coincide con el combo
                 }
             }
         }
         
         // Si completamos una fila, agregar una nueva fila
-        if (col == tableWidget->columnCount() - 1) { // Si es la última columna
-            addNewRow();
+        if (col == 0) {
+            ensureEmptyRowExists();
         }
+
     } else {
         // Si se borró el contenido, deshabilitar las celdas siguientes en la misma fila
         for (int nextCol = col + 1; nextCol < tableWidget->columnCount(); nextCol++) {

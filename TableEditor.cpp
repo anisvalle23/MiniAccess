@@ -1007,22 +1007,22 @@ void TableEditor::switchToDataView()
             QStringList currencyFormats = view->getCurrentCurrencyFormats();
             QStringList millaresDecimals = view->getCurrentMillaresDecimals();
             QStringList textSizes = view->getCurrentTextSizes();
-            
+
             qDebug() << "DEBUG: switchToDataView - Actualizando con formatos:";
             qDebug() << "DEBUG: fieldNames:" << fieldNames;
             qDebug() << "DEBUG: fieldTypes:" << fieldTypes;
             qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
             qDebug() << "DEBUG: millaresDecimals:" << millaresDecimals;
             qDebug() << "DEBUG: textSizes:" << textSizes;
-            
+
             // Obtener el índice de Primary Key
             int primaryKeyIndex = view->getPrimaryKeyColumnIndex();
             qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyIndex;
-            
+
             // Obtener los índices de campos únicos
             QList<int> uniqueColumns = view->getUniqueKeyColumnIndexes();
             qDebug() << "DEBUG: Campos únicos en columnas:" << uniqueColumns;
-            
+
             // Actualizar la vista de datos con todos los formatos más recientes incluyendo campos únicos
             data->setupDataViewWithUniqueFields(fieldNames, fieldTypes, currencyFormats, millaresDecimals, textSizes, uniqueColumns, primaryKeyIndex);
         }
