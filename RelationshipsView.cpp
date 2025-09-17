@@ -1270,19 +1270,45 @@ void RelationshipsView::onCreateRelationship()
             }
             
         } else if (shortType == "N:M") {
-            // Relación N:M: Se requiere una tabla intermedia con dos Foreign Keys
+            // Relación N:M: Se requiere una tabla intermedia con dos Foreign Keys específicos
             QStringList allTables = tableEditor->getCreatedTables();
             bool foundIntermediateTable = false;
             QString intermediateTableName;
             
-            // Buscar una tabla intermedia que tenga FK a ambas tablas
+            // Buscar una tabla intermedia que tenga FK a ambas tablas específicas
             for (const QString &tableName : allTables) {
                 if (tableName == sourceTable || tableName == targetTable) continue;
                 
                 QStringList tableFKs = tableEditor->getTableForeignKeys(tableName);
                 
-                // Verificar si tiene FK suficientes (al menos 2 para una relación N:M)
-                if (tableFKs.size() >= 2) {
+                // Verificar si tiene FK que refieran a nuestras tablas específicas
+                bool hasSourceFK = false;
+                bool hasTargetFK = false;
+                
+                for (const QString &fk : tableFKs) {
+                    QString fkLower = fk.toLower();
+                    QString sourceLower = sourceTable.toLower();
+                    QString targetLower = targetTable.toLower();
+                    
+                    // Limpiar el FK de emojis y etiquetas
+                    QString cleanFK = fk;
+                    cleanFK = cleanFK.remove(QRegExp("^[🔑🔗]\\s*")).remove(QRegExp("\\s*\\(PK\\)$")).remove(QRegExp("\\s*\\(FK\\)$")).trimmed();
+                    
+                    // Verificar si el FK podría referenciar a sourceTable (VALIDACIÓN SEMÁNTICA ESTRICTA)
+                    if (validateForeignKeyNaming(cleanFK, sourceTable, false)) {
+                        hasSourceFK = true;
+                        qDebug() << "DEBUG N:M: ✅ FK" << cleanFK << "en tabla intermedia" << tableName << "SÍ referencia semánticamente a" << sourceTable;
+                    }
+                    
+                    // Verificar si el FK podría referenciar a targetTable (VALIDACIÓN SEMÁNTICA ESTRICTA)
+                    if (validateForeignKeyNaming(cleanFK, targetTable, false)) {
+                        hasTargetFK = true;
+                        qDebug() << "DEBUG N:M: ✅ FK" << cleanFK << "en tabla intermedia" << tableName << "SÍ referencia semánticamente a" << targetTable;
+                    }
+                }
+                
+                // Si encontramos una tabla con FKs a ambas tablas objetivo
+                if (hasSourceFK && hasTargetFK && tableFKs.size() >= 2) {
                     foundIntermediateTable = true;
                     intermediateTableName = tableName;
                     break;
@@ -1293,20 +1319,26 @@ void RelationshipsView::onCreateRelationship()
                 QMessageBox msgBox;
                 msgBox.setIcon(QMessageBox::Warning);
                 msgBox.setWindowTitle("🔗 Relación N:M - Tabla Intermedia Requerida");
-                msgBox.setText("<h3>Tabla Intermedia Requerida para Relación N:M</h3>");
+                msgBox.setText("<h3>Tabla Intermedia Específica Requerida para Relación N:M</h3>");
                 msgBox.setInformativeText(
-                    QString("Para establecer una relación N:M, se requiere una tabla intermedia con dos Foreign Keys que apunten a las Primary Keys de ambas tablas.<br><br>"
+                    QString("Para establecer una relación N:M entre <b>'%1'</b> y <b>'%2'</b>, se requiere una tabla intermedia con Foreign Keys específicos que apunten a ambas tablas.<br><br>"
                            "⚠️ <b>Problema:</b><br>"
-                           "• Tabla <b>'%1'</b>: Tabla origen<br>"
-                           "• Tabla <b>'%2'</b>: Tabla destino<br>"
-                           "• <b>Tabla intermedia</b>: ❌ No encontrada<br><br>"
+                           "• Tabla origen: <b>'%3'</b><br>"
+                           "• Tabla destino: <b>'%4'</b><br>"
+                           "• <b>Tabla intermedia específica</b>: ❌ No encontrada<br><br>"
+                           "✅ <b>Requisitos para la tabla intermedia:</b><br>"
+                           "• Debe tener al menos 2 Foreign Keys<br>"
+                           "• Un FK debe referenciar a '%5' (ej: %6_id, id_%7)<br>"
+                           "• Otro FK debe referenciar a '%8' (ej: %9_id, id_%10)<br><br>"
                            "<b>Solución:</b><br>"
-                           "1. Cree una nueva tabla intermedia (ej: '%3_%4')<br>"
-                           "2. Agregue un campo Foreign Key que apunte a '%5'<br>"
-                           "3. Agregue otro campo Foreign Key que apunte a '%6'<br>"
+                           "1. Cree una nueva tabla intermedia (ej: '%11_%12' o '%13_%14')<br>"
+                           "2. Agregue un campo Foreign Key que referencie a '%15'<br>"
+                           "3. Agregue otro campo Foreign Key que referencie a '%16'<br>"
                            "4. Marque ambos campos como 'Foreign Key' en las propiedades<br>"
                            "5. Regrese e intente crear la relación nuevamente")
-                           .arg(sourceTable, targetTable, sourceTable, targetTable, sourceTable, targetTable)
+                           .arg(sourceTable, targetTable, sourceTable, targetTable, sourceTable, sourceTable, sourceTable, 
+                                targetTable, targetTable, targetTable, sourceTable, targetTable, targetTable, sourceTable,
+                                sourceTable, targetTable)
                 );
                 msgBox.setStandardButtons(QMessageBox::Ok);
                 msgBox.button(QMessageBox::Ok)->setText("Entendido");
@@ -1426,17 +1458,198 @@ void RelationshipsView::onCreateRelationship()
         qDebug() << "DEBUG FK Validation - Source table:" << sourceTable;
         qDebug() << "DEBUG FK Validation - Target table:" << targetTable;
         
-        // Validar nomenclatura según el tipo de relación
+        // *** VALIDACIÓN ESTRICTA DE NOMENCLATURA SEMÁNTICA ***
+        // Solo validar que los Foreign Keys apunten a la tabla correcta
         bool namingValidationPassed = true;
         if (shortType == "1:N" || shortType == "1:1") {
-            // En relaciones 1:N y 1:1, validar que el FK en la tabla target tenga un nombre similar a la tabla source
-            if (!selectedTargetField.isEmpty() && !validateForeignKeyNaming(selectedTargetField, sourceTable)) {
+            // SOLO VALIDAR FOREIGN KEYS - LAS PRIMARY KEYS NO NECESITAN VALIDACIÓN SEMÁNTICA
+            bool validRelationship = false;
+            QString problematicFK = "";
+            QString fkTable = "";
+            QString referencedTable = "";
+            
+            // Obtener listas de FKs primero
+            QStringList sourceFKs = tableEditor->getTableForeignKeys(sourceTable);
+            QStringList targetFKs = tableEditor->getTableForeignKeys(targetTable);
+            
+            qDebug() << "DEBUG SEMANTIC VALIDATION:";
+            qDebug() << "  - Campo seleccionado DE:" << selectedSourceField;
+            qDebug() << "  - Campo seleccionado A:" << selectedTargetField;
+            qDebug() << "  - Tabla fuente:" << sourceTable;
+            qDebug() << "  - Tabla destino:" << targetTable;
+            qDebug() << "  - FKs en tabla fuente:" << sourceFKs;
+            qDebug() << "  - FKs en tabla destino:" << targetFKs;
+            
+            // Verificar si el campo seleccionado "DE" (source) es un FK
+            bool isSourceFieldFK = false;
+            
+            for (const QString &fk : sourceFKs) {
+                QString cleanFK = fk;
+                // Limpiar emojis tanto en formato visual como en códigos Unicode
+                cleanFK = cleanFK.remove(QRegExp("^[🔑🔗\\uDD11\\uDD17]\\s*"))
+                                 .remove(QRegExp("\\s*\\(PK\\)$"))
+                                 .remove(QRegExp("\\s*\\(FK\\)$"))
+                                 .remove(QRegExp("^\\uDD11\\s*"))  // Código Unicode para 🔑
+                                 .remove(QRegExp("^\\uDD17\\s*"))  // Código Unicode para 🔗
+                                 .trimmed();
+                
+                // También limpiar el campo seleccionado de la misma manera
+                QString cleanSelectedSource = selectedSourceField;
+                cleanSelectedSource = cleanSelectedSource.remove(QRegExp("^[🔑🔗\\uDD11\\uDD17]\\s*"))
+                                                        .remove(QRegExp("\\s*\\(PK\\)$"))
+                                                        .remove(QRegExp("\\s*\\(FK\\)$"))
+                                                        .remove(QRegExp("^\\uDD11\\s*"))
+                                                        .remove(QRegExp("^\\uDD17\\s*"))
+                                                        .trimmed();
+                
+                qDebug() << "DEBUG FK CLEANUP: Original FK:" << fk << "-> Clean FK:" << cleanFK;
+                qDebug() << "DEBUG FK CLEANUP: Selected source:" << selectedSourceField << "-> Clean:" << cleanSelectedSource;
+                
+                if (cleanFK == cleanSelectedSource) {
+                    isSourceFieldFK = true;
+                    qDebug() << "DEBUG: ✅ ENCONTRADO FK en source!" << cleanFK;
+                    break;
+                }
+            }
+            
+            // Verificar si el campo seleccionado "A" (target) es un FK
+            bool isTargetFieldFK = false;
+            
+            for (const QString &fk : targetFKs) {
+                QString cleanFK = fk;
+                // Limpiar emojis tanto en formato visual como en códigos Unicode
+                cleanFK = cleanFK.remove(QRegExp("^[🔑🔗\\uDD11\\uDD17]\\s*"))
+                                 .remove(QRegExp("\\s*\\(PK\\)$"))
+                                 .remove(QRegExp("\\s*\\(FK\\)$"))
+                                 .remove(QRegExp("^\\uDD11\\s*"))  // Código Unicode para 🔑
+                                 .remove(QRegExp("^\\uDD17\\s*"))  // Código Unicode para 🔗
+                                 .trimmed();
+                
+                // También limpiar el campo seleccionado de la misma manera
+                QString cleanSelectedTarget = selectedTargetField;
+                cleanSelectedTarget = cleanSelectedTarget.remove(QRegExp("^[🔑🔗\\uDD11\\uDD17]\\s*"))
+                                                        .remove(QRegExp("\\s*\\(PK\\)$"))
+                                                        .remove(QRegExp("\\s*\\(FK\\)$"))
+                                                        .remove(QRegExp("^\\uDD11\\s*"))
+                                                        .remove(QRegExp("^\\uDD17\\s*"))
+                                                        .trimmed();
+                
+                qDebug() << "DEBUG FK CLEANUP: Original FK:" << fk << "-> Clean FK:" << cleanFK;
+                qDebug() << "DEBUG FK CLEANUP: Selected target:" << selectedTargetField << "-> Clean:" << cleanSelectedTarget;
+                
+                if (cleanFK == cleanSelectedTarget) {
+                    isTargetFieldFK = true;
+                    qDebug() << "DEBUG: ✅ ENCONTRADO FK en target!" << cleanFK;
+                    break;
+                }
+            }
+            
+            qDebug() << "DEBUG: isSourceFieldFK =" << isSourceFieldFK << ", isTargetFieldFK =" << isTargetFieldFK;
+            
+            // VALIDACIÓN: Si hay un FK, debe apuntar a la tabla correcta
+            if (isSourceFieldFK) {
+                // El FK en sourceTable debe apuntar a targetTable
+                qDebug() << "DEBUG: Validando FK" << selectedSourceField << "en" << sourceTable << "-> ¿apunta a" << targetTable << "?";
+                
+                if (validateForeignKeyNaming(selectedSourceField, targetTable, false)) {
+                    validRelationship = true;
+                    qDebug() << "DEBUG: ✅ FK" << selectedSourceField << "en" << sourceTable << "SÍ apunta correctamente a" << targetTable;
+                } else {
+                    qDebug() << "DEBUG: ❌ FK" << selectedSourceField << "en" << sourceTable << "NO apunta semánticamente a" << targetTable;
+                    problematicFK = selectedSourceField;
+                    fkTable = sourceTable;
+                    referencedTable = targetTable;
+                }
+            }
+            
+            if (isTargetFieldFK && !validRelationship) {
+                // El FK en targetTable debe apuntar a sourceTable
+                qDebug() << "DEBUG: Validando FK" << selectedTargetField << "en" << targetTable << "-> ¿apunta a" << sourceTable << "?";
+                
+                if (validateForeignKeyNaming(selectedTargetField, sourceTable, false)) {
+                    validRelationship = true;
+                    qDebug() << "DEBUG: ✅ FK" << selectedTargetField << "en" << targetTable << "SÍ apunta correctamente a" << sourceTable;
+                } else {
+                    qDebug() << "DEBUG: ❌ FK" << selectedTargetField << "en" << targetTable << "NO apunta semánticamente a" << sourceTable;
+                    if (problematicFK.isEmpty()) { // Solo si no encontramos problema en el primer FK
+                        problematicFK = selectedTargetField;
+                        fkTable = targetTable;
+                        referencedTable = sourceTable;
+                    }
+                }
+            }
+            
+            // NUEVA VALIDACIÓN: Si no hay ningún FK, también es error
+            if (!isSourceFieldFK && !isTargetFieldFK) {
+                qDebug() << "DEBUG: ❌ No hay Foreign Keys en ninguno de los campos seleccionados";
+                validRelationship = false;
+                problematicFK = "Sin FK";
+                fkTable = "Ambas tablas";
+                referencedTable = "Cualquiera";
+            }
+            
+            // Mostrar error cuando no hay relación válida
+            if (!validRelationship) {
+                QMessageBox msgBox;
+                msgBox.setIcon(QMessageBox::Critical);
+                msgBox.setWindowTitle("🚫 Conexión Bloqueada - Relación Inválida");
+                msgBox.setText("<h3>No se puede crear la relación</h3>");
+                
+                QString errorMessage;
+                if (problematicFK == "Sin FK") {
+                    errorMessage = QString(
+                        "❌ <b>CONEXIÓN RECHAZADA:</b> No se puede establecer una relación sin Foreign Keys adecuados.<br><br>"
+                        "🔍 <b>Campos seleccionados:</b><br>"
+                        "• <b>Campo DE:</b> '%1' (en tabla '%2') - %3<br>"
+                        "• <b>Campo A:</b> '%4' (en tabla '%5') - %6<br><br>"
+                        "🚫 <b>Problema:</b><br>"
+                        "Para establecer una relación válida, al menos uno de los campos debe ser un Foreign Key que apunte a la otra tabla.<br><br>"
+                        "💡 <b>Ejemplo del problema actual:</b><br>"
+                        "• Campo <b>id_maestro</b> (FK) → Tabla <b>seccion</b> ❌<br>"
+                        "• Campo <b>Id_seccion</b> (PK) → No es FK ❌<br><br>"
+                        "✅ <b>Solución:</b><br>"
+                        "1. Vaya a la vista de diseño de una de las tablas<br>"
+                        "2. Cree un Foreign Key que tenga relación semántica con la otra tabla<br>"
+                        "3. Asegúrese de que el FK contenga el nombre de la tabla que referencia<br>"
+                        "4. Regrese e intente crear la relación nuevamente")
+                        .arg(selectedSourceField, sourceTable, isSourceFieldFK ? "FK" : "PK")
+                        .arg(selectedTargetField, targetTable, isTargetFieldFK ? "FK" : "PK");
+                } else {
+                    errorMessage = QString(
+                        "❌ <b>CONEXIÓN RECHAZADA:</b> El Foreign Key seleccionado no corresponde semánticamente a la tabla que intenta referenciar.<br><br>"
+                        "🔍 <b>Problema detectado:</b><br>"
+                        "• <b>Foreign Key:</b> '%1' (en tabla '%2')<br>"
+                        "• <b>Tabla que intenta referenciar:</b> '%3'<br><br>"
+                        "🚫 <b>Error semántico:</b><br>"
+                        "El FK <b>'%4'</b> NO está relacionado semánticamente con la tabla <b>'%5'</b>.<br><br>"
+                        "💡 <b>Ejemplo:</b><br>"
+                        "• FK <b>id_maestro</b> → Debe referenciar tabla <b>maestro</b> ✅<br>"
+                        "• FK <b>id_maestro</b> → NO puede referenciar tabla <b>seccion</b> ❌<br><br>"
+                        "✅ <b>Para que funcione la relación:</b><br>"
+                        "• Use un FK que contenga '%6' (ej: id_%7, %8_id)<br>"
+                        "• O cambie la tabla de destino para que coincida con el FK '%9'<br><br>"
+                        "🎯 <b>Regla:</b><br>"
+                        "Los Foreign Keys DEBEN contener el nombre de la tabla que referencian.")
+                        .arg(problematicFK, fkTable, referencedTable, problematicFK, referencedTable)
+                        .arg(referencedTable.toLower(), referencedTable.toLower(), referencedTable.toLower(), problematicFK);
+                }
+                
+                msgBox.setInformativeText(errorMessage);
+                msgBox.setStandardButtons(QMessageBox::Ok);
+                msgBox.button(QMessageBox::Ok)->setText("Entendido - Corregiré la relación");
+                msgBox.setStyleSheet(
+                    "QMessageBox { background-color: white; min-width: 700px; min-height: 500px; }"
+                    "QMessageBox QLabel { color: black; font-size: 14px; }"
+                    "QPushButton { background-color: #E53E3E; color: white; font-size: 14px; font-weight: bold; min-width: 200px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+                    "QPushButton:hover { background-color: #C53030; }"
+                );
+                msgBox.exec();
                 namingValidationPassed = false;
             }
+            
         } else if (shortType == "N:M") {
-            // En relaciones N:M, validar los FKs en la tabla intermedia
-            // Esto se podría implementar aquí si se necesita validación específica para N:M
-            // Por ahora, se asume que la validación de la tabla intermedia es suficiente
+            // En relaciones N:M, la validación ya se hace en la tabla intermedia
+            // No necesitamos validación adicional de nomenclatura aquí
         }
         
         if (!namingValidationPassed) {
@@ -2655,7 +2868,7 @@ void RelationshipsView::onTableDeleted(const QString &tableName)
     qDebug() << "DEBUG: Tabla" << tableName << "completamente eliminada del RelationshipsView";
 }
 
-bool RelationshipsView::validateForeignKeyNaming(const QString &foreignKeyField, const QString &referencedTable)
+bool RelationshipsView::validateForeignKeyNaming(const QString &foreignKeyField, const QString &referencedTable, bool showErrorMessage)
 {
     if (foreignKeyField.isEmpty() || referencedTable.isEmpty()) {
         return false;
@@ -2663,93 +2876,127 @@ bool RelationshipsView::validateForeignKeyNaming(const QString &foreignKeyField,
     
     // Limpiar completamente el nombre del campo FK de cualquier emoji o texto extra
     QString cleanFK = foreignKeyField;
-    cleanFK = cleanFK.remove(QRegExp("^[🔑🔗]\\s*"));  // Remover emojis al inicio
-    cleanFK = cleanFK.remove(QRegExp("\\s*\\(PK\\)$")); // Remover (PK) al final
-    cleanFK = cleanFK.remove(QRegExp("\\s*\\(FK\\)$")); // Remover (FK) al final
-    cleanFK = cleanFK.trimmed(); // Remover espacios
+    cleanFK = cleanFK.remove(QRegExp("^[🔑🔗\\uDD11\\uDD17]\\s*"))  // Remover emojis al inicio (visual y Unicode)
+                     .remove(QRegExp("\\s*\\(PK\\)$"))              // Remover (PK) al final
+                     .remove(QRegExp("\\s*\\(FK\\)$"))              // Remover (FK) al final
+                     .remove(QRegExp("^\\uDD11\\s*"))               // Código Unicode para 🔑
+                     .remove(QRegExp("^\\uDD17\\s*"))               // Código Unicode para 🔗
+                     .trimmed();                                    // Remover espacios
     
     // Convertir ambos nombres a minúsculas para comparación case-insensitive
     QString fkLower = cleanFK.toLower();
     QString tableLower = referencedTable.toLower();
     
-    qDebug() << "DEBUG validateForeignKeyNaming:";
+    qDebug() << "DEBUG SEMANTIC validateForeignKeyNaming:";
     qDebug() << "  - Original FK field:" << foreignKeyField;
     qDebug() << "  - Cleaned FK field:" << cleanFK;
     qDebug() << "  - FK lowercase:" << fkLower;
     qDebug() << "  - Table lowercase:" << tableLower;
-    qDebug() << "  - Testing pattern 1 (table_id):" << (fkLower == tableLower + "_id");
-    qDebug() << "  - Expected pattern 1:" << (tableLower + "_id");
-    qDebug() << "  - Testing pattern 2 (id_table):" << (fkLower == "id_" + tableLower);
-    qDebug() << "  - Expected pattern 2:" << ("id_" + tableLower);
     
-    // Patrones válidos para nombrado de Foreign Keys:
-    // 1. table_id (ej: estudiante_id)
-    // 2. id_table (ej: id_estudiante)
-    // 3. tableid (ej: estudianteid)
-    // 4. idtable (ej: idestudiante)
-    // 5. table (ej: estudiante)
+    // *** VALIDACIÓN SEMÁNTICA ESTRICTA ***
+    // El FK debe contener semánticamente el nombre de la tabla que referencia
+    // Ejemplo: para tabla "clases", FK válido = "id_clase", FK inválido = "id_maestro"
     
     bool isValid = false;
-    QString suggestedNames;
     
-    // Patrón 1: table_id
-    if (fkLower == tableLower + "_id") {
-        isValid = true;
+    // Extraer la parte semántica del FK (quitar prefijos/sufijos comunes)
+    QString fkCore = fkLower;
+    fkCore = fkCore.replace("id_", "").replace("_id", "").replace("id", "");
+    
+    // Crear versión singular de la tabla para comparación más flexible
+    QString tableSingular = tableLower;
+    if (tableLower.endsWith("s") && tableLower.length() > 2) {
+        tableSingular = tableLower.left(tableLower.length() - 1);
     }
-    // Patrón 2: id_table
-    else if (fkLower == "id_" + tableLower) {
-        isValid = true;
+    
+    qDebug() << "  - FK core (sem 'id'):" << fkCore;
+    qDebug() << "  - Table singular:" << tableSingular;
+    
+    // VERIFICACIÓN SEMÁNTICA: El FK debe estar relacionado con la tabla
+    if (!fkCore.isEmpty()) {
+        // Verificar si el núcleo del FK coincide con la tabla (o su forma singular)
+        if (fkCore == tableLower || fkCore == tableSingular) {
+            isValid = true;
+            qDebug() << "DEBUG: ✅ Relación semántica válida - FK core '" << fkCore << "' coincide con tabla '" << tableLower << "'";
+        }
+        // También permitir si la tabla contiene el core del FK
+        else if (tableLower.contains(fkCore) || tableSingular.contains(fkCore)) {
+            isValid = true;
+            qDebug() << "DEBUG: ✅ Relación semántica válida - tabla contiene FK core '" << fkCore << "'";
+        }
+        // O si el FK contiene la tabla (para casos especiales)
+        else if (fkCore.contains(tableLower) || fkCore.contains(tableSingular)) {
+            isValid = true;
+            qDebug() << "DEBUG: ✅ Relación semántica válida - FK core contiene tabla";
+        }
     }
-    // Patrón 3: tableid
-    else if (fkLower == tableLower + "id") {
-        isValid = true;
-    }
-    // Patrón 4: idtable
-    else if (fkLower == "id" + tableLower) {
-        isValid = true;
-    }
-    // Patrón 5: table (nombre exacto)
-    else if (fkLower == tableLower) {
-        isValid = true;
+    
+    // Verificación directa con patrones completos si no se encontró relación en el core
+    if (!isValid) {
+        // Verificar patrones directos con la tabla completa
+        if (fkLower == tableLower + "_id" || fkLower == "id_" + tableLower || 
+            fkLower == tableLower + "id" || fkLower == "id" + tableLower || 
+            fkLower == tableLower) {
+            isValid = true;
+            qDebug() << "DEBUG: ✅ Patrón directo válido con tabla completa";
+        }
+        // Verificar patrones con forma singular
+        else if (fkLower == tableSingular + "_id" || fkLower == "id_" + tableSingular || 
+                 fkLower == tableSingular + "id" || fkLower == "id" + tableSingular || 
+                 fkLower == tableSingular) {
+            isValid = true;
+            qDebug() << "DEBUG: ✅ Patrón directo válido con tabla singular";
+        }
     }
     
     if (!isValid) {
-        // Generar sugerencias de nombres válidos
-        suggestedNames = QString("• %1_id\n• id_%2\n• %3id\n• id%4\n• %5")
-                        .arg(referencedTable)
-                        .arg(referencedTable)
-                        .arg(referencedTable)
-                        .arg(referencedTable)
-                        .arg(referencedTable);
-        
+        qDebug() << "DEBUG: ❌ RELACIÓN SEMÁNTICA INVÁLIDA";
+        qDebug() << "DEBUG: ❌ FK '" << fkLower << "' NO está relacionado semánticamente con tabla '" << tableLower << "'";
+        qDebug() << "DEBUG: ❌ FK core '" << fkCore << "' no coincide con '" << tableLower << "' ni '" << tableSingular << "'";
+    }
+    
+    
+    // Solo mostrar mensaje de error si se solicita explícitamente
+    if (!isValid && showErrorMessage) {
         QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Warning);
-        msgBox.setWindowTitle("🏷️ Nombre de Foreign Key Inválido");
-        msgBox.setText("<h3>Foreign Key debe tener nombre relacionado con la tabla</h3>");
+        msgBox.setIcon(QMessageBox::Critical);
+        msgBox.setWindowTitle("🚫 Relación Bloqueada - Sin Relación Semántica");
+        msgBox.setText("<h3>No se puede crear la relación</h3>");
         msgBox.setInformativeText(
-            QString("Para mantener la integridad referencial y claridad del diseño, el nombre del Foreign Key debe estar relacionado con la tabla que referencia.<br><br>"
-                   "🚫 <b>Campo actual:</b> '%1'<br>"
-                   "📋 <b>Tabla referenciada:</b> '%2'<br><br>"
-                   "✅ <b>Nombres sugeridos para el Foreign Key:</b><br>"
-                   "%3<br><br>"
-                   "💡 <b>¿Por qué es importante?</b><br>"
-                   "• Facilita la comprensión del modelo de datos<br>"
-                   "• Previene errores de referencia<br>"
-                   "• Mejora la mantenibilidad del código<br>"
-                   "• Sigue buenas prácticas de diseño de bases de datos<br><br>"
-                   "<b>Solución:</b><br>"
+            QString("❌ <b>La relación fue RECHAZADA</b> porque el Foreign Key no está relacionado semánticamente con la tabla.<br><br>"
+                   "🚫 <b>Campo Foreign Key:</b> '%1'<br>"
+                   "📋 <b>Tabla que intenta referenciar:</b> '%2'<br><br>"
+                   "💡 <b>Problema detectado:</b><br>"
+                   "El nombre '%3' no tiene relación semántica con '%4'.<br><br>"
+                   "🔍 <b>Ejemplo del problema:</b><br>"
+                   "• Tabla: <b>clases</b><br>"
+                   "• FK incorrecto: <b>id_maestro</b> ❌ (no está relacionado)<br>"
+                   "• FK correcto: <b>id_clase</b> ✅ (está relacionado)<br><br>"
+                   "✅ <b>Para conectar con '%5', use nombres como:</b><br>"
+                   "• %6_id<br>"
+                   "• id_%7<br>"
+                   "• %8<br><br>"
+                   "🎯 <b>Regla fundamental:</b><br>"
+                   "El Foreign Key DEBE contener el nombre de la tabla que referencia (no importa mayúsculas, minúsculas, singular o plural).<br><br>"
+                   "⚠️ <b>Esta validación evita:</b><br>"
+                   "• Conexiones sin sentido semántico<br>"
+                   "• Errores de diseño en la base de datos<br>"
+                   "• Confusión en el modelo de datos<br><br>"
+                   "<b>✅ Solución:</b><br>"
                    "1. Vaya a la vista de diseño de la tabla<br>"
-                   "2. Renombre el campo Foreign Key con uno de los nombres sugeridos<br>"
-                   "3. Regrese e intente crear la relación nuevamente")
-                   .arg(foreignKeyField, referencedTable, suggestedNames)
+                   "2. Renombre el Foreign Key para que contenga '%9'<br>"
+                   "3. Regrese e intente crear la relación nuevamente<br><br>"
+                   "🚫 <b>La relación NO se creará hasta que haya relación semántica.</b>")
+                   .arg(foreignKeyField, referencedTable, cleanFK, referencedTable, referencedTable, 
+                        tableLower, tableLower, tableLower, referencedTable)
         );
         msgBox.setStandardButtons(QMessageBox::Ok);
-        msgBox.button(QMessageBox::Ok)->setText("Entendido");
+        msgBox.button(QMessageBox::Ok)->setText("Entendido - Corregiré el nombre");
         msgBox.setStyleSheet(
-            "QMessageBox { background-color: white; min-width: 550px; min-height: 400px; }"
+            "QMessageBox { background-color: white; min-width: 650px; min-height: 450px; }"
             "QMessageBox QLabel { color: black; font-size: 14px; }"
-            "QPushButton { background-color: #FF9800; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover { background-color: #F57C00; }"
+            "QPushButton { background-color: #E53E3E; color: white; font-size: 14px; font-weight: bold; min-width: 200px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+            "QPushButton:hover { background-color: #C53030; }"
         );
         msgBox.exec();
     }
