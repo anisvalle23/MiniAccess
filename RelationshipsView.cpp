@@ -1367,6 +1367,39 @@ void RelationshipsView::onCreateRelationship()
             return;
         }
         
+        // *** NUEVA VALIDACIÓN: NOMENCLATURA DE FOREIGN KEYS ***
+        // Validar que los Foreign Keys tengan nombres similares a las tablas que referencian
+        QString selectedSourceField = sourceFieldCombo->currentText();
+        QString selectedTargetField = targetFieldCombo->currentText();
+        
+        // Limpiar los iconos de los nombres de campos para obtener solo el nombre
+        selectedSourceField = selectedSourceField.remove(QRegExp("^[🔑🔗]\\s*")).remove(QRegExp("\\s*\\(PK\\)$")).remove(QRegExp("\\s*\\(FK\\)$")).trimmed();
+        selectedTargetField = selectedTargetField.remove(QRegExp("^[🔑🔗]\\s*")).remove(QRegExp("\\s*\\(PK\\)$")).remove(QRegExp("\\s*\\(FK\\)$")).trimmed();
+        
+        // Debug: mostrar los nombres limpiados
+        qDebug() << "DEBUG FK Validation - Source field cleaned:" << selectedSourceField;
+        qDebug() << "DEBUG FK Validation - Target field cleaned:" << selectedTargetField;
+        qDebug() << "DEBUG FK Validation - Source table:" << sourceTable;
+        qDebug() << "DEBUG FK Validation - Target table:" << targetTable;
+        
+        // Validar nomenclatura según el tipo de relación
+        bool namingValidationPassed = true;
+        if (shortType == "1:N" || shortType == "1:1") {
+            // En relaciones 1:N y 1:1, validar que el FK en la tabla target tenga un nombre similar a la tabla source
+            if (!selectedTargetField.isEmpty() && !validateForeignKeyNaming(selectedTargetField, sourceTable)) {
+                namingValidationPassed = false;
+            }
+        } else if (shortType == "N:M") {
+            // En relaciones N:M, validar los FKs en la tabla intermedia
+            // Esto se podría implementar aquí si se necesita validación específica para N:M
+            // Por ahora, se asume que la validación de la tabla intermedia es suficiente
+        }
+        
+        if (!namingValidationPassed) {
+            // La función validateForeignKeyNaming ya habrá mostrado el mensaje de error
+            return;
+        }
+        
         // Si llegamos aquí, todas las validaciones pasaron
         qDebug() << "DEBUG: Validaciones de" << shortType << "pasaron correctamente entre" << sourceTable << "y" << targetTable;
     }
@@ -2400,4 +2433,102 @@ void RelationshipsView::onTableDeleted(const QString &tableName)
     }
     
     qDebug() << "DEBUG: Tabla" << tableName << "completamente eliminada del RelationshipsView";
+}
+
+bool RelationshipsView::validateForeignKeyNaming(const QString &foreignKeyField, const QString &referencedTable)
+{
+    if (foreignKeyField.isEmpty() || referencedTable.isEmpty()) {
+        return false;
+    }
+    
+    // Limpiar completamente el nombre del campo FK de cualquier emoji o texto extra
+    QString cleanFK = foreignKeyField;
+    cleanFK = cleanFK.remove(QRegExp("^[🔑🔗]\\s*"));  // Remover emojis al inicio
+    cleanFK = cleanFK.remove(QRegExp("\\s*\\(PK\\)$")); // Remover (PK) al final
+    cleanFK = cleanFK.remove(QRegExp("\\s*\\(FK\\)$")); // Remover (FK) al final
+    cleanFK = cleanFK.trimmed(); // Remover espacios
+    
+    // Convertir ambos nombres a minúsculas para comparación case-insensitive
+    QString fkLower = cleanFK.toLower();
+    QString tableLower = referencedTable.toLower();
+    
+    qDebug() << "DEBUG validateForeignKeyNaming:";
+    qDebug() << "  - Original FK field:" << foreignKeyField;
+    qDebug() << "  - Cleaned FK field:" << cleanFK;
+    qDebug() << "  - FK lowercase:" << fkLower;
+    qDebug() << "  - Table lowercase:" << tableLower;
+    
+    // Patrones válidos para nombrado de Foreign Keys:
+    // 1. table_id (ej: estudiante_id)
+    // 2. id_table (ej: id_estudiante)
+    // 3. tableid (ej: estudianteid)
+    // 4. idtable (ej: idestudiante)
+    // 5. table (ej: estudiante)
+    
+    bool isValid = false;
+    QString suggestedNames;
+    
+    // Patrón 1: table_id
+    if (fkLower == tableLower + "_id") {
+        isValid = true;
+    }
+    // Patrón 2: id_table
+    else if (fkLower == "id_" + tableLower) {
+        isValid = true;
+    }
+    // Patrón 3: tableid
+    else if (fkLower == tableLower + "id") {
+        isValid = true;
+    }
+    // Patrón 4: idtable
+    else if (fkLower == "id" + tableLower) {
+        isValid = true;
+    }
+    // Patrón 5: table (nombre exacto)
+    else if (fkLower == tableLower) {
+        isValid = true;
+    }
+    
+    if (!isValid) {
+        // Generar sugerencias de nombres válidos
+        suggestedNames = QString("• %1_id\n• id_%2\n• %3id\n• id%4\n• %5")
+                        .arg(referencedTable)
+                        .arg(referencedTable)
+                        .arg(referencedTable)
+                        .arg(referencedTable)
+                        .arg(referencedTable);
+        
+        QMessageBox msgBox;
+        msgBox.setIcon(QMessageBox::Warning);
+        msgBox.setWindowTitle("🏷️ Nombre de Foreign Key Inválido");
+        msgBox.setText("<h3>Foreign Key debe tener nombre relacionado con la tabla</h3>");
+        msgBox.setInformativeText(
+            QString("Para mantener la integridad referencial y claridad del diseño, el nombre del Foreign Key debe estar relacionado con la tabla que referencia.<br><br>"
+                   "🚫 <b>Campo actual:</b> '%1'<br>"
+                   "📋 <b>Tabla referenciada:</b> '%2'<br><br>"
+                   "✅ <b>Nombres sugeridos para el Foreign Key:</b><br>"
+                   "%3<br><br>"
+                   "💡 <b>¿Por qué es importante?</b><br>"
+                   "• Facilita la comprensión del modelo de datos<br>"
+                   "• Previene errores de referencia<br>"
+                   "• Mejora la mantenibilidad del código<br>"
+                   "• Sigue buenas prácticas de diseño de bases de datos<br><br>"
+                   "<b>Solución:</b><br>"
+                   "1. Vaya a la vista de diseño de la tabla<br>"
+                   "2. Renombre el campo Foreign Key con uno de los nombres sugeridos<br>"
+                   "3. Regrese e intente crear la relación nuevamente")
+                   .arg(foreignKeyField, referencedTable, suggestedNames)
+        );
+        msgBox.setStandardButtons(QMessageBox::Ok);
+        msgBox.button(QMessageBox::Ok)->setText("Entendido");
+        msgBox.setStyleSheet(
+            "QMessageBox { background-color: white; min-width: 550px; min-height: 400px; }"
+            "QMessageBox QLabel { color: black; font-size: 14px; }"
+            "QPushButton { background-color: #FF9800; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+            "QPushButton:hover { background-color: #F57C00; }"
+        );
+        msgBox.exec();
+    }
+    
+    return isValid;
 }

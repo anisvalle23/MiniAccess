@@ -102,6 +102,7 @@ private:
     void updatePropertiesPanel(const QString &selectedItem);
     void clearDesignerArea(); // Método para limpiar el área de diseño
     bool validateDataTypeCompatibility(const QString &sourceTable, const QString &targetTable, const QString &relationshipType);
+    bool validateForeignKeyNaming(const QString &foreignKeyField, const QString &referencedTable);
     
     // UI Components
     QVBoxLayout *mainLayout;
