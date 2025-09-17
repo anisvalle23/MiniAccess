@@ -722,26 +722,31 @@ void RelationshipsView::updateSourceFields(const QString &tableName)
         return;
     }
     
-    QStringList fields = tableFields[tableName];
-    
-    for (const QString &field : fields) {
-        QString displayText = field;
+    // Solo mostrar campos que sean Primary Key o Foreign Key
+    if (tableEditor) {
+        QStringList primaryKeys = tableEditor->getTablePrimaryKeys(tableName);
+        QStringList foreignKeys = tableEditor->getTableForeignKeys(tableName);
         
-        // Agregar indicadores de PK/FK si están disponibles
-        if (tableEditor) {
-            QStringList pkFields = tableEditor->getTablePrimaryKeys(tableName);
-            QStringList fkFields = tableEditor->getTableForeignKeys(tableName);
-            
-            if (pkFields.contains(field) && fkFields.contains(field)) {
-                displayText = "🔑🔗 " + field + " (PK+FK)";
-            } else if (pkFields.contains(field)) {
-                displayText = "🔑 " + field + " (PK)";
-            } else if (fkFields.contains(field)) {
-                displayText = "🔗 " + field + " (FK)";
+        // Agregar Primary Keys
+        for (const QString &field : primaryKeys) {
+            QString displayText = "🔑 " + field + " (PK)";
+            sourceFieldCombo->addItem(displayText, field);
+        }
+        
+        // Agregar Foreign Keys (que no sean también PK para evitar duplicados)
+        for (const QString &field : foreignKeys) {
+            if (!primaryKeys.contains(field)) {
+                QString displayText = "🔗 " + field + " (FK)";
+                sourceFieldCombo->addItem(displayText, field);
             }
         }
         
-        sourceFieldCombo->addItem(displayText, field);
+        // Agregar campos que sean tanto PK como FK
+        QStringList pkAndFkFields = tableEditor->getTablePrimaryAndForeignKeys(tableName);
+        for (const QString &field : pkAndFkFields) {
+            QString displayText = "🔑🔗 " + field + " (PK+FK)";
+            sourceFieldCombo->addItem(displayText, field);
+        }
     }
     
     // Seleccionar el primer campo por defecto
@@ -758,26 +763,31 @@ void RelationshipsView::updateTargetFields(const QString &tableName)
         return;
     }
     
-    QStringList fields = tableFields[tableName];
-    
-    for (const QString &field : fields) {
-        QString displayText = field;
+    // Solo mostrar campos que sean Primary Key o Foreign Key
+    if (tableEditor) {
+        QStringList primaryKeys = tableEditor->getTablePrimaryKeys(tableName);
+        QStringList foreignKeys = tableEditor->getTableForeignKeys(tableName);
         
-        // Agregar indicadores de PK/FK si están disponibles
-        if (tableEditor) {
-            QStringList pkFields = tableEditor->getTablePrimaryKeys(tableName);
-            QStringList fkFields = tableEditor->getTableForeignKeys(tableName);
-            
-            if (pkFields.contains(field) && fkFields.contains(field)) {
-                displayText = "🔑🔗 " + field + " (PK+FK)";
-            } else if (pkFields.contains(field)) {
-                displayText = "🔑 " + field + " (PK)";
-            } else if (fkFields.contains(field)) {
-                displayText = "🔗 " + field + " (FK)";
+        // Agregar Primary Keys
+        for (const QString &field : primaryKeys) {
+            QString displayText = "🔑 " + field + " (PK)";
+            targetFieldCombo->addItem(displayText, field);
+        }
+        
+        // Agregar Foreign Keys (que no sean también PK para evitar duplicados)
+        for (const QString &field : foreignKeys) {
+            if (!primaryKeys.contains(field)) {
+                QString displayText = "🔗 " + field + " (FK)";
+                targetFieldCombo->addItem(displayText, field);
             }
         }
         
-        targetFieldCombo->addItem(displayText, field);
+        // Agregar campos que sean tanto PK como FK
+        QStringList pkAndFkFields = tableEditor->getTablePrimaryAndForeignKeys(tableName);
+        for (const QString &field : pkAndFkFields) {
+            QString displayText = "🔑🔗 " + field + " (PK+FK)";
+            targetFieldCombo->addItem(displayText, field);
+        }
     }
     
     // Seleccionar el primer campo por defecto
@@ -2457,6 +2467,10 @@ bool RelationshipsView::validateForeignKeyNaming(const QString &foreignKeyField,
     qDebug() << "  - Cleaned FK field:" << cleanFK;
     qDebug() << "  - FK lowercase:" << fkLower;
     qDebug() << "  - Table lowercase:" << tableLower;
+    qDebug() << "  - Testing pattern 1 (table_id):" << (fkLower == tableLower + "_id");
+    qDebug() << "  - Expected pattern 1:" << (tableLower + "_id");
+    qDebug() << "  - Testing pattern 2 (id_table):" << (fkLower == "id_" + tableLower);
+    qDebug() << "  - Expected pattern 2:" << ("id_" + tableLower);
     
     // Patrones válidos para nombrado de Foreign Keys:
     // 1. table_id (ej: estudiante_id)
