@@ -26,6 +26,7 @@
 #include <QMessageBox>
 #include <QInputDialog>
 #include <QRegularExpression>
+#include <QToolButton>
 #include "TableView.h"
 #include "TableData.h"
 
@@ -113,6 +114,7 @@ private slots:
     void showTableContextMenu(const QPoint &pos);
     void showTableOptionsMenu(const QString &tableName, const QPoint &pos);
     void renameTable(const QString &oldName, const QString &newName);
+    void performTableSearch();
 
 private:
     void setupUI();
@@ -155,7 +157,8 @@ private:
     QLabel *tableListLabel;
     QTreeWidget *tableTree;
     QTreeWidget *tableList;
-    QLineEdit *searchBox;
+    QLineEdit   *searchBox = nullptr;
+    QToolButton *searchBtn = nullptr;
     QPushButton *filterBtn;
     
     // Right Panel  

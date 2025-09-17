@@ -116,6 +116,30 @@ void TableEditor::updateTableList()
             "color: #9CA3AF;"
         "}"
     );
+
+    searchBox->setClearButtonEnabled(true); // útil
+    // Botón de lupa a la derecha
+    searchBtn = new QToolButton(searchHeader);
+    searchBtn->setText(QString::fromUtf8("🔎"));
+    searchBtn->setCursor(Qt::PointingHandCursor);
+    searchBtn->setToolTip("Buscar y abrir tabla");
+    searchBtn->setAutoRaise(true);
+    searchBtn->setStyleSheet(
+        "QToolButton {"
+        "background-color: #FFFFFF;"
+        "border: 1px solid #D1D5DB;"
+        "border-radius: 6px;"
+        "padding: 6px 10px;"
+        "font-size: 14px;"
+        "color: #111827;"
+        "min-width: 36px;"
+        "}"
+        "QToolButton:hover {"
+        "background-color: #F3F4F6;"
+        "}"
+        );
+
+    searchLayout->addWidget(searchBtn);
     
     searchLayout->addWidget(searchBox);
     tableListLayout->addWidget(searchHeader);
@@ -153,9 +177,58 @@ void TableEditor::updateTableList()
     // Connect context menu for this new tableTree instance
     connect(tableTree, &QTreeWidget::customContextMenuRequested,
             this, &TableEditor::showTableContextMenu);
+    connect(searchBtn,  &QToolButton::clicked, this, &TableEditor::performTableSearch);
+    connect(searchBox,  &QLineEdit::returnPressed, this, &TableEditor::performTableSearch);
     
     leftPanelLayout->addWidget(tableListSection);
 }
+
+void TableEditor::performTableSearch()
+{
+    if (!tableTree || !searchBox) return;
+
+    const QString query = searchBox->text().trimmed();
+    if (query.isEmpty()) return;
+
+    // 1) Coincidencia EXACTA (ignorando mayúsculas/minúsculas)
+    for (int i = 0; i < tableTree->topLevelItemCount(); ++i) {
+        QTreeWidgetItem *item = tableTree->topLevelItem(i);
+        if (!item) continue;
+        const QString name = item->data(0, Qt::UserRole).toString();
+        if (name.compare(query, Qt::CaseInsensitive) == 0) {
+            tableTree->setCurrentItem(item);
+            tableTree->scrollToItem(item, QAbstractItemView::PositionAtCenter);
+            showTableView(name);
+            return;
+        }
+    }
+
+    // 2) Si no hay exacta, usa la PRIMERA coincidencia PARCIAL
+    QTreeWidgetItem *firstPartial = nullptr;
+    QString partialName;
+    for (int i = 0; i < tableTree->topLevelItemCount(); ++i) {
+        QTreeWidgetItem *item = tableTree->topLevelItem(i);
+        if (!item) continue;
+        const QString name = item->data(0, Qt::UserRole).toString();
+        if (name.contains(query, Qt::CaseInsensitive)) {
+            firstPartial = item;
+            partialName = name;
+            break;
+        }
+    }
+    if (firstPartial) {
+        tableTree->setCurrentItem(firstPartial);
+        tableTree->scrollToItem(firstPartial, QAbstractItemView::PositionAtCenter);
+        showTableView(partialName);
+        return;
+    }
+
+    // 3) Nada encontrado
+    showStyledMessageBox("Sin resultados",
+                         QString("No se encontró ninguna tabla con el nombre '%1'.").arg(query),
+                         QMessageBox::Information);
+}
+
 
 void TableEditor::createRightPanel()
 {
@@ -1459,7 +1532,7 @@ TableItemWidget::TableItemWidget(const QString &tableName, QWidget *parent)
     layout->setSpacing(8);
     
     // Icon
-    QLabel *iconLabel = new QLabel("�");
+    QLabel *iconLabel = new QLabel("📁");
     iconLabel->setFixedSize(18, 18);
     iconLabel->setAlignment(Qt::AlignCenter);
     iconLabel->setFont(QFont("Inter", 14));

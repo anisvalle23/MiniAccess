@@ -317,7 +317,7 @@ void RelationshipsView::createRelationshipsList()
     tablesLayout->addWidget(tablesListWidget);
     
     // Relationships section - SIMPLIFICADO
-    relationshipsGroup = new QGroupBox("� Relaciones");
+    relationshipsGroup = new QGroupBox("🔗 Relaciones");
     relationshipsGroup->setFont(QFont("Inter", 12, QFont::Bold));
     relationshipsLayout = new QVBoxLayout(relationshipsGroup);
     relationshipsLayout->setSpacing(5);
