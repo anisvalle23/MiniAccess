@@ -59,6 +59,9 @@ else()
         add_executable(MiniAccess
             ${PROJECT_SOURCES}
             projectpathsqt.h projectpathsqt.cpp
+            catalogbplustree.h catalogbplustree.cpp
+
+
         )
     endif()
 endif()

@@ -32,35 +32,25 @@ std::optional<ProjectPathsQt> ProjectStorageQt::create() {
 
     const QString repo = repoOpt.value();
     const QString projectRoot = QDir(repo).filePath(QStringLiteral("proyectos/%1").arg(m_projectName));
-    const QString tables  = QDir(projectRoot).filePath("tables");
-    const QString indexes = QDir(projectRoot).filePath("indexes");
-    const QString logs    = QDir(projectRoot).filePath("logs");
-    const QString meta    = QDir(projectRoot).filePath("project.meta.json");
+    const QString catalogFile = QDir(projectRoot).filePath("catalog.meta");
 
-    QDir().mkpath(tables);
-    QDir().mkpath(indexes);
-    QDir().mkpath(logs);
+    // Crear carpeta del proyecto
+    QDir().mkpath(projectRoot);
 
-    if (!QFile::exists(meta)) {
-        QJsonObject obj{
-            {"magic", "MINIACCESS_PROJECT"},
-            {"version", 1},
-            {"project", m_projectName},
-            {"paths", QJsonObject{
-                          {"tables",  "tables"},
-                          {"indexes", "indexes"},
-                          {"logs",    "logs"}
-                      }}
-        };
-        QFile f(meta);
-        if (f.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            f.write(QJsonDocument(obj).toJson(QJsonDocument::Indented));
-            f.close();
+    // Si no existe el archivo de catálogo, inicializarlo vacío
+    if (!QFile::exists(catalogFile)) {
+        QFile f(catalogFile);
+        if (f.open(QIODevice::WriteOnly)) {
+            f.close(); // archivo vacío, el árbol lo llenará después
         }
     }
 
-    return ProjectPathsQt{ projectRoot, tables, indexes, logs, meta };
+    return ProjectPathsQt{
+        projectRoot,
+        catalogFile   // en vez de tables/indexes/logs devolvemos solo este
+    };
 }
+
 
 std::optional<QString> ProjectStorageQt::findRepoRoot() {
     const QString appDir  = QDir::cleanPath(QCoreApplication::applicationDirPath());

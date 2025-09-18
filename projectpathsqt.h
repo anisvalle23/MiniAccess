@@ -8,11 +8,8 @@
 #include <optional>
 
 struct ProjectPathsQt {
-    QString root;    // <repo_root>/data/projects/<Proyecto>
-    QString tables;  // .../tables
-    QString indexes; // .../indexes
-    QString logs;    // .../logs
-    QString meta;    // .../project.meta.json
+    QString root;
+    QString catalogFile;  // archivo .meta con las tablas
 };
 
 // Estructura para representar información de un proyecto existente

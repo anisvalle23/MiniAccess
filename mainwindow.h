@@ -19,6 +19,7 @@
 #include <QGraphicsOpacityEffect>
 #include <QParallelAnimationGroup>
 #include <QStackedWidget>
+#include "catalogbplustree.h"
 
 QT_BEGIN_NAMESPACE
 QT_END_NAMESPACE
@@ -34,6 +35,10 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     void setProjectName(const QString &projectName);
+    void setCatalog(CatalogBPlusTree* catalogPtr,
+                    const std::string& tablesDir,
+                    const std::string& catalogMetaPath,
+                    bool takeOwnership = true);
 
 private slots:
     void onSidebarEnter();
@@ -115,6 +120,10 @@ private:
     
     // Project data
     QString currentProjectName;
+    CatalogBPlusTree* m_catalog = nullptr;   // puntero al árbol
+    bool m_catalogOwner = false;             // ¿liberamos en el destructor?
+    std::string m_tablesDir;
+    std::string m_catalogMetaPath;
 };
 
 #endif // MAINWINDOW_H

@@ -24,6 +24,10 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     // Qt handles cleanup automatically
+    if (m_catalogOwner && m_catalog) {
+        delete m_catalog;
+        m_catalog = nullptr;
+    }
 }
 
 void MainWindow::setupUI()
@@ -568,6 +572,24 @@ void MainWindow::setProjectName(const QString &projectName)
     projectNameLabel->setText(projectName);
 }
 
+void MainWindow::setCatalog(CatalogBPlusTree* catalogPtr,
+                            const std::string& tablesDir,
+                            const std::string& catalogMetaPath,
+                            bool takeOwnership)
+{
+    // Si ya había uno y éramos dueños, lo liberamos
+    if (m_catalogOwner && m_catalog && m_catalog != catalogPtr) {
+        delete m_catalog;
+    }
+
+    m_catalog = catalogPtr;
+    m_catalogOwner = takeOwnership;
+    m_tablesDir = tablesDir;
+    m_catalogMetaPath = catalogMetaPath;
+
+    // Aquí ya puedes usar m_catalog (listar, refrescar UI, etc.)
+    // Ejemplo: m_catalog->listAll();
+}
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
     if (obj == sidebarWidget) {

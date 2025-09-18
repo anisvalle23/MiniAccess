@@ -4,6 +4,7 @@
 #include "mainwindow.h"
 #include "projectpathsqt.h"
 #include <QDebug>
+#include "catalogbplustree.h"
 
 CreateProject::CreateProject(QWidget *parent)
     : QMainWindow(parent), isGridView(true), isModalVisible(false), isAnimating(false)
@@ -963,6 +964,9 @@ void CreateProject::onCreateProjectConfirmed()
         return;
     }
 
+    ProjectPathsQt paths = pathsOpt.value();
+    CatalogBPlusTree catalog(2);
+    catalog.saveToFile(paths.catalogFile.toStdString());
     // Cerrar el modal primero
     hideNewProjectModal();
     
@@ -979,13 +983,45 @@ void CreateProject::onCreateProjectConfirmed()
 void CreateProject::navigateToProjectView(const QString &projectName)
 {
     qDebug() << "Navegando a la vista del proyecto:" << projectName;
-    
-    // Crear y mostrar MainWindow con el proyecto
+
+    // Rutas ABSOLUTAS del proyecto (ajusta a tu estructura real)
+    const QString projectsRoot = QDir::homePath() + "/MiniAccessProjects";
+    const QString projectRootQ = projectsRoot + "/" + projectName;
+    const QString tablesDirQ   = projectRootQ + "/tables";
+    const QString catalogQ     = projectRootQ + "/catalog.meta";
+
+    QDir().mkpath(projectRootQ);
+    QDir().mkpath(tablesDirQ);
+
+    // Árbol del catálogo
+    auto* catalog = new CatalogBPlusTree(3);
+
+    // Cargar si existe
+    if (QFileInfo::exists(catalogQ)) {
+        qDebug() << "[navigate] Cargando catálogo desde:" << catalogQ;
+        catalog->loadFromFile(catalogQ.toStdString());
+    } else {
+        qDebug() << "[navigate] No existe catalog.meta aún, se creará al guardar.";
+    }
+
+    // Crear y mostrar MainWindow
     MainWindow *mainWindow = new MainWindow();
-    mainWindow->setProjectName(projectName); // Pasaremos el nombre del proyecto
+    mainWindow->setProjectName(projectName);
+
+    // Inyectar árbol y rutas
+    mainWindow->setCatalog(
+        catalog,
+        tablesDirQ.toStdString(),
+        catalogQ.toStdString(),
+        /*takeOwnership=*/true
+        );
+
+    // Verificación de existencia de rutas/archivos
+    qDebug() << "[navigate] ProjectRoot:" << projectRootQ;
+    qDebug() << "[navigate] TablesDir  :" << tablesDirQ << "exists?" << QFileInfo::exists(tablesDirQ);
+    qDebug() << "[navigate] CatalogMeta:" << catalogQ << "exists?" << QFileInfo::exists(catalogQ);
+
     mainWindow->show();
-    
-    // Cerrar la ventana actual de CreateProject
     this->close();
 }
 
