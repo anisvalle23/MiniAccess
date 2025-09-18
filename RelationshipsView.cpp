@@ -32,6 +32,9 @@ RelationshipsView::RelationshipsView(QWidget *parent)
     // Load initial data
     loadTables();
     loadRelationships();
+    
+    // *** NUEVO: Cargar estado guardado del diseñador ***
+    QTimer::singleShot(500, this, &RelationshipsView::loadDesignerState);
 }
 
 void RelationshipsView::setTableEditor(TableEditor *editor)
@@ -157,6 +160,310 @@ void RelationshipsView::applyTableRenameImmediate(const QString& oldName, const 
     qDebug() << "DEBUG: applyTableRenameImmediate OK:" << oldName << "->" << newName;
 }
 
+void RelationshipsView::showAllTablesInDesigner()
+{
+    // Mostrar todas las tablas disponibles en el diseñador visual
+    int tableCount = availableTables.size();
+    if (tableCount == 0) {
+        QMessageBox::information(this, "📋 Sin Tablas", 
+            "No hay tablas creadas para mostrar.\n"
+            "Cree tablas primero en la vista de diseño de tablas.");
+        return;
+    }
+    
+    // Configuración para posicionamiento automático
+    int cols = static_cast<int>(std::ceil(std::sqrt(tableCount))); // Número de columnas en grid
+    int spacing = 200; // Espaciado entre tablas
+    int startX = 50;
+    int startY = 50;
+    
+    // Agregar tablas que no estén ya en el diseñador
+    for (int i = 0; i < tableCount; ++i) {
+        const QString &tableName = availableTables[i];
+        
+        // Verificar si la tabla ya existe en el diseñador
+        bool alreadyExists = false;
+        for (auto *item : tableItems) {
+            if (item && item->getTableName() == tableName) {
+                alreadyExists = true;
+                break;
+            }
+        }
+        
+        // Solo agregar si no existe
+        if (!alreadyExists) {
+            int row = i / cols;
+            int col = i % cols;
+            QPointF position(startX + col * spacing, startY + row * spacing);
+            
+            addTableToDesigner(tableName, position);
+        }
+    }
+    
+    // Autoajustar la vista para mostrar todas las tablas (tamaño normal)
+    if (!tableItems.isEmpty()) {
+        designerView->fitInView(designerScene->itemsBoundingRect(), Qt::KeepAspectRatio);
+        // *** CAMBIO: Sin zoom, mantener tamaño normal ***
+        // designerView->scale(0.8, 0.8); // REMOVIDO - mantener tamaño normal
+    }
+    
+    qDebug() << "DEBUG: Mostradas" << tableCount << "tablas en el diseñador visual";
+}
+
+void RelationshipsView::showAllTablesAndRelationships()
+{
+    // Mostrar TODAS las tablas disponibles en el diseñador visual
+    int tableCount = availableTables.size();
+    if (tableCount == 0) {
+        QMessageBox::information(this, "📋 Sin Tablas", 
+            "No hay tablas creadas para mostrar.\n"
+            "Cree tablas primero en la vista de diseño de tablas.");
+        return;
+    }
+    
+    // Configuración para posicionamiento automático
+    int cols = static_cast<int>(std::ceil(std::sqrt(tableCount))); // Número de columnas en grid
+    int spacing = 200; // Espaciado entre tablas
+    int startX = 50;
+    int startY = 50;
+    
+    // Agregar TODAS las tablas que no estén ya en el diseñador
+    for (int i = 0; i < tableCount; ++i) {
+        const QString &tableName = availableTables[i];
+        
+        // Verificar si la tabla ya existe en el diseñador
+        bool alreadyExists = false;
+        for (auto *item : tableItems) {
+            if (item && item->getTableName() == tableName) {
+                alreadyExists = true;
+                break;
+            }
+        }
+        
+        // Solo agregar si no existe
+        if (!alreadyExists) {
+            int row = i / cols;
+            int col = i % cols;
+            QPointF position(startX + col * spacing, startY + row * spacing);
+            
+            addTableToDesigner(tableName, position);
+        }
+    }
+    
+    // Mostrar TODAS las relaciones existentes entre las tablas
+    for (int i = 0; i < relationshipsListWidget->count(); ++i) {
+        QListWidgetItem *item = relationshipsListWidget->item(i);
+        if (!item) continue;
+        
+        QString relationshipText = item->text();
+        
+        // Parsear la relación para extraer información
+        int arrowPos = relationshipText.indexOf(" → ");
+        if (arrowPos >= 0) {
+            QString sourceTable = relationshipText.left(arrowPos).trimmed();
+            QString rightPart = relationshipText.mid(arrowPos + 3).trimmed();
+            
+            int parenPos = rightPart.lastIndexOf("(");
+            QString targetTable = parenPos >= 0 ? rightPart.left(parenPos).trimmed() : rightPart;
+            QString type = parenPos >= 0 ? rightPart.mid(parenPos + 1).replace(")", "").trimmed() : "";
+            
+            // Crear relación visual si ambas tablas existen
+            if (!sourceTable.isEmpty() && !targetTable.isEmpty() && !type.isEmpty()) {
+                // Verificar que no exista ya esta relación visual
+                bool relationExists = false;
+                for (auto *line : relationshipLines) {
+                    if (line && line->getSourceTable() && line->getTargetTable()) {
+                        QString lineSource = line->getSourceTable()->getTableName();
+                        QString lineTarget = line->getTargetTable()->getTableName();
+                        QString lineType = line->getRelationshipType();
+                        
+                        if ((lineSource == sourceTable && lineTarget == targetTable && lineType == type) ||
+                            (lineSource == targetTable && lineTarget == sourceTable && lineType == type)) {
+                            relationExists = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Solo crear si no existe
+                if (!relationExists) {
+                    createRelationshipBetweenTables(sourceTable, targetTable, type);
+                }
+            }
+        }
+    }
+    
+    // NO hacer zoom ni escalado - mantener tamaño normal
+    // Solo centrar la vista en las tablas
+    if (!tableItems.isEmpty()) {
+        designerView->ensureVisible(designerScene->itemsBoundingRect());
+    }
+    
+    qDebug() << "DEBUG: Mostradas" << tableCount << "tablas con todas sus relaciones en el diseñador visual";
+}
+
+void RelationshipsView::saveDesignerState()
+{
+    QString filePath = getProjectRelationshipsPath();
+    if (filePath.isEmpty()) return;
+    
+    QJsonObject designerState;
+    QJsonArray tablesArray;
+    QJsonArray relationshipsArray;
+    
+    // Guardar posiciones de las tablas
+    for (auto *item : tableItems) {
+        if (!item) continue;
+        
+        QJsonObject tableObj;
+        tableObj["name"] = item->getTableName();
+        tableObj["x"] = item->pos().x();
+        tableObj["y"] = item->pos().y();
+        tablesArray.append(tableObj);
+    }
+    
+    // Guardar relaciones creadas
+    for (int i = 0; i < relationshipsListWidget->count(); ++i) {
+        QListWidgetItem *item = relationshipsListWidget->item(i);
+        if (!item) continue;
+        
+        QString relationshipText = item->text();
+        QJsonObject relationshipObj;
+        relationshipObj["description"] = relationshipText;
+        
+        // Parsear la relación para extraer información estructurada
+        int arrowPos = relationshipText.indexOf(" → ");
+        if (arrowPos >= 0) {
+            QString sourceTable = relationshipText.left(arrowPos).trimmed();
+            QString rightPart = relationshipText.mid(arrowPos + 3).trimmed();
+            
+            int parenPos = rightPart.lastIndexOf("(");
+            QString targetTable = parenPos >= 0 ? rightPart.left(parenPos).trimmed() : rightPart;
+            QString type = parenPos >= 0 ? rightPart.mid(parenPos + 1).replace(")", "").trimmed() : "";
+            
+            relationshipObj["sourceTable"] = sourceTable;
+            relationshipObj["targetTable"] = targetTable;
+            relationshipObj["type"] = type;
+        }
+        
+        relationshipsArray.append(relationshipObj);
+    }
+    
+    designerState["tables"] = tablesArray;
+    designerState["relationships"] = relationshipsArray;
+    designerState["version"] = "1.0";
+    
+    // Escribir archivo
+    QJsonDocument doc(designerState);
+    QFile file(filePath);
+    if (file.open(QIODevice::WriteOnly)) {
+        file.write(doc.toJson());
+        file.close();
+        qDebug() << "DEBUG: Estado del diseñador guardado en:" << filePath;
+    } else {
+        qWarning() << "ERROR: No se pudo guardar el estado del diseñador en:" << filePath;
+    }
+}
+
+void RelationshipsView::loadDesignerState()
+{
+    QString filePath = getProjectRelationshipsPath();
+    if (filePath.isEmpty() || !QFile::exists(filePath)) return;
+    
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qWarning() << "ERROR: No se pudo leer el archivo de estado:" << filePath;
+        return;
+    }
+    
+    QByteArray data = file.readAll();
+    file.close();
+    
+    QJsonDocument doc = QJsonDocument::fromJson(data);
+    if (!doc.isObject()) return;
+    
+    QJsonObject designerState = doc.object();
+    
+    // Cargar posiciones de tablas
+    QJsonArray tablesArray = designerState["tables"].toArray();
+    QMap<QString, QPointF> tablePositions;
+    
+    for (const QJsonValue &value : tablesArray) {
+        QJsonObject tableObj = value.toObject();
+        QString tableName = tableObj["name"].toString();
+        QPointF position(tableObj["x"].toDouble(), tableObj["y"].toDouble());
+        tablePositions[tableName] = position;
+    }
+    
+    // Aplicar posiciones a las tablas existentes en el diseñador
+    for (auto *item : tableItems) {
+        if (!item) continue;
+        QString tableName = item->getTableName();
+        if (tablePositions.contains(tableName)) {
+            item->setPos(tablePositions[tableName]);
+        }
+    }
+    
+    // Cargar relaciones
+    QJsonArray relationshipsArray = designerState["relationships"].toArray();
+    
+    // Limpiar lista de relaciones actual
+    relationshipsListWidget->clear();
+    
+    // Limpiar líneas de relación visuales
+    for (auto *line : relationshipLines) {
+        if (line) {
+            designerScene->removeItem(line);
+            delete line;
+        }
+    }
+    relationshipLines.clear();
+    
+    // Recrear relaciones
+    for (const QJsonValue &value : relationshipsArray) {
+        QJsonObject relationshipObj = value.toObject();
+        QString description = relationshipObj["description"].toString();
+        QString sourceTable = relationshipObj["sourceTable"].toString();
+        QString targetTable = relationshipObj["targetTable"].toString();
+        QString type = relationshipObj["type"].toString();
+        
+        // Agregar a la lista de relaciones
+        relationshipsListWidget->addItem(description);
+        
+        // Crear línea visual si ambas tablas existen en el diseñador
+        if (!sourceTable.isEmpty() && !targetTable.isEmpty() && !type.isEmpty()) {
+            createRelationshipBetweenTables(sourceTable, targetTable, type);
+        }
+    }
+    
+    qDebug() << "DEBUG: Estado del diseñador cargado desde:" << filePath;
+    qDebug() << "DEBUG: Cargadas" << tablesArray.size() << "posiciones de tablas y" << relationshipsArray.size() << "relaciones";
+}
+
+QString RelationshipsView::getProjectRelationshipsPath()
+{
+    // Usar el directorio de proyectos actual
+    QString projectsDir = QDir::currentPath() + "/proyectos";
+    
+    if (!QDir(projectsDir).exists()) {
+        return QString(); // No hay directorio de proyectos
+    }
+    
+    // Buscar el proyecto activo (el más reciente o el que tiene metadata)
+    QDir dir(projectsDir);
+    QStringList projectDirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    
+    if (projectDirs.isEmpty()) {
+        return QString(); // No hay proyectos
+    }
+    
+    // Usar el primer proyecto encontrado (o implementar lógica para proyecto activo)
+    QString activeProject = projectDirs.first();
+    QString relationshipsFile = projectsDir + "/" + activeProject + "/relationships.json";
+    
+    return relationshipsFile;
+}
+
 void RelationshipsView::setupUI()
 {
     mainLayout = new QVBoxLayout(this);
@@ -189,9 +496,11 @@ void RelationshipsView::createToolbar()
     // Buttons
     createRelationshipBtn = new QPushButton("✨ Nueva Relación");
     deleteRelationshipBtn = new QPushButton("🗑️ Eliminar");
+    showAllTablesBtn = new QPushButton("📋 Mostrar Todas las Tablas");
     
     createRelationshipBtn->setFixedSize(160, 40);
     deleteRelationshipBtn->setFixedSize(120, 40);
+    showAllTablesBtn->setFixedSize(180, 40);
     
     // Style buttons with better design
     QString primaryButtonStyle = 
@@ -227,14 +536,17 @@ void RelationshipsView::createToolbar()
     
     createRelationshipBtn->setStyleSheet(primaryButtonStyle);
     deleteRelationshipBtn->setStyleSheet(secondaryButtonStyle);
+    showAllTablesBtn->setStyleSheet(primaryButtonStyle);
     
     toolbarLayout->addWidget(createRelationshipBtn);
+    toolbarLayout->addWidget(showAllTablesBtn);
     toolbarLayout->addWidget(deleteRelationshipBtn);
     
     mainLayout->addWidget(toolbarWidget);
     
     // Connect signals
     connect(createRelationshipBtn, &QPushButton::clicked, this, &RelationshipsView::onNewRelationshipClicked);
+    connect(showAllTablesBtn, &QPushButton::clicked, this, &RelationshipsView::showAllTablesAndRelationships);
     connect(deleteRelationshipBtn, &QPushButton::clicked, this, &RelationshipsView::onDeleteRelationship);
 }
 
@@ -391,7 +703,7 @@ void RelationshipsView::createRelationshipDesigner()
     QVBoxLayout *cardLayout = new QVBoxLayout(instructionCard);
     cardLayout->setMargin(8);
     
-    QLabel *instructionText = new QLabel("💡 Arrastra tablas desde la lista izquierda aquí para conectarlas");
+    QLabel *instructionText = new QLabel("💡 Usa el botón 'Mostrar Todas las Tablas' para ver todas las tablas y sus relaciones. Crea nuevas relaciones en el panel derecho.");
     instructionText->setStyleSheet("color: #C62828; font-size: 11px; font-weight: 500;");
     instructionText->setWordWrap(true);
     
@@ -726,6 +1038,9 @@ void RelationshipsView::loadTables()
     }
     
     // Remove the fallback predefined tables - only show real tables from TableEditor
+    
+    // *** CAMBIO: NO mostrar tablas automáticamente, solo cuando se use el botón específico ***
+    // Las tablas se agregarán al diseñador solo por el botón "Mostrar Todas las Tablas"
 }
 
 void RelationshipsView::loadRelationships()
@@ -1056,17 +1371,45 @@ void RelationshipsView::refreshTableList()
 
 void RelationshipsView::onNewRelationshipClicked()
 {
-    // Limpiar el área de diseño (canvas) para preparar una nueva relación
-    clearDesignerArea();
+    // *** LIMPIAR TODOS LOS CAMPOS ***
     
-    // Limpiar selecciones de los combos para que el usuario seleccione nuevas tablas
+    // Limpiar selecciones de los combos
     sourceTableCombo->setCurrentIndex(-1);
     targetTableCombo->setCurrentIndex(-1);
+    sourceFieldCombo->clear();
+    targetFieldCombo->clear();
     
-    // Mostrar mensaje de confirmación
-    QMessageBox::information(this, "Área Limpiada", 
-        "El área de diseño ha sido limpiada.\n"
-        "Puede arrastrar tablas desde la lista izquierda para crear una nueva relación.");
+    // Restablecer tipo de relación al primero
+    relationshipTypeCombo->setCurrentIndex(0);
+    
+    // Limpiar cualquier selección en las listas
+    tablesListWidget->clearSelection();
+    relationshipsListWidget->clearSelection();
+    
+    // *** LIMPIAR COMPLETAMENTE EL DISEÑADOR VISUAL ***
+    
+    // Eliminar todas las tablas del diseñador
+    for (auto *item : tableItems) {
+        if (item) {
+            designerScene->removeItem(item);
+            delete item;
+        }
+    }
+    tableItems.clear();
+    
+    // Eliminar todas las líneas de relación
+    for (auto *line : relationshipLines) {
+        if (line) {
+            designerScene->removeItem(line);
+            delete line;
+        }
+    }
+    relationshipLines.clear();
+    
+    // Limpiar la escena completamente
+    designerScene->clear();
+    
+    qDebug() << "DEBUG: Diseñador visual limpiado completamente para nueva relación";
 }
 
 void RelationshipsView::onCreateRelationship()
@@ -1661,12 +2004,26 @@ void RelationshipsView::onCreateRelationship()
         qDebug() << "DEBUG: Validaciones de" << shortType << "pasaron correctamente entre" << sourceTable << "y" << targetTable;
     }
     
-    // Create visual representation
-    createRelationshipBetweenTables(sourceTable, targetTable, shortType);
+    // *** CREAR RELACIÓN VISUAL SIEMPRE ***
+    // Crear línea visual entre las tablas si ambas están en el diseñador
+    QStringList tablesInDesigner;
+    for (auto *item : tableItems) {
+        if (item) {
+            tablesInDesigner.append(item->getTableName());
+        }
+    }
+    
+    // Solo crear línea visual si ambas tablas están en el diseñador
+    if (tablesInDesigner.contains(sourceTable) && tablesInDesigner.contains(targetTable)) {
+        createRelationshipBetweenTables(sourceTable, targetTable, shortType);
+    }
     
     // Add to relationships list
     QString relationshipDesc = QString("%1 → %2 (%3)").arg(sourceTable, targetTable, shortType);
     relationshipsListWidget->addItem(relationshipDesc);
+    
+    // *** NUEVO: Guardar estado después de crear relación ***
+    saveDesignerState();
     
     QMessageBox::information(this, "Éxito", "Relación creada correctamente");
 }
@@ -1679,31 +2036,55 @@ void RelationshipsView::onDeleteRelationship()
         QListWidgetItem *selectedItem = relationshipsListWidget->item(currentRow);
         QString relationshipText = selectedItem->text();
         
-        // Eliminar de la lista primero
+        // Parsear la relación para identificar las tablas involucradas
+        QString sourceTable, targetTable, relationType;
+        int arrowPos = relationshipText.indexOf(" → ");
+        if (arrowPos >= 0) {
+            sourceTable = relationshipText.left(arrowPos).trimmed();
+            QString rightPart = relationshipText.mid(arrowPos + 3).trimmed();
+            
+            int parenPos = rightPart.lastIndexOf("(");
+            targetTable = parenPos >= 0 ? rightPart.left(parenPos).trimmed() : rightPart;
+            relationType = parenPos >= 0 ? rightPart.mid(parenPos + 1).replace(")", "").trimmed() : "";
+        }
+        
+        // *** CAMBIO: NO limpiar toda el área, solo eliminar la línea de relación específica ***
+        // Buscar y eliminar la línea de relación visual específica
+        QList<RelationshipLine*> linesToRemove;
+        for (auto *line : relationshipLines) {
+            if (line && line->getSourceTable() && line->getTargetTable()) {
+                QString lineSource = line->getSourceTable()->getTableName();
+                QString lineTarget = line->getTargetTable()->getTableName();
+                QString lineType = line->getRelationshipType();
+                
+                // Verificar si coincide (en cualquier dirección)
+                bool matches = (lineSource == sourceTable && lineTarget == targetTable && lineType == relationType) ||
+                              (lineSource == targetTable && lineTarget == sourceTable && lineType == relationType);
+                
+                if (matches) {
+                    linesToRemove.append(line);
+                }
+            }
+        }
+        
+        // Eliminar las líneas encontradas
+        for (auto *line : linesToRemove) {
+            designerScene->removeItem(line);
+            relationshipLines.removeAll(line);
+            delete line;
+        }
+        
+        // Eliminar de la lista de relaciones
         delete relationshipsListWidget->takeItem(currentRow);
         
-        // Limpiar completamente el área del diseñador (como "Nueva Relación")
-        clearDesignerArea();
+        // *** NUEVO: Guardar estado después de eliminar relación ***
+        saveDesignerState();
         
-        // Limpiar selecciones de los combos
-        sourceTableCombo->setCurrentIndex(-1);
-        targetTableCombo->setCurrentIndex(-1);
-        
-        // Mostrar mensaje de confirmación
-        QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Information);
-        msgBox.setWindowTitle("🗑️ Relación Eliminada");
-        msgBox.setText("<h3>Relación Eliminada Exitosamente</h3>");
-        msgBox.setInformativeText(QString("La relación '%1' ha sido eliminada.\n\nEl área de diseño ha sido limpiada y está lista para crear una nueva relación.").arg(relationshipText));
-        msgBox.setStandardButtons(QMessageBox::Ok);
-        msgBox.button(QMessageBox::Ok)->setText("Entendido");
-        msgBox.setStyleSheet(
-            "QMessageBox { background-color: white; min-width: 400px; min-height: 200px; }"
-            "QMessageBox QLabel { color: black; font-size: 14px; }"
-            "QPushButton { background-color: #4CAF50; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
-            "QPushButton:hover { background-color: #45A049; }"
-        );
-        msgBox.exec();
+        // Mostrar mensaje de confirmación (más compacto)
+        QMessageBox::information(this, "🗑️ Relación Eliminada", 
+            QString("La relación '%1' ha sido eliminada.\n\n"
+                   "Las tablas permanecen en el diseñador para futuras relaciones.")
+                   .arg(relationshipText));
         
     } else {
         // No hay relación seleccionada

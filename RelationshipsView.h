@@ -103,6 +103,11 @@ private:
                                        const QString &relationship_type);
     void updatePropertiesPanel(const QString &selectedItem);
     void clearDesignerArea(); // Método para limpiar el área de diseño
+    void showAllTablesInDesigner(); // Método para mostrar todas las tablas en el diseñador
+    void showAllTablesAndRelationships(); // Método para mostrar todas las tablas y relaciones
+    void saveDesignerState(); // Método para guardar el estado del diseñador
+    void loadDesignerState(); // Método para cargar el estado del diseñador
+    QString getProjectRelationshipsPath(); // Método para obtener la ruta del archivo de relaciones
     bool validateDataTypeCompatibility(const QString &sourceTable, const QString &targetTable, const QString &relationshipType);
     bool validateForeignKeyNaming(const QString &foreignKeyField, const QString &referencedTable, bool showErrorMessage = true);
     
@@ -114,6 +119,7 @@ private:
     QHBoxLayout *toolbarLayout;
     QPushButton *createRelationshipBtn;
     QPushButton *deleteRelationshipBtn;
+    QPushButton *showAllTablesBtn;
     QLabel *titleLabel;
     
     // Main content area
