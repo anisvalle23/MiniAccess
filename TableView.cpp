@@ -2444,8 +2444,11 @@ QStringList TableView::getForeignKeyFieldNames() const
 {
     QStringList foreignKeyFields;
     
+    qDebug() << "DEBUG: getForeignKeyFieldNames() - foreignKeyRows actual:" << foreignKeyRows;
+    
     // Verificar que la tabla existe y tiene filas
     if (!tableWidget || tableWidget->rowCount() == 0) {
+        qDebug() << "DEBUG: TableWidget es null o no tiene filas";
         return foreignKeyFields;
     }
     
@@ -2456,12 +2459,16 @@ QStringList TableView::getForeignKeyFieldNames() const
             if (item && !item->text().trimmed().isEmpty()) {
                 QString fieldName = item->text().trimmed();
                 
+                qDebug() << "DEBUG: Procesando fila FK" << row << "con texto original:" << fieldName;
+                
                 // Remover el icono de llave si existe para obtener el nombre limpio
                 if (fieldName.startsWith("🔗 ")) {
                     fieldName = fieldName.mid(3);
                 } else if (fieldName.startsWith("🔑🔗 ")) {
                     fieldName = fieldName.mid(5);
                 }
+                
+                qDebug() << "DEBUG: Nombre de campo FK limpio:" << fieldName;
                 
                 if (!fieldName.isEmpty()) {
                     foreignKeyFields << fieldName;
@@ -2470,6 +2477,7 @@ QStringList TableView::getForeignKeyFieldNames() const
         }
     }
     
+    qDebug() << "DEBUG: getForeignKeyFieldNames() retornando:" << foreignKeyFields;
     return foreignKeyFields;
 }
 

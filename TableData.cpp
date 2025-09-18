@@ -2560,21 +2560,20 @@ bool TableData::validateForeignKeyConstraints(int row)
 
 bool TableData::isFieldForeignKey(const QString &fieldName)
 {
-    if (!relationshipsView || !tableEditor) return false;
+    if (!relationshipsView || !tableEditor) {
+        qDebug() << "DEBUG: isFieldForeignKey - relationshipsView o tableEditor es null";
+        return false;
+    }
     
-    // Método mejorado: verificar si el campo está en la lista de FK de TableEditor
+    // Método corregido: SOLO verificar si el campo está en la lista de FK de TableEditor
     QStringList foreignKeys = tableEditor->getTableForeignKeys(currentTableName);
     
     // Verificar si el campo está en la lista de foreign keys
-    if (foreignKeys.contains(fieldName)) {
-        qDebug() << "DEBUG: Campo" << fieldName << "es FK según TableEditor";
-        return true;
-    }
+    bool isFK = foreignKeys.contains(fieldName);
     
-    // Verificación adicional: si el campo termina con "_id" o contiene iconos FK
-    bool isFK = fieldName.endsWith("_id") || fieldName.contains("🔗");
+    qDebug() << "DEBUG: Campo" << fieldName << "- Es FK:" << isFK << "según TableEditor";
+    qDebug() << "DEBUG: Lista FK completa de TableEditor para tabla" << currentTableName << ":" << foreignKeys;
     
-    qDebug() << "DEBUG: Campo" << fieldName << "- Es FK:" << isFK;
     return isFK;
 }
 
@@ -2901,9 +2900,6 @@ void TableData::clearFilters()
         for (int row = 0; row < dataTable->rowCount(); ++row) {
             dataTable->setRowHidden(row, false);
         }
-        
-        // Restaurar orden original
-        dataTable->sortItems(0, Qt::AscendingOrder);
     }
 }
 
@@ -3094,4 +3090,76 @@ void TableData::sortDataRowsOnly(int column, bool ascending)
     dataTable->blockSignals(false);
     
     qDebug() << "DEBUG: Ordenamiento de filas con datos completado";
+}
+
+void TableData::onForeignKeyRemoved(const QString &tableName, const QString &fieldName)
+{
+    qDebug() << "DEBUG TableData: Foreign Key removida - Tabla:" << tableName << "Campo:" << fieldName;
+    
+    // Verificar si esta es nuestra tabla
+    if (currentTableName != tableName) {
+        qDebug() << "DEBUG: FK removida de tabla diferente, ignorando";
+        return;
+    }
+    
+    qDebug() << "DEBUG: Actualizando validaciones tras remover FK de campo:" << fieldName;
+    
+    // Verificar el estado actual de FK para este campo
+    if (tableEditor) {
+        QStringList currentFKs = tableEditor->getTableForeignKeys(currentTableName);
+        qDebug() << "DEBUG: FKs actuales según TableEditor:" << currentFKs;
+        qDebug() << "DEBUG: Campo" << fieldName << "está en lista FK:" << currentFKs.contains(fieldName);
+    }
+    
+    // Limpiar cualquier error de validación FK existente en esta columna
+    if (dataTable) {
+        // Encontrar la columna correspondiente al campo
+        int columnIndex = -1;
+        for (int col = 0; col < dataTable->columnCount(); col++) {
+            QString headerText = dataTable->horizontalHeaderItem(col) ? 
+                                dataTable->horizontalHeaderItem(col)->text() : "";
+            
+            // Limpiar el header de iconos para comparar
+            QString cleanHeader = headerText;
+            cleanHeader = cleanHeader.remove("🔑🔗🔶")
+                                   .remove("🔑🔗")
+                                   .remove("🔑🔶")
+                                   .remove("🔗🔶")
+                                   .remove("🔑")
+                                   .remove("🔗")
+                                   .remove("🔶")
+                                   .trimmed();
+            
+            if (cleanHeader == fieldName) {
+                columnIndex = col;
+                break;
+            }
+        }
+        
+        if (columnIndex >= 0) {
+            qDebug() << "DEBUG: Limpiando errores FK en columna" << columnIndex;
+            
+            // Limpiar errores de validación en todas las filas de esta columna
+            for (int row = 0; row < dataTable->rowCount(); row++) {
+                clearCellError(row, columnIndex);
+                
+                // Resetear el fondo de la celda a normal
+                QTableWidgetItem *item = dataTable->item(row, columnIndex);
+                if (item) {
+                    item->setBackground(QBrush(QColor(255, 255, 255))); // Fondo blanco normal
+                    item->setToolTip(""); // Limpiar tooltip de error
+                }
+            }
+            
+            qDebug() << "DEBUG: FK eliminada - Validaciones FK deshabilitadas para campo:" << fieldName;
+        } else {
+            qDebug() << "DEBUG: No se encontró la columna para el campo:" << fieldName;
+        }
+    }
+    
+    // Forzar actualización visual
+    if (dataTable) {
+        dataTable->viewport()->update();
+        dataTable->repaint();
+    }
 }

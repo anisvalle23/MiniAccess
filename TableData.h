@@ -3,7 +3,6 @@
 
 #include <QWidget>
 #include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QPushButton>
@@ -96,6 +95,9 @@ public:
     // Acceso a formatos guardados
     QStringList getSavedDateFormats() const { return savedDateFormats; }
     QString formatDateWithTextMonth(const QDate &date, const QString &format) const; // Convertir fecha a formato con mes en texto
+
+    // Manejo de Foreign Key changes
+    void onForeignKeyRemoved(const QString &tableName, const QString &fieldName); // Notificación cuando se quita FK
 
 
 public slots:

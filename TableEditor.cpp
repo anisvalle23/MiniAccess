@@ -1047,6 +1047,11 @@ void TableEditor::showTableDataView(const QString &tableName)
         // Configurar referencia a este TableEditor
         tableDatas[tableName]->setTableEditor(this);
         
+        // Conectar señal para notificar a TableData cuando se quita FK
+        connect(this, &TableEditor::foreignKeyRemoved,
+                tableDatas[tableName], &TableData::onForeignKeyRemoved,
+                Qt::UniqueConnection);
+        
         connect(tableDatas[tableName], &TableData::switchToDesignView, this, [this]() {
             switchToDesignView();
         }, Qt::UniqueConnection);
