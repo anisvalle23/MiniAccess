@@ -1120,6 +1120,64 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
             qDebug() << "DEBUG: Campo" << fieldName << "identificado como FK";
             
             if (!newValue.isEmpty()) {
+                // Verificar si hay relación establecida
+                if (!hasEstablishedRelationship(fieldName)) {
+                    qDebug() << "DEBUG: Campo FK" << fieldName << "no tiene relación establecida";
+                    
+                    // Usar QTimer::singleShot para mostrar mensaje de "sin conexión"
+                    QTimer::singleShot(0, this, [this, fieldName, newValue, item]() {
+                        QMessageBox msgBox(this);
+                        msgBox.setWindowTitle("Campo sin Conexión");
+                        msgBox.setIcon(QMessageBox::Warning);
+                        msgBox.setText(QString("El campo '%1' está marcado como llave foránea pero no tiene conexión a ninguna tabla.\n\n"
+                                              "Para establecer una relación:\n"
+                                              "1. Ve a la vista de Relaciones\n"
+                                              "2. Crea una conexión entre esta tabla y la tabla referenciada\n\n"
+                                              "O elimina la marca de llave foránea si no necesitas validación.")
+                                              .arg(fieldName));
+                        msgBox.setStandardButtons(QMessageBox::Ok);
+                        msgBox.setStyleSheet(
+                            "QMessageBox {"
+                            "background-color: white;"
+                            "min-width: 500px;"
+                            "min-height: 250px;"
+                            "}"
+                            "QMessageBox QLabel {"
+                            "color: black;"
+                            "font-size: 16px;"
+                            "padding: 10px;"
+                            "}"
+                            "QPushButton {"
+                            "background-color: #f59e0b;"
+                            "color: white;"
+                            "font-size: 16px;"
+                            "font-weight: bold;"
+                            "min-width: 120px;"
+                            "min-height: 44px;"
+                            "border: none;"
+                            "padding: 10px 16px;"
+                            "border-radius: 6px;"
+                            "}"
+                            "QPushButton:hover {"
+                            "background-color: #d97706;"
+                            "}"
+                        );
+                        msgBox.exec();
+                    });
+                    
+                    // Bloquear señales y restaurar valor anterior
+                    dataTable->blockSignals(true);
+                    item->setText(""); // Limpiar el campo
+                    dataTable->blockSignals(false);
+                    
+                    // Enfocar el campo para facilitar corrección
+                    QTimer::singleShot(100, this, [this, item]() {
+                        dataTable->setCurrentItem(item);
+                        dataTable->editItem(item);
+                    });
+                    return; // Salir sin procesar más
+                }
+                
                 QString referencedTable = getReferencedTable(fieldName);
                 QString referencedField = getReferencedField(fieldName);
                 
@@ -2215,6 +2273,22 @@ bool TableData::isFieldForeignKey(const QString &fieldName)
     
     qDebug() << "DEBUG: Campo" << fieldName << "- Es FK:" << isFK;
     return isFK;
+}
+
+// Nuevo método para verificar si hay relación establecida
+bool TableData::hasEstablishedRelationship(const QString &fieldName)
+{
+    if (!relationshipsView || !tableEditor) return false;
+    
+    QString referencedTable = getReferencedTable(fieldName);
+    
+    // Verificar si la tabla referenciada existe
+    QStringList availableTables = tableEditor->getCreatedTables();
+    bool tableExists = availableTables.contains(referencedTable);
+    
+    qDebug() << "DEBUG: Campo FK" << fieldName << "-> Tabla inferida:" << referencedTable << "-> Existe:" << tableExists;
+    
+    return tableExists;
 }
 
 QString TableData::getReferencedTable(const QString &fieldName)

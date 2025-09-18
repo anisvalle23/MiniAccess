@@ -117,6 +117,7 @@ private:
     // Métodos para validación de llaves foráneas
     bool validateForeignKeyConstraints(int row);
     bool isFieldForeignKey(const QString &fieldName);
+    bool hasEstablishedRelationship(const QString &fieldName);
     QString getReferencedTable(const QString &fieldName);
     QString getReferencedField(const QString &fieldName);
     bool valueExistsInReferencedTable(const QString &tableName, const QString &fieldName, const QString &value);
