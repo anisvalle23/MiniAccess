@@ -11,7 +11,7 @@
 #include <QDialogButtonBox>
 
 TableEditor::TableEditor(QWidget *parent)
-    : QWidget(parent), isDarkTheme(false)
+    : QWidget(parent), isDarkTheme(false), relationshipsView(nullptr)
 {
     setupUI();
     styleComponents();
@@ -453,6 +453,19 @@ void TableEditor::updateTheme(bool isDark)
     updateTableTheme(isDark);
 }
 
+void TableEditor::setRelationshipsView(RelationshipsView *relationshipsView)
+{
+    this->relationshipsView = relationshipsView;
+    
+    // Configurar RelationshipsView y TableEditor en todos los TableData existentes
+    for (auto it = tableDatas.begin(); it != tableDatas.end(); ++it) {
+        if (it.value()) {
+            it.value()->setRelationshipsView(relationshipsView);
+            it.value()->setTableEditor(this);
+        }
+    }
+}
+
 void TableEditor::updateLeftPanelTheme(bool isDark)
 {
     QString bgColor = isDark ? "#1F2937" : "#FAFAFA";
@@ -885,6 +898,14 @@ void TableEditor::showTableView(const QString &tableName)
         data = new TableData(this);
         data->setTableName(tableName);
         data->setProperty("tableName", tableName);
+        
+        // Configurar RelationshipsView si está disponible
+        if (relationshipsView) {
+            data->setRelationshipsView(relationshipsView);
+        }
+        
+        // Configurar referencia a este TableEditor
+        data->setTableEditor(this);
 
         connect(data, &TableData::switchToDesignView, this, [this]() {
             switchToDesignView();
@@ -960,6 +981,15 @@ void TableEditor::showTableDataView(const QString &tableName)
     if (!tableDatas.contains(tableName)) {
         tableDatas.insert(tableName, new TableData(this));
         tableDatas[tableName]->setTableName(tableName);
+        
+        // Configurar RelationshipsView si está disponible
+        if (relationshipsView) {
+            tableDatas[tableName]->setRelationshipsView(relationshipsView);
+        }
+        
+        // Configurar referencia a este TableEditor
+        tableDatas[tableName]->setTableEditor(this);
+        
         connect(tableDatas[tableName], &TableData::switchToDesignView, this, [this]() {
             switchToDesignView();
         }, Qt::UniqueConnection);
@@ -1221,6 +1251,85 @@ QStringList TableEditor::getTableFieldTypes(const QString &tableName) const {
         }
     }
     return QStringList(); // Retorna lista vacía si no encuentra la tabla
+}
+
+QStringList TableEditor::getTableColumnData(const QString &tableName, const QString &fieldName) const {
+    QStringList result;
+    
+    qDebug() << "DEBUG: getTableColumnData - Buscando datos en tabla" << tableName << "campo" << fieldName;
+    qDebug() << "DEBUG: Tablas disponibles en tableDatas:" << tableDatas.keys();
+    
+    // Verificar si tenemos el TableData para esta tabla
+    if (tableDatas.contains(tableName)) {
+        TableData* tableData = tableDatas.value(tableName);
+        if (tableData) {
+            qDebug() << "DEBUG: TableData encontrado para tabla" << tableName;
+            
+            // Obtener todos los datos de la tabla
+            QList<QStringList> allData = tableData->getAllPersonData();
+            qDebug() << "DEBUG: Datos obtenidos de la tabla:" << allData.size() << "filas";
+            
+            // Obtener los nombres de campos para encontrar el índice del campo
+            QStringList fieldNames = getTableFields(tableName);
+            qDebug() << "DEBUG: Campos de la tabla" << tableName << ":" << fieldNames;
+            
+            int fieldIndex = -1;
+            
+            // Buscar el índice del campo (limpiando iconos y probando diferentes variaciones)
+            for (int i = 0; i < fieldNames.size(); ++i) {
+                QString cleanField = fieldNames[i];
+                cleanField = cleanField.replace("🔑", "").replace("🔗", "").trimmed();
+                
+                qDebug() << "DEBUG: Comparando campo" << i << ":" << cleanField << "con" << fieldName;
+                
+                // Comparar de diferentes formas
+                if (cleanField.toLower() == fieldName.toLower() || 
+                    cleanField == fieldName ||
+                    (fieldName.toLower() == "id" && cleanField.toLower() == "id")) {
+                    fieldIndex = i;
+                    qDebug() << "DEBUG: Campo encontrado en índice" << i;
+                    break;
+                }
+            }
+            
+            if (fieldIndex >= 0) {
+                qDebug() << "DEBUG: Extrayendo datos de la columna" << fieldIndex;
+                
+                // Extraer los valores de la columna específica
+                for (int rowIndex = 0; rowIndex < allData.size(); ++rowIndex) {
+                    const QStringList &row = allData[rowIndex];
+                    if (fieldIndex < row.size()) {
+                        QString value = row[fieldIndex].trimmed();
+                        qDebug() << "DEBUG: Fila" << rowIndex << "valor:" << value;
+                        
+                        if (!value.isEmpty() && !result.contains(value)) {
+                            result.append(value);
+                            qDebug() << "DEBUG: Valor agregado:" << value;
+                        }
+                    }
+                }
+                qDebug() << "DEBUG: Valores únicos encontrados en tabla" << tableName << "campo" << fieldName << ":" << result;
+            } else {
+                qDebug() << "DEBUG: Campo" << fieldName << "no encontrado en tabla" << tableName;
+                qDebug() << "DEBUG: Campos disponibles:" << fieldNames;
+            }
+        } else {
+            qDebug() << "DEBUG: TableData es null para tabla" << tableName;
+        }
+    } else {
+        qDebug() << "DEBUG: Tabla" << tableName << "no encontrada en tableDatas";
+        qDebug() << "DEBUG: Tablas disponibles:" << tableDatas.keys();
+        
+        // Intentar con nombres similares
+        for (const QString &availableTable : tableDatas.keys()) {
+            if (availableTable.toLower() == tableName.toLower()) {
+                qDebug() << "DEBUG: Encontrada tabla con diferente capitalización:" << availableTable;
+                return getTableColumnData(availableTable, fieldName);
+            }
+        }
+    }
+    
+    return result;
 }
 
 void TableEditor::showTableContextMenu(const QPoint &pos)

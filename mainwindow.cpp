@@ -315,6 +315,9 @@ void MainWindow::createMainContent()
     // Set table editor reference in relationships view
     relationshipsView->setTableEditor(tableEditorView);
     
+    // Set relationships view reference in table editor
+    tableEditorView->setRelationshipsView(relationshipsView);
+    
     // Connect signals to auto-update relationships view when tables change
     connect(tableEditorView, &TableEditor::tableCreated, 
             relationshipsView, &RelationshipsView::refreshTableList);

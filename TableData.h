@@ -16,6 +16,10 @@
 #include <QComboBox>
 #include <QRegExp>
 
+// Forward declaration
+class RelationshipsView;
+class TableEditor;
+
 // Delegate para campos de datos - estilo consistente con TableView
 class DataFieldDelegate : public QStyledItemDelegate
 {
@@ -50,6 +54,12 @@ public:
 
     // Configurar nombre de tabla
     void setTableName(const QString &tableName);
+    
+    // Configurar referencia a RelationshipsView para validaciones FK
+    void setRelationshipsView(RelationshipsView *relationshipsView);
+    
+    // Configurar referencia a TableEditor para acceso a datos
+    void setTableEditor(TableEditor *tableEditor);
     
     // Obtener datos ingresados
     QList<QStringList> getAllPersonData() const;
@@ -104,6 +114,14 @@ private:
     void applyCurrencyFormats(); // Aplicar formatos de moneda específicos
     void applyNumberFormats(); // Aplicar formatos de números específicos
     
+    // Métodos para validación de llaves foráneas
+    bool validateForeignKeyConstraints(int row);
+    bool isFieldForeignKey(const QString &fieldName);
+    QString getReferencedTable(const QString &fieldName);
+    QString getReferencedField(const QString &fieldName);
+    bool valueExistsInReferencedTable(const QString &tableName, const QString &fieldName, const QString &value);
+    QStringList getTableData(const QString &tableName, const QString &fieldName);
+    
     // UI Components
     QVBoxLayout *mainLayout;
     QWidget *headerWidget;
@@ -126,6 +144,12 @@ private:
     
     // Delegates para estilo consistente con TableView
     DataFieldDelegate *dataFieldDelegate;
+    
+    // Referencia a RelationshipsView para validaciones FK
+    RelationshipsView *relationshipsView;
+    
+    // Referencia a TableEditor para acceso a datos
+    TableEditor *tableEditor;
 
     mutable QLabel *m_warnLabel = nullptr;
     mutable QTimer *m_warnTimer = nullptr;

@@ -18,6 +18,9 @@
 #include <QFont>
 #include <QGraphicsDropShadowEffect>
 #include <QMouseEvent>
+
+// Forward declarations
+class RelationshipsView;
 #include <QPropertyAnimation>
 #include <QParallelAnimationGroup>
 #include <QMap>
@@ -84,6 +87,9 @@ public:
     explicit TableEditor(QWidget *parent = nullptr);
     void updateTheme(bool isDark);
     
+    // Configurar referencia a RelationshipsView
+    void setRelationshipsView(RelationshipsView *relationshipsView);
+    
     // Methods to get created tables info
     QStringList getCreatedTables() const;
     QStringList getTableFields(const QString &tableName) const;
@@ -93,6 +99,9 @@ public:
     QStringList getTablePrimaryAndForeignKeys(const QString &tableName) const; // Método para obtener campos que son PK y FK
     QString getFieldType(const QString &tableName, const QString &fieldName) const; // Obtener tipo de dato de un campo específico
     QStringList getTableFieldTypes(const QString &tableName) const; // Obtener todos los tipos de datos de una tabla
+    
+    // Método para obtener datos de una tabla específica para validación FK
+    QStringList getTableColumnData(const QString &tableName, const QString &fieldName) const;
 
 signals:
     void tableCreated(const QString &tableName);
@@ -185,6 +194,9 @@ private:
     
     // Theme variables
     bool isDarkTheme;
+    
+    // Relationships view reference
+    RelationshipsView *relationshipsView;
     
     // Table instances and data
     TableView *currentTableView;
