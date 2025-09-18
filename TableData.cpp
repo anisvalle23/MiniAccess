@@ -855,7 +855,7 @@ void TableData::setupDataViewWithTextSizes(const QStringList &fieldNames, const 
     applyCurrencyFormats();
 }
 
-void TableData::setupDataViewWithUniqueFields(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QList<int> &uniqueColumns, int primaryKeyColumn)
+void TableData::setupDataViewWithUniqueFields(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QStringList &numberTypes, const QList<int> &uniqueColumns, int primaryKeyColumn)
 {
     qDebug() << "DEBUG: setupDataViewWithUniqueFields llamado con:";
     qDebug() << "DEBUG: fieldNames:" << fieldNames;
@@ -1472,15 +1472,13 @@ QString TableData::formatCurrencyWithFormat(const QString& raw, const QString& f
     } else if (format.contains("Euros") || format.contains("€")) {
         return QStringLiteral("€%1").arg(formattedNumber);
     } else if (format.contains("Millares")) {
-        // Solo mostrar la parte entera con separadores de miles
-        int integerPart = static_cast<int>(v);
-        QString integerFormatted = loc.toString(integerPart);
-        return integerFormatted;
+        return QStringLiteral("%1").arg(formattedNumber);
     } else {
         // Formato por defecto (Lempiras)
         return QStringLiteral("Lps %1").arg(formattedNumber);
     }
 }
+
 
 QString TableData::formatCurrencyWithFormatAndDecimals(const QString& raw, const QString& format, const QString& decimals) const {
     // Extrae dígitos, separadores y signo para poder parsear
@@ -1991,4 +1989,81 @@ bool TableData::hasColumnDuplicates(int columnIndex) const
     }
     
     return false; // No se encontraron duplicados
+}
+
+void TableData::setupDataViewWithAllFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QStringList &numberTypes, const QList<int> &uniqueColumns, int primaryKeyColumn)
+{
+    qDebug() << "DEBUG: setupDataViewWithAllFormats llamado con:";
+    qDebug() << "DEBUG: fieldNames:" << fieldNames;
+    qDebug() << "DEBUG: fieldTypes:" << fieldTypes;
+    qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
+    qDebug() << "DEBUG: millaresDecimals:" << millaresDecimals;
+    qDebug() << "DEBUG: textSizes:" << textSizes;
+    qDebug() << "DEBUG: numberTypes:" << numberTypes;
+    qDebug() << "DEBUG: uniqueColumns:" << uniqueColumns;
+    qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
+    
+    // Guardar todos los formatos incluyendo tipos de números
+    savedCurrencyFormats = currencyFormats;
+    savedMillaresDecimals = millaresDecimals;
+    savedTextSizes = textSizes;
+    savedNumberTypes = numberTypes; // Nuevo: guardar tipos de números
+    savedUniqueColumns = uniqueColumns;
+    qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
+    qDebug() << "DEBUG: Decimales guardados en savedMillaresDecimals:" << savedMillaresDecimals;
+    qDebug() << "DEBUG: Tamaños guardados en savedTextSizes:" << savedTextSizes;
+    qDebug() << "DEBUG: Tipos de números guardados en savedNumberTypes:" << savedNumberTypes;
+    qDebug() << "DEBUG: Campos únicos guardados en savedUniqueColumns:" << savedUniqueColumns;
+    
+    // Llamar al método base para hacer la configuración normal
+    setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
+    
+    // Aplicar formatos específicos después de la configuración básica
+    applyCurrencyFormats();
+    applyNumberFormats(); // Nuevo: aplicar formatos de números
+}
+
+void TableData::applyNumberFormats()
+{
+    qDebug() << "DEBUG: Aplicando formatos de números específicos";
+    
+    if (savedNumberTypes.isEmpty() || savedFieldTypes.isEmpty()) {
+        qDebug() << "DEBUG: No hay tipos de números o tipos de campo guardados";
+        return;
+    }
+    
+    for (int col = 0; col < savedFieldTypes.size() && col < savedNumberTypes.size(); ++col) {
+        if (savedFieldTypes.at(col) == "Entero" || savedFieldTypes.at(col) == "Byte") {
+            qDebug() << "DEBUG: Aplicando formato de número a columna" << col;
+            
+            dataTable->blockSignals(true);
+            for (int row = 0; row < dataTable->rowCount(); ++row) {
+                QTableWidgetItem *item = dataTable->item(row, col);
+                if (!item) continue;
+                
+                // Saltar fila de ejemplo
+                QTableWidgetItem *firstItem = dataTable->item(row, 0);
+                if (firstItem && firstItem->toolTip().contains("Ejemplo")) continue;
+
+                const QString text = item->text().trimmed();
+                if (!text.isEmpty()) {
+                    bool ok = false;
+                    int intValue = text.toInt(&ok);
+                    if (ok) {
+                        // Formatear como número entero
+                        item->setText(QString::number(intValue));
+                    } else {
+                        // Si no es un entero válido, dejar el texto tal cual
+                        qDebug() << "DEBUG: Valor no entero, sin formato:" << text;
+                    }
+                }
+            }
+            dataTable->blockSignals(false);
+        }
+    }
+    
+    // Forzar actualización visual de la tabla
+    qDebug() << "DEBUG: Forzando actualización visual de la tabla";
+    dataTable->viewport()->update();
+    dataTable->repaint();
 }

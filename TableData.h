@@ -45,7 +45,8 @@ public:
     void setupDataViewWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, int primaryKeyColumn = -1);
     void setupDataViewWithFormatsAndDecimals(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, int primaryKeyColumn = -1);
     void setupDataViewWithTextSizes(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, int primaryKeyColumn = -1);
-    void setupDataViewWithUniqueFields(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QList<int> &uniqueColumns, int primaryKeyColumn = -1);
+    void setupDataViewWithUniqueFields(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QStringList &numberTypes, const QList<int> &uniqueColumns, int primaryKeyColumn = -1);
+    void setupDataViewWithAllFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QStringList &numberTypes, const QList<int> &uniqueColumns, int primaryKeyColumn = -1);
 
     // Configurar nombre de tabla
     void setTableName(const QString &tableName);
@@ -67,6 +68,7 @@ public:
     QString formatCurrencyWithFormat(const QString& raw, const QString& format) const; // Formatear con formato específico
     QString formatCurrencyWithFormatAndDecimals(const QString& raw, const QString& format, const QString& decimals) const; // Formatear con formato y decimales específicos
     QString getCurrencyFormatForColumn(int column) const; // Obtener formato para columna específica
+    QString getNumberTypeForColumn(int column) const; // Obtener tipo de número para columna específica
     QString getMillaresDecimalsForColumn(int column) const; // Obtener decimales para columna específica
     QString getTextSizeForColumn(int column) const; // Obtener tamaño de texto para columna específica
     
@@ -99,6 +101,7 @@ private:
     void updateExampleData();
     QString generateExampleData(const QString &dataType, int column);
     void applyCurrencyFormats(); // Aplicar formatos de moneda específicos
+    void applyNumberFormats(); // Aplicar formatos de números específicos
     
     // UI Components
     QVBoxLayout *mainLayout;
@@ -111,6 +114,7 @@ private:
     QStringList savedFieldNames;
     QStringList savedFieldTypes;
     QStringList savedCurrencyFormats; // Formatos de moneda para cada campo
+    QStringList savedNumberTypes; // Tipos de números para cada campo
     QStringList savedMillaresDecimals; // Decimales de millares para cada campo
     QStringList savedTextSizes; // Tamaños de texto para cada campo
     QList<int> savedUniqueColumns; // Índices de columnas que deben ser únicas

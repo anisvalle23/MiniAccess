@@ -89,6 +89,7 @@ public:
     QStringList getAllFieldNames() const; // Método que incluye las llaves 🔑
     QStringList getCurrentFieldTypes() const;
     QStringList getCurrentCurrencyFormats() const;
+    QStringList getCurrentNumberTypes() const; // Nuevo método para obtener tipos de números
     QStringList getCurrentMillaresDecimals() const; // Nuevo método para obtener decimales de millares
     QStringList getCurrentTextSizes() const; // Nuevo método para obtener tamaños de texto
     int getPrimaryKeyColumnIndex() const; // Nuevo método para obtener índice de Primary Key
@@ -106,6 +107,7 @@ signals:
     void tableDesignChanged(const QStringList &fieldNames, const QStringList &fieldTypes);
     void tableDesignChangedWithFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats);
     void tableDesignChangedWithFormatsAndDecimals(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals);
+    void tableDesignChangedWithAllFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &numberTypes);
     void foreignKeyRemoved(const QString &tableName, const QString &fieldName); // Nueva señal para FK eliminada
     void checkUniqueFieldDuplicates(const QString &fieldName, int fieldIndex); // Nueva señal para validar duplicados
 

@@ -1530,6 +1530,7 @@ void TableView::onAddRowClicked()
 
     // Ajustar listas de configuración de campos
     fieldCurrencyFormats.insert(insertRow, "Lempiras (Lps)");
+    fieldNumberTypes.insert(insertRow, "Entero");
     fieldMillaresDecimals.insert(insertRow, "2");
     fieldTextSizes.insert(insertRow, "255");
 
@@ -1828,6 +1829,9 @@ void TableView::onDeleteRowClicked()
     // Ajustar listas de configuración de campos
     if (selectedRow < fieldCurrencyFormats.size()) {
         fieldCurrencyFormats.removeAt(selectedRow);
+    }
+    if (selectedRow < fieldNumberTypes.size()) {
+        fieldNumberTypes.removeAt(selectedRow);
     }
     if (selectedRow < fieldMillaresDecimals.size()) {
         fieldMillaresDecimals.removeAt(selectedRow);
@@ -2439,6 +2443,54 @@ QStringList TableView::getCurrentCurrencyFormats() const
     return currencyFormats;
 }
 
+QStringList TableView::getCurrentNumberTypes() const
+{
+    QStringList numberTypes;
+    
+    qDebug() << "DEBUG: getCurrentNumberTypes() - Lista guardada:" << fieldNumberTypes;
+    
+    // Verificar que la tabla existe y tiene filas
+    if (!tableWidget || tableWidget->rowCount() == 0) {
+        qDebug() << "DEBUG: TableWidget is null or has no rows for number types";
+        return numberTypes;
+    }
+    
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        // Verificar que ambas columnas existen
+        if (tableWidget->columnCount() < 2) {
+            qDebug() << "DEBUG: Table doesn't have enough columns for number types";
+            continue;
+        }
+        
+        QTableWidgetItem *typeItem = tableWidget->item(row, 1);
+        QTableWidgetItem *nameItem = tableWidget->item(row, 0);
+        
+        if (typeItem && !typeItem->text().trimmed().isEmpty()) {
+            QString fieldType = typeItem->text().trimmed();
+            if (!fieldType.isEmpty()) {
+                // Si es un campo de números, obtener el tipo guardado
+                if (fieldType == "Números") {
+                    QString numberType = "Entero"; // Valor por defecto
+                    
+                    // Usar el tipo guardado si existe
+                    if (row < fieldNumberTypes.size() && !fieldNumberTypes[row].isEmpty()) {
+                        numberType = fieldNumberTypes[row];
+                    }
+                    
+                    numberTypes << numberType;
+                    qDebug() << "DEBUG: Added number type:" << numberType << "for row:" << row;
+                } else {
+                    // Para campos que no son números, agregar cadena vacía para mantener índices
+                    numberTypes << "";
+                }
+            }
+        }
+    }
+    
+    qDebug() << "DEBUG: getCurrentNumberTypes() returning:" << numberTypes;
+    return numberTypes;
+}
+
 QStringList TableView::getCurrentMillaresDecimals() const
 {
     QStringList millaresDecimals;
@@ -2785,9 +2837,44 @@ void TableView::updateSpecificProperties(const QString &dataType)
         textSizeEdit->blockSignals(false);
     } else if (dataType == "Números") {
         numberPropertiesWidget->show();
-        // Por defecto, mostrar "Entero" como tipo seleccionado
-        numberTypeCombo->setCurrentText("Entero");
-        numberSizeLabel->setText("Tamaño: 32 bits (-2,147,483,648 a 2,147,483,647)");
+        
+        // Asegurar que la lista tenga el tamaño correcto
+        while (fieldNumberTypes.size() <= currentSelectedRow) {
+            fieldNumberTypes.append("Entero"); // Valor por defecto
+        }
+        
+        // Bloquear señales para evitar ciclos
+        numberTypeCombo->blockSignals(true);
+        
+        // Cargar el tipo guardado para esta fila
+        if (currentSelectedRow >= 0 && currentSelectedRow < fieldNumberTypes.size()) {
+            QString savedType = fieldNumberTypes[currentSelectedRow];
+            if (!savedType.isEmpty()) {
+                numberTypeCombo->setCurrentText(savedType);
+            } else {
+                numberTypeCombo->setCurrentText("Entero");
+                fieldNumberTypes[currentSelectedRow] = "Entero";
+            }
+        } else {
+            numberTypeCombo->setCurrentText("Entero");
+        }
+        
+        // Actualizar el label de información de tamaño según el tipo seleccionado
+        QString currentType = numberTypeCombo->currentText();
+        QString sizeInfo = "";
+        if (currentType == "Entero") {
+            sizeInfo = "Tamaño: 32 bits (-2,147,483,648 a 2,147,483,647)";
+        } else if (currentType == "Decimal") {
+            sizeInfo = "Tamaño: 64 bits (15-17 dígitos de precisión)";
+        } else if (currentType == "Doble") {
+            sizeInfo = "Tamaño: 64 bits (15-17 dígitos de precisión, mayor rango)";
+        } else if (currentType == "Byte") {
+            sizeInfo = "Tamaño: 8 bits (0 a 255)";
+        }
+        numberSizeLabel->setText(sizeInfo);
+        
+        // Reactivar señales
+        numberTypeCombo->blockSignals(false);
     } else if (dataType == "moneda") {
         currencyPropertiesWidget->show();
         
@@ -2934,6 +3021,7 @@ void TableView::onTextSizeChanged(const QString &text)
 void TableView::onNumberTypeChanged(const QString &text)
 {
     qDebug() << "DEBUG: Tipo de número cambiado a:" << text;
+    qDebug() << "DEBUG: Fila actual seleccionada:" << currentSelectedRow;
     
     // Mostrar información sobre los tamaños según el tipo seleccionado
     QString sizeInfo = "";
@@ -2958,8 +3046,23 @@ void TableView::onNumberTypeChanged(const QString &text)
         numberTypeCombo->setToolTip(sizeInfo);
     }
     
+    // Guardar el tipo de número para el campo actual
+    if (currentSelectedRow >= 0) {
+        // Asegurar que la lista tenga el tamaño correcto
+        while (fieldNumberTypes.size() <= currentSelectedRow) {
+            fieldNumberTypes.append("Entero"); // Valor por defecto
+        }
+        
+        // Guardar el tipo seleccionado para esta fila
+        fieldNumberTypes[currentSelectedRow] = text;
+        qDebug() << "DEBUG: Guardado tipo de número" << text << "para fila" << currentSelectedRow;
+        qDebug() << "DEBUG: Lista completa de tipos de números:" << fieldNumberTypes;
+    }
+    
     // Emitir señal para actualizar vista de datos
     emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+    // Emitir señal específica con todos los formatos incluyendo tipos de números
+    emit tableDesignChangedWithAllFormats(getCurrentFieldNames(), getCurrentFieldTypes(), getCurrentCurrencyFormats(), getCurrentMillaresDecimals(), getCurrentNumberTypes());
 }
 
 void TableView::onCurrencyFormatChanged(const QString &text)
