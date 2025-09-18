@@ -245,6 +245,7 @@ TableView::TableView(QWidget *parent) : QWidget(parent)
     fieldMillaresDecimals.clear();
     fieldTextSizes.clear(); // Inicializar lista de tamaños de texto;
     fieldNumberTypes.clear(); // Inicializar lista de tipos específicos de números
+    fieldDateFormats.clear(); // Inicializar lista de formatos de fecha
     
     // Crear la interfaz
     createInterface();
@@ -1531,6 +1532,7 @@ void TableView::onAddRowClicked()
     // Ajustar listas de configuración de campos
     fieldCurrencyFormats.insert(insertRow, "Lempiras (Lps)");
     fieldNumberTypes.insert(insertRow, "Entero");
+    fieldDateFormats.insert(insertRow, "DD-MM-YY");
     fieldMillaresDecimals.insert(insertRow, "2");
     fieldTextSizes.insert(insertRow, "255");
 
@@ -1832,6 +1834,9 @@ void TableView::onDeleteRowClicked()
     }
     if (selectedRow < fieldNumberTypes.size()) {
         fieldNumberTypes.removeAt(selectedRow);
+    }
+    if (selectedRow < fieldDateFormats.size()) {
+        fieldDateFormats.removeAt(selectedRow);
     }
     if (selectedRow < fieldMillaresDecimals.size()) {
         fieldMillaresDecimals.removeAt(selectedRow);
@@ -2491,6 +2496,54 @@ QStringList TableView::getCurrentNumberTypes() const
     return numberTypes;
 }
 
+QStringList TableView::getCurrentDateFormats() const
+{
+    QStringList dateFormats;
+    
+    qDebug() << "DEBUG: getCurrentDateFormats() - Lista guardada:" << fieldDateFormats;
+    
+    // Verificar que la tabla existe y tiene filas
+    if (!tableWidget || tableWidget->rowCount() == 0) {
+        qDebug() << "DEBUG: TableWidget is null or has no rows for date formats";
+        return dateFormats;
+    }
+    
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        // Verificar que ambas columnas existen
+        if (tableWidget->columnCount() < 2) {
+            qDebug() << "DEBUG: Table doesn't have enough columns for date formats";
+            continue;
+        }
+        
+        QTableWidgetItem *typeItem = tableWidget->item(row, 1);
+        QTableWidgetItem *nameItem = tableWidget->item(row, 0);
+        
+        if (typeItem && !typeItem->text().trimmed().isEmpty()) {
+            QString fieldType = typeItem->text().trimmed();
+            if (!fieldType.isEmpty()) {
+                // Si es un campo de fecha, obtener el formato guardado
+                if (fieldType == "fecha") {
+                    QString dateFormat = "DD-MM-YY"; // Valor por defecto
+                    
+                    // Usar el formato guardado si existe
+                    if (row < fieldDateFormats.size() && !fieldDateFormats[row].isEmpty()) {
+                        dateFormat = fieldDateFormats[row];
+                    }
+                    
+                    dateFormats << dateFormat;
+                    qDebug() << "DEBUG: Added date format:" << dateFormat << "for row:" << row;
+                } else {
+                    // Para campos que no son fecha, agregar cadena vacía para mantener índices
+                    dateFormats << "";
+                }
+            }
+        }
+    }
+    
+    qDebug() << "DEBUG: getCurrentDateFormats() returning:" << dateFormats;
+    return dateFormats;
+}
+
 QStringList TableView::getCurrentMillaresDecimals() const
 {
     QStringList millaresDecimals;
@@ -2919,7 +2972,30 @@ void TableView::updateSpecificProperties(const QString &dataType)
         millaresDecimalsCombo->blockSignals(false);
     } else if (dataType == "fecha") {
         datePropertiesWidget->show();
-        dateFormatCombo->setCurrentText("DD-MM-YY");
+        
+        // Asegurar que la lista tenga el tamaño correcto
+        while (fieldDateFormats.size() <= currentSelectedRow) {
+            fieldDateFormats.append("DD-MM-YY"); // Valor por defecto
+        }
+        
+        // Bloquear señales para evitar ciclos
+        dateFormatCombo->blockSignals(true);
+        
+        // Cargar el formato guardado para esta fila
+        if (currentSelectedRow >= 0 && currentSelectedRow < fieldDateFormats.size()) {
+            QString savedFormat = fieldDateFormats[currentSelectedRow];
+            if (!savedFormat.isEmpty()) {
+                dateFormatCombo->setCurrentText(savedFormat);
+            } else {
+                dateFormatCombo->setCurrentText("DD-MM-YY");
+                fieldDateFormats[currentSelectedRow] = "DD-MM-YY";
+            }
+        } else {
+            dateFormatCombo->setCurrentText("DD-MM-YY");
+        }
+        
+        // Reactivar señales
+        dateFormatCombo->blockSignals(false);
     }
 }
 
@@ -3062,7 +3138,7 @@ void TableView::onNumberTypeChanged(const QString &text)
     // Emitir señal para actualizar vista de datos
     emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
     // Emitir señal específica con todos los formatos incluyendo tipos de números
-    emit tableDesignChangedWithAllFormats(getCurrentFieldNames(), getCurrentFieldTypes(), getCurrentCurrencyFormats(), getCurrentMillaresDecimals(), getCurrentNumberTypes());
+    emit tableDesignChangedWithAllFormats(getCurrentFieldNames(), getCurrentFieldTypes(), getCurrentCurrencyFormats(), getCurrentMillaresDecimals(), getCurrentNumberTypes(), getCurrentDateFormats());
 }
 
 void TableView::onCurrencyFormatChanged(const QString &text)
@@ -3108,8 +3184,37 @@ void TableView::onCurrencyFormatChanged(const QString &text)
 void TableView::onDateFormatChanged(const QString &text)
 {
     qDebug() << "DEBUG: Formato de fecha cambiado a:" << text;
+    qDebug() << "DEBUG: Fila actual seleccionada:" << currentSelectedRow;
+    
+    // Mostrar información sobre el formato seleccionado
+    QString formatInfo = "";
+    if (text == "DD-MM-YY") {
+        formatInfo = "Formato: Día-Mes-Año (ejemplo: 25-12-23)";
+    } else if (text == "DD/MM/YY") {
+        formatInfo = "Formato: Día/Mes/Año (ejemplo: 25/12/23)";
+    } else if (text == "DD/MESTEXTO/YYYY") {
+        formatInfo = "Formato: Día/Mes_Texto/Año (ejemplo: 25/Diciembre/2023)";
+    }
+    
+    qDebug() << "DEBUG: Información de formato:" << formatInfo;
+    
+    // Guardar el formato de fecha para el campo actual
+    if (currentSelectedRow >= 0) {
+        // Asegurar que la lista tenga el tamaño correcto
+        while (fieldDateFormats.size() <= currentSelectedRow) {
+            fieldDateFormats.append("DD-MM-YY"); // Valor por defecto
+        }
+        
+        // Guardar el formato seleccionado para esta fila
+        fieldDateFormats[currentSelectedRow] = text;
+        qDebug() << "DEBUG: Guardado formato de fecha" << text << "para fila" << currentSelectedRow;
+        qDebug() << "DEBUG: Lista completa de formatos de fecha:" << fieldDateFormats;
+    }
+    
     // Emitir señal para actualizar vista de datos
     emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+    // Emitir señal específica con todos los formatos incluyendo formatos de fecha
+    emit tableDesignChangedWithAllFormats(getCurrentFieldNames(), getCurrentFieldTypes(), getCurrentCurrencyFormats(), getCurrentMillaresDecimals(), getCurrentNumberTypes(), getCurrentDateFormats());
 }
 
 void TableView::onMillaresDecimalsChanged(const QString &text)

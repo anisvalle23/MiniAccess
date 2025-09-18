@@ -771,8 +771,8 @@ void TableEditor::showTableView(const QString &tableName)
                             uniqueColumns = tableViews.value(tableName)->getUniqueKeyColumnIndexes();
                         }
                         // Usar setupDataViewWithUniqueFields con listas vacías para otros parámetros por compatibilidad
-                        QStringList emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes;
-                        tableDatas.value(tableName)->setupDataViewWithUniqueFields(fieldNames, fieldTypes, emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, uniqueColumns, primaryKeyIndex);
+                        QStringList emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, emptyDateFormats;
+                        tableDatas.value(tableName)->setupDataViewWithUniqueFields(fieldNames, fieldTypes, emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, emptyDateFormats, uniqueColumns, primaryKeyIndex);
                     }
                     // Emitir señal de que los campos cambiaron
                     emit tableFieldsChanged(tableName);
@@ -795,8 +795,8 @@ void TableEditor::showTableView(const QString &tableName)
                             uniqueColumns = tableViews.value(tableName)->getUniqueKeyColumnIndexes();
                         }
                         // Usar setupDataViewWithUniqueFields con listas vacías para parámetros no disponibles
-                        QStringList emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes;
-                        tableDatas.value(tableName)->setupDataViewWithUniqueFields(fieldNames, fieldTypes, currencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, uniqueColumns, primaryKeyIndex);
+                        QStringList emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, emptyDateFormats;
+                        tableDatas.value(tableName)->setupDataViewWithUniqueFields(fieldNames, fieldTypes, currencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, emptyDateFormats, uniqueColumns, primaryKeyIndex);
                     }
                     // Emitir señal de que los campos cambiaron
                     emit tableFieldsChanged(tableName);
@@ -819,8 +819,8 @@ void TableEditor::showTableView(const QString &tableName)
                             uniqueColumns = tableViews.value(tableName)->getUniqueKeyColumnIndexes();
                         }
                         // Usar setupDataViewWithUniqueFields con lista vacía para textSizes
-                        QStringList emptyTextSizes, emptyNumberTypes;
-                        tableDatas.value(tableName)->setupDataViewWithUniqueFields(fieldNames, fieldTypes, currencyFormats, millaresDecimals, emptyTextSizes, emptyNumberTypes, uniqueColumns, primaryKeyIndex);
+                        QStringList emptyTextSizes, emptyNumberTypes, emptyDateFormats;
+                        tableDatas.value(tableName)->setupDataViewWithUniqueFields(fieldNames, fieldTypes, currencyFormats, millaresDecimals, emptyTextSizes, emptyNumberTypes, emptyDateFormats, uniqueColumns, primaryKeyIndex);
                     }
                     // Emitir señal de que los campos cambiaron
                     emit tableFieldsChanged(tableName);
@@ -828,7 +828,7 @@ void TableEditor::showTableView(const QString &tableName)
 
         // Conectar señal específica para todos los formatos incluyendo tipos de números
         connect(view, &TableView::tableDesignChangedWithAllFormats, this,
-                [this, tableName](const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &numberTypes) {
+                [this, tableName](const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &numberTypes, const QStringList &dateFormats) {
                     // Guardar diseño en "arreglos" por tabla
                     TableDesignData &d = tableDesigns[tableName];
                     d.fieldNames = fieldNames;
@@ -843,8 +843,8 @@ void TableEditor::showTableView(const QString &tableName)
                             uniqueColumns = tableViews.value(tableName)->getUniqueKeyColumnIndexes();
                         }
                         // Usar setupDataViewWithUniqueFields con lista vacía para textSizes
-                        QStringList emptyTextSizes;
-                        tableDatas.value(tableName)->setupDataViewWithUniqueFields(fieldNames, fieldTypes, currencyFormats, millaresDecimals, emptyTextSizes, numberTypes, uniqueColumns, primaryKeyIndex);
+                        QStringList emptyTextSizes, emptyDateFormats;
+                        tableDatas.value(tableName)->setupDataViewWithUniqueFields(fieldNames, fieldTypes, currencyFormats, millaresDecimals, emptyTextSizes, numberTypes, dateFormats, uniqueColumns, primaryKeyIndex);
                     }
                     // Emitir señal de que los campos cambiaron
                     emit tableFieldsChanged(tableName);
@@ -901,8 +901,8 @@ void TableEditor::showTableView(const QString &tableName)
                 uniqueColumns = tableViews.value(tableName)->getUniqueKeyColumnIndexes();
             }
             // Usar setupDataViewWithUniqueFields con listas vacías para parámetros no disponibles
-            QStringList emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes;
-            data->setupDataViewWithUniqueFields(d.fieldNames, d.fieldTypes, emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, uniqueColumns, primaryKeyIndex);
+            QStringList emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, emptyDateFormats;
+            data->setupDataViewWithUniqueFields(d.fieldNames, d.fieldTypes, emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, emptyDateFormats, uniqueColumns, primaryKeyIndex);
         }
         tableDatas.insert(tableName, data);
     }
@@ -974,8 +974,8 @@ void TableEditor::showTableDataView(const QString &tableName)
                 uniqueColumns = tableViews.value(tableName)->getUniqueKeyColumnIndexes();
             }
             // Usar setupDataViewWithUniqueFields con listas vacías para parámetros no disponibles
-            QStringList emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes;
-            tableDatas[tableName]->setupDataViewWithUniqueFields(d.fieldNames, d.fieldTypes, emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, uniqueColumns, primaryKeyIndex);
+            QStringList emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, emptyDateFormats;
+            tableDatas[tableName]->setupDataViewWithUniqueFields(d.fieldNames, d.fieldTypes, emptyCurrencyFormats, emptyMillaresDecimals, emptyTextSizes, emptyNumberTypes, emptyDateFormats, uniqueColumns, primaryKeyIndex);
         }
     }
 
@@ -1032,6 +1032,7 @@ void TableEditor::switchToDataView()
             QStringList millaresDecimals = view->getCurrentMillaresDecimals();
             QStringList textSizes = view->getCurrentTextSizes();
             QStringList numberTypes = view->getCurrentNumberTypes();
+            QStringList dateFormats = view->getCurrentDateFormats();
 
             qDebug() << "DEBUG: switchToDataView - Actualizando con formatos:";
             qDebug() << "DEBUG: fieldNames:" << fieldNames;
@@ -1050,7 +1051,7 @@ void TableEditor::switchToDataView()
             qDebug() << "DEBUG: Campos únicos en columnas:" << uniqueColumns;
 
             // Actualizar la vista de datos con todos los formatos más recientes incluyendo campos únicos
-            data->setupDataViewWithUniqueFields(fieldNames, fieldTypes, currencyFormats, millaresDecimals, textSizes, numberTypes, uniqueColumns, primaryKeyIndex);
+            data->setupDataViewWithUniqueFields(fieldNames, fieldTypes, currencyFormats, millaresDecimals, textSizes, numberTypes, dateFormats, uniqueColumns, primaryKeyIndex);
         }
     }
 

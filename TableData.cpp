@@ -844,8 +844,6 @@ void TableData::setupDataViewWithTextSizes(const QStringList &fieldNames, const 
     savedCurrencyFormats = currencyFormats;
     savedMillaresDecimals = millaresDecimals;
     savedTextSizes = textSizes;
-    qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
-    qDebug() << "DEBUG: Decimales guardados en savedMillaresDecimals:" << savedMillaresDecimals;
     qDebug() << "DEBUG: Tamaños guardados en savedTextSizes:" << savedTextSizes;
     
     // Llamar al método base para hacer la configuración normal
@@ -855,7 +853,7 @@ void TableData::setupDataViewWithTextSizes(const QStringList &fieldNames, const 
     applyCurrencyFormats();
 }
 
-void TableData::setupDataViewWithUniqueFields(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QStringList &numberTypes, const QList<int> &uniqueColumns, int primaryKeyColumn)
+void TableData::setupDataViewWithUniqueFields(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QStringList &numberTypes, const QStringList &dateFormats, const QList<int> &uniqueColumns, int primaryKeyColumn)
 {
     qDebug() << "DEBUG: setupDataViewWithUniqueFields llamado con:";
     qDebug() << "DEBUG: fieldNames:" << fieldNames;
@@ -863,15 +861,14 @@ void TableData::setupDataViewWithUniqueFields(const QStringList &fieldNames, con
     qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
     qDebug() << "DEBUG: millaresDecimals:" << millaresDecimals;
     qDebug() << "DEBUG: textSizes:" << textSizes;
-    qDebug() << "DEBUG: uniqueColumns:" << uniqueColumns;
+    qDebug() << "DEBUG: numberTypes:" << numberTypes;
+    qDebug() << "DEBUG: dateFormats:" << dateFormats;    qDebug() << "DEBUG: uniqueColumns:" << uniqueColumns;
     qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
     
     // Guardar los formatos de moneda, decimales, tamaños de texto y campos únicos
     savedCurrencyFormats = currencyFormats;
     savedMillaresDecimals = millaresDecimals;
     savedTextSizes = textSizes;
-    savedUniqueColumns = uniqueColumns;
-    qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
     qDebug() << "DEBUG: Decimales guardados en savedMillaresDecimals:" << savedMillaresDecimals;
     qDebug() << "DEBUG: Tamaños guardados en savedTextSizes:" << savedTextSizes;
     qDebug() << "DEBUG: Campos únicos guardados en savedUniqueColumns:" << savedUniqueColumns;
@@ -1991,7 +1988,7 @@ bool TableData::hasColumnDuplicates(int columnIndex) const
     return false; // No se encontraron duplicados
 }
 
-void TableData::setupDataViewWithAllFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QStringList &numberTypes, const QList<int> &uniqueColumns, int primaryKeyColumn)
+void TableData::setupDataViewWithAllFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &textSizes, const QStringList &numberTypes, const QStringList &dateFormats, const QList<int> &uniqueColumns, int primaryKeyColumn)
 {
     qDebug() << "DEBUG: setupDataViewWithAllFormats llamado con:";
     qDebug() << "DEBUG: fieldNames:" << fieldNames;
@@ -2007,13 +2004,11 @@ void TableData::setupDataViewWithAllFormats(const QStringList &fieldNames, const
     savedCurrencyFormats = currencyFormats;
     savedMillaresDecimals = millaresDecimals;
     savedTextSizes = textSizes;
-    savedNumberTypes = numberTypes; // Nuevo: guardar tipos de números
-    savedUniqueColumns = uniqueColumns;
     qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
     qDebug() << "DEBUG: Decimales guardados en savedMillaresDecimals:" << savedMillaresDecimals;
     qDebug() << "DEBUG: Tamaños guardados en savedTextSizes:" << savedTextSizes;
     qDebug() << "DEBUG: Tipos de números guardados en savedNumberTypes:" << savedNumberTypes;
-    qDebug() << "DEBUG: Campos únicos guardados en savedUniqueColumns:" << savedUniqueColumns;
+    qDebug() << "DEBUG: Formatos de fecha guardados en savedDateFormats:" << savedDateFormats;    qDebug() << "DEBUG: Campos únicos guardados en savedUniqueColumns:" << savedUniqueColumns;
     
     // Llamar al método base para hacer la configuración normal
     setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
