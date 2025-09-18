@@ -16,7 +16,7 @@ QWidget *DataTypeDelegate::createEditor(QWidget *parent, const QStyleOptionViewI
     Q_UNUSED(index)
     
     QComboBox *comboBox = new QComboBox(parent);
-    comboBox->addItems({"Entero", "Decimales", "Sí / No", "Texto corto", "Texto largo", "moneda", "fecha"});
+    comboBox->addItems({"Números", "Sí / No", "Texto corto", "Texto largo", "moneda", "fecha"});
     comboBox->setStyleSheet(
         "QComboBox {"
         "background-color: white;"
@@ -213,16 +213,17 @@ static QString normalizeDataType(const QString& raw) {
         || t.compare("Booleano", Qt::CaseInsensitive) == 0)
         return "Sí / No";
     if (t.compare("Decimal", Qt::CaseInsensitive) == 0
-        || t.compare("Decimales", Qt::CaseInsensitive) == 0)
-        return "Decimales";
+        || t.compare("Decimales", Qt::CaseInsensitive) == 0
+        || t.compare("Entero", Qt::CaseInsensitive) == 0
+        || t.compare("Números", Qt::CaseInsensitive) == 0
+        || t.compare("Numero", Qt::CaseInsensitive) == 0)
+        return "Números";
     if (t.compare("Moneda", Qt::CaseInsensitive) == 0
         || t.compare("moneda", Qt::CaseInsensitive) == 0)
         return "moneda";
     if (t.compare("Fecha", Qt::CaseInsensitive) == 0
         || t.compare("fecha", Qt::CaseInsensitive) == 0)
         return "fecha";
-    if (t.compare("Entero", Qt::CaseInsensitive) == 0)
-        return "Entero";
 
     // Por defecto deja igual
     return t;
@@ -243,6 +244,7 @@ TableView::TableView(QWidget *parent) : QWidget(parent)
     fieldCurrencyFormats.clear();
     fieldMillaresDecimals.clear();
     fieldTextSizes.clear(); // Inicializar lista de tamaños de texto;
+    fieldNumberTypes.clear(); // Inicializar lista de tipos específicos de números
     
     // Crear la interfaz
     createInterface();
@@ -600,7 +602,7 @@ void TableView::createPropertiesArea()
     leftColumn->addWidget(typeLabel);
     
     dataTypeCombo = new QComboBox();
-    dataTypeCombo->addItems({"Entero", "Decimales", "Sí / No", "Texto corto", "Texto largo", "moneda", "fecha"});
+    dataTypeCombo->addItems({"Números", "Sí / No", "Texto corto", "Texto largo", "moneda", "fecha"});
     dataTypeCombo->setStyleSheet(getComboStyle());
     leftColumn->addWidget(dataTypeCombo);
     
@@ -733,7 +735,7 @@ void TableView::setupDesignTable()
             item->setText("Id"); // Campo ID por defecto
             item->setBackground(QBrush(QColor(255, 255, 255))); // Fondo blanco
         } else if (col == 1) {
-            item->setText("Entero"); // Tipo por defecto para ID
+            item->setText("Números"); // Tipo por defecto para ID
             item->setBackground(QBrush(QColor(255, 255, 255))); // Fondo blanco
         } else {
             // Columna de descripción también habilitada
@@ -2364,6 +2366,20 @@ QStringList TableView::getCurrentFieldTypes() const
         
         if (typeItem && !typeItem->text().trimmed().isEmpty()) {
             QString fieldType = typeItem->text().trimmed();
+            
+            // Si el tipo es "Números", obtener el tipo específico de número
+            if (fieldType == "Números") {
+                // Asegurar que la lista de tipos de números tenga el tamaño correcto
+                if (row < fieldNumberTypes.size() && !fieldNumberTypes[row].isEmpty()) {
+                    fieldType = fieldNumberTypes[row];
+                    qDebug() << "DEBUG: Reemplazando 'Números' con tipo específico:" << fieldType;
+                } else {
+                    // Valor por defecto si no se ha seleccionado un tipo específico
+                    fieldType = "Entero";
+                    qDebug() << "DEBUG: Usando tipo por defecto 'Entero' para campo Números";
+                }
+            }
+            
             if (!fieldType.isEmpty()) {
                 fieldTypes << fieldType;
                 qDebug() << "DEBUG: Added field type:" << fieldType;
@@ -2767,15 +2783,11 @@ void TableView::updateSpecificProperties(const QString &dataType)
         
         // Reactivar señales
         textSizeEdit->blockSignals(false);
-    } else if (dataType == "Entero" || dataType == "Decimales") {
+    } else if (dataType == "Números") {
         numberPropertiesWidget->show();
-        if (dataType == "Entero") {
-            numberTypeCombo->setCurrentText("Entero");
-            numberSizeLabel->setText("Tamaño: 32 bits (-2,147,483,648 a 2,147,483,647)");
-        } else {
-            numberTypeCombo->setCurrentText("Decimal");
-            numberSizeLabel->setText("Tamaño: 64 bits (15-17 dígitos de precisión)");
-        }
+        // Por defecto, mostrar "Entero" como tipo seleccionado
+        numberTypeCombo->setCurrentText("Entero");
+        numberSizeLabel->setText("Tamaño: 32 bits (-2,147,483,648 a 2,147,483,647)");
     } else if (dataType == "moneda") {
         currencyPropertiesWidget->show();
         

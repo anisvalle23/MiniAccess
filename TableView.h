@@ -128,6 +128,7 @@ private slots:
     // Slots para propiedades específicas
     void onTextSizeChanged(const QString &text);
     void onNumberTypeChanged(const QString &text);
+    // void onDecimalPlacesUpdated(const QString &text); // REMOVIDO - usar lambda en connect
     void onCurrencyFormatChanged(const QString &text);
     void onDateFormatChanged(const QString &text);
     void onMillaresDecimalsChanged(const QString &text); // Nuevo slot para decimales de millares
@@ -196,6 +197,8 @@ private:
     QWidget *numberPropertiesWidget;
     QComboBox *numberTypeCombo; // Entero, Decimal, Doble, Byte
     QLabel *numberSizeLabel; // Label para mostrar información de tamaño
+    QComboBox *decimalPlacesCombo; // Combo para decimales cuando es Decimal o Doble
+    QLabel *decimalPlacesLabel; // Label para decimales
     
     // Para tipo moneda
     QWidget *currencyPropertiesWidget;
@@ -218,6 +221,8 @@ private:
     QStringList fieldCurrencyFormats;
     QStringList fieldMillaresDecimals; // Almacenar decimales para millares por campo
     QStringList fieldTextSizes; // Almacenar tamaños de campo de texto por campo
+    QStringList fieldNumberTypes; // Almacenar tipos específicos de números por campo
+    QStringList fieldDecimalPlaces; // Almacenar número de decimales para campos Decimal/Doble
 };
 
 #endif // TABLEVIEW_H

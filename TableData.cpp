@@ -252,10 +252,14 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
             }
         };
 
-        if (type == "Entero") {
-            bool ok=false; newText.toInt(&ok);
+        if (type == "Entero" || type == "Byte") {
+            bool ok=false; 
+            int intVal = newText.toInt(&ok);
             if (!ok) return softReject("Este campo es Entero.");
-        } else if (type == "Decimales") {
+            if (type == "Byte" && (intVal < 0 || intVal > 255)) {
+                return softReject("Byte debe estar entre 0 y 255.");
+            }
+        } else if (type == "Decimales" || type == "Decimal" || type == "Doble") {
             bool ok=false; newText.toDouble(&ok);
             if (!ok) return softReject("Este campo es Decimal (ej. 12.34).");
         } else if (type == "moneda") {
@@ -1292,10 +1296,12 @@ QString TableData::getTableStyle()
 
 QString TableData::generateExampleData(const QString &dataType, int column)
 {
-    if (dataType == "Entero") {
+    if (dataType == "Entero" || dataType == "Números") {
         return "12345";
-    } else if (dataType == "Decimales") {
+    } else if (dataType == "Decimal" || dataType == "Decimales" || dataType == "Doble") {
         return "123.45";
+    } else if (dataType == "Byte") {
+        return "255";
     } else if (dataType == "Sí / No") {
         return "Sí";
     } else if (dataType == "Texto corto (hasta N caracteres)") {
@@ -1638,10 +1644,13 @@ void TableData::showSoftWarning(int row, int col, const QString& msg) const {
 
 bool TableData::isValueValidForType(const QString& type, const QString& value) const {
     const QString v = value.trimmed();
-    if (type == "Entero") {
-        bool ok=false; v.toInt(&ok); return ok || v.isEmpty();
+    if (type == "Entero" || type == "Byte") {
+        bool ok=false; int intVal = v.toInt(&ok);
+        if (!ok && !v.isEmpty()) return false;
+        if (type == "Byte" && !v.isEmpty() && (intVal < 0 || intVal > 255)) return false;
+        return ok || v.isEmpty();
     }
-    if (type == "Decimales" || type == "moneda") {
+    if (type == "Decimales" || type == "Decimal" || type == "Doble" || type == "moneda") {
         bool ok=false; v.toDouble(&ok); return ok || v.isEmpty();
     }
     if (type == "fecha") {
