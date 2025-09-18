@@ -887,24 +887,84 @@ void TableView::onFieldNameChanged(const QString &text)
         QTableWidgetItem *item = tableWidget->item(currentSelectedRow, 0);
         if (item) {
             if (!text.isEmpty()) {
-                // Verificar el estado de Primary Key y Foreign Key
-                bool isPrimaryKey = (primaryKeyRow == currentSelectedRow);
-                bool isForeignKey = foreignKeyRows.contains(currentSelectedRow);
+                // *** PROTECCIÓN: Bloquear señales durante el proceso de actualización ***
+                blockSignals(true);
                 
-                // Aplicar los iconos apropiados
-                if (isPrimaryKey && isForeignKey) {
-                    item->setText("🔑🔗 " + text);
-                    item->setToolTip("Campo Primary Key con Foreign Key - Clave única que también referencia otra tabla");
-                } else if (isPrimaryKey) {
-                    item->setText("🔑 " + text);
-                    item->setToolTip("Campo Llave Primaria - Requerido y único");
-                } else if (isForeignKey) {
-                    item->setText("🔗 " + text);
-                    item->setToolTip("Campo Foreign Key - Referencia a otra tabla");
-                } else {
-                    item->setText(text);
-                    item->setToolTip("");
+                try {
+                    // *** PROTECCIÓN: Obtener el nombre anterior del campo ***
+                    QString oldFieldName = item->text();
+                    // Limpiar el nombre anterior de iconos
+                    oldFieldName = oldFieldName.remove("🔑🔗🔶")
+                                              .remove("🔑🔗")
+                                              .remove("🔑🔶")
+                                              .remove("🔗🔶")
+                                              .remove("🔑")
+                                              .remove("🔗")
+                                              .remove("🔶")
+                                              .trimmed();
+                    
+                    // Verificar el estado de Primary Key y Foreign Key
+                    bool isPrimaryKey = (primaryKeyRow == currentSelectedRow);
+                    bool isForeignKey = foreignKeyRows.contains(currentSelectedRow);
+                    bool isUnique = uniqueKeyRows.contains(currentSelectedRow);
+                    
+                    qDebug() << "DEBUG: Cambiando nombre de campo de" << oldFieldName << "a" << text;
+                    qDebug() << "DEBUG: Estado - PK:" << isPrimaryKey << "FK:" << isForeignKey << "Unique:" << isUnique;
+                    
+                    // Aplicar los iconos apropiados PRIMERO
+                    if (isPrimaryKey && isForeignKey && isUnique) {
+                        item->setText("🔑🔗🔶 " + text);
+                        item->setToolTip("Campo Primary Key, Foreign Key y Unique");
+                    } else if (isPrimaryKey && isForeignKey) {
+                        item->setText("🔑🔗 " + text);
+                        item->setToolTip("Campo Primary Key con Foreign Key - Clave única que también referencia otra tabla");
+                    } else if (isPrimaryKey && isUnique) {
+                        item->setText("🔑🔶 " + text);
+                        item->setToolTip("Campo Primary Key y Unique");
+                    } else if (isForeignKey && isUnique) {
+                        item->setText("🔗🔶 " + text);
+                        item->setToolTip("Campo Foreign Key y Unique");
+                    } else if (isPrimaryKey) {
+                        item->setText("🔑 " + text);
+                        item->setToolTip("Campo Llave Primaria - Requerido y único");
+                    } else if (isForeignKey) {
+                        item->setText("🔗 " + text);
+                        item->setToolTip("Campo Foreign Key - Referencia a otra tabla");
+                    } else if (isUnique) {
+                        item->setText("🔶 " + text);
+                        item->setToolTip("Campo Unique - Valores únicos, no se permiten duplicados");
+                    } else {
+                        item->setText(text);
+                        item->setToolTip("");
+                    }
+                    
+                    // *** VALIDACIÓN: Notificar si es un campo crítico que cambia DESPUÉS de actualizar ***
+                    if ((isPrimaryKey || isForeignKey) && oldFieldName != text && !oldFieldName.isEmpty() && !currentTableName.isEmpty()) {
+                        qDebug() << "DEBUG: Campo crítico cambiando de nombre:" << oldFieldName << "→" << text;
+                        
+                        // Usar QTimer para emitir las señales después de que se complete la actualización visual
+                        QTimer::singleShot(50, this, [this, isPrimaryKey, isForeignKey, oldFieldName, text]() {
+                            try {
+                                if (isForeignKey) {
+                                    qDebug() << "DEBUG: Emitiendo señal foreignKeyRenamed";
+                                    emit foreignKeyRenamed(currentTableName, oldFieldName, text);
+                                }
+                                if (isPrimaryKey) {
+                                    qDebug() << "DEBUG: Emitiendo señal primaryKeyRenamed";
+                                    emit primaryKeyRenamed(currentTableName, oldFieldName, text);
+                                }
+                            } catch (...) {
+                                qDebug() << "ERROR: Excepción al emitir señales de renombrado";
+                            }
+                        });
+                    }
+                    
+                } catch (...) {
+                    qDebug() << "ERROR: Excepción en onFieldNameChanged";
                 }
+                
+                // Restaurar señales
+                blockSignals(false);
             } else {
                 item->setText(text);
                 item->setToolTip("");

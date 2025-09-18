@@ -71,6 +71,8 @@ public:
 public slots:
     void onTableFieldsChanged(const QString &tableName); // Slot público para actualización en tiempo real
     void onForeignKeyRemoved(const QString &tableName, const QString &fieldName); // Slot para FK eliminada
+    void onForeignKeyRenamed(const QString &tableName, const QString &oldFieldName, const QString &newFieldName); // Slot para FK renombrada
+    void onPrimaryKeyRenamed(const QString &tableName, const QString &oldFieldName, const QString &newFieldName); // Slot para PK renombrada
     void applyTableRenameImmediate(const QString& oldName, const QString& newName);
     void onTableDeleted(const QString &tableName); // Slot para manejar tabla eliminada
 

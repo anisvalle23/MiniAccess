@@ -110,6 +110,8 @@ signals:
     void tableDesignChangedWithFormatsAndDecimals(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals);
     void tableDesignChangedWithAllFormats(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, const QStringList &numberTypes, const QStringList &dateFormats);
     void foreignKeyRemoved(const QString &tableName, const QString &fieldName); // Nueva señal para FK eliminada
+    void foreignKeyRenamed(const QString &tableName, const QString &oldFieldName, const QString &newFieldName); // Nueva señal para FK renombrada
+    void primaryKeyRenamed(const QString &tableName, const QString &oldFieldName, const QString &newFieldName); // Nueva señal para PK renombrada
     void checkUniqueFieldDuplicates(const QString &fieldName, int fieldIndex); // Nueva señal para validar duplicados
 
 private slots:

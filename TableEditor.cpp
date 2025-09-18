@@ -870,6 +870,21 @@ void TableEditor::showTableView(const QString &tableName)
                     // Emitir señal para notificar a RelationshipsView
                     emit foreignKeyRemoved(tableName, fieldName);
                 }, Qt::UniqueConnection);
+        
+        // *** NUEVAS CONEXIONES: Conectar señales para renombrado de campos críticos ***
+        connect(view, &TableView::foreignKeyRenamed, this,
+                [this](const QString &tableName, const QString &oldFieldName, const QString &newFieldName) {
+                    qDebug() << "DEBUG: Foreign Key renombrada en tabla:" << tableName << "de" << oldFieldName << "a" << newFieldName;
+                    // Emitir señal para notificar a RelationshipsView
+                    emit foreignKeyRenamed(tableName, oldFieldName, newFieldName);
+                }, Qt::UniqueConnection);
+                
+        connect(view, &TableView::primaryKeyRenamed, this,
+                [this](const QString &tableName, const QString &oldFieldName, const QString &newFieldName) {
+                    qDebug() << "DEBUG: Primary Key renombrada en tabla:" << tableName << "de" << oldFieldName << "a" << newFieldName;
+                    // Emitir señal para notificar a RelationshipsView
+                    emit primaryKeyRenamed(tableName, oldFieldName, newFieldName);
+                }, Qt::UniqueConnection);
 
         // Conectar señal para validar campos únicos
         connect(view, &TableView::checkUniqueFieldDuplicates, this,

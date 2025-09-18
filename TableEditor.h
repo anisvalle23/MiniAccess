@@ -109,6 +109,8 @@ signals:
     void tableFieldsChanged(const QString &tableName); // Nueva señal para cambios en campos
     void tableRenamed(const QString &oldName, const QString &newName); // Nueva señal para renombrado
     void foreignKeyRemoved(const QString &tableName, const QString &fieldName); // Nueva señal para FK eliminada
+    void foreignKeyRenamed(const QString &tableName, const QString &oldFieldName, const QString &newFieldName); // Nueva señal para FK renombrada
+    void primaryKeyRenamed(const QString &tableName, const QString &oldFieldName, const QString &newFieldName); // Nueva señal para PK renombrada
 
 private slots:
     void onCreateTableClicked();

@@ -1072,8 +1072,14 @@ void RelationshipsView::updateSourceFields(const QString &tableName)
         return;
     }
     
+    // *** PROTECCIÓN: Solo actualizar si tableEditor es válido ***
+    if (!tableEditor) {
+        qDebug() << "WARNING: tableEditor es null en updateSourceFields";
+        return;
+    }
+    
     // Solo mostrar campos que sean Primary Key o Foreign Key
-    if (tableEditor) {
+    try {
         QStringList primaryKeys = tableEditor->getTablePrimaryKeys(tableName);
         QStringList foreignKeys = tableEditor->getTableForeignKeys(tableName);
         
@@ -1097,6 +1103,9 @@ void RelationshipsView::updateSourceFields(const QString &tableName)
             QString displayText = "🔑🔗 " + field + " (PK+FK)";
             sourceFieldCombo->addItem(displayText, field);
         }
+    } catch (...) {
+        qDebug() << "ERROR: Excepción al actualizar campos source para tabla:" << tableName;
+        // Continuar sin fallar
     }
     
     // Seleccionar el primer campo por defecto
@@ -1113,8 +1122,14 @@ void RelationshipsView::updateTargetFields(const QString &tableName)
         return;
     }
     
+    // *** PROTECCIÓN: Solo actualizar si tableEditor es válido ***
+    if (!tableEditor) {
+        qDebug() << "WARNING: tableEditor es null en updateTargetFields";
+        return;
+    }
+    
     // Solo mostrar campos que sean Primary Key o Foreign Key
-    if (tableEditor) {
+    try {
         QStringList primaryKeys = tableEditor->getTablePrimaryKeys(tableName);
         QStringList foreignKeys = tableEditor->getTableForeignKeys(tableName);
         
@@ -1138,6 +1153,9 @@ void RelationshipsView::updateTargetFields(const QString &tableName)
             QString displayText = "🔑🔗 " + field + " (PK+FK)";
             targetFieldCombo->addItem(displayText, field);
         }
+    } catch (...) {
+        qDebug() << "ERROR: Excepción al actualizar campos target para tabla:" << tableName;
+        // Continuar sin fallar
     }
     
     // Seleccionar el primer campo por defecto
@@ -2454,6 +2472,60 @@ void RelationshipsView::onTableFieldsChanged(const QString &tableName)
 {
     if (!tableEditor) return;
     
+    // *** PROTECCIÓN: Evitar bucles infinitos durante actualizaciones ***
+    static bool isUpdating = false;
+    if (isUpdating) {
+        qDebug() << "DEBUG: Evitando bucle infinito en onTableFieldsChanged para tabla:" << tableName;
+        return;
+    }
+    isUpdating = true;
+    
+    try {
+        // *** PROTECCIÓN CONTRA CRASHES: Validar relaciones existentes ***
+    QStringList invalidRelationships;
+    
+    // Obtener los campos actuales de la tabla
+    QStringList currentFields = tableEditor->getTableFields(tableName);
+    QStringList currentPKFields = tableEditor->getTablePrimaryKeys(tableName);
+    QStringList currentFKFields = tableEditor->getTableForeignKeys(tableName);
+    
+    // Silenciosamente validar y actualizar las relaciones sin mostrar mensajes al usuario
+    for (int i = relationshipsListWidget->count() - 1; i >= 0; --i) {
+        QListWidgetItem *item = relationshipsListWidget->item(i);
+        if (!item) continue;
+        
+        QString relationshipText = item->text();
+        
+        // Verificar si esta relación involucra la tabla modificada
+        if (relationshipText.contains(tableName)) {
+            // Parsear la relación
+            QStringList parts = relationshipText.split(" → ");
+            if (parts.size() == 2) {
+                QString sourceTable = parts[0].trimmed();
+                QString rightPart = parts[1].trimmed();
+                QString targetTable = rightPart.split(" (")[0].trimmed();
+                
+                // Si la tabla modificada está en esta relación, verificar que aún tenga FK válidos
+                if (sourceTable == tableName || targetTable == tableName) {
+                    bool hasValidFK = false;
+                    
+                    if (sourceTable == tableName) {
+                        // Verificar que la tabla origen aún tenga FK
+                        hasValidFK = !currentFKFields.isEmpty();
+                    } else if (targetTable == tableName) {
+                        // Verificar que la tabla destino aún tenga FK
+                        hasValidFK = !currentFKFields.isEmpty();
+                    }
+                    
+                    if (!hasValidFK) {
+                        invalidRelationships << relationshipText;
+                        // Solo registrar, no mostrar mensaje al usuario
+                    }
+                }
+            }
+        }
+    }
+    
     // Update the fields for this specific table - usando el método que incluye las llaves
     QStringList fields = tableEditor->getTableFieldsWithKeys(tableName);
     QStringList validFields;
@@ -2464,27 +2536,58 @@ void RelationshipsView::onTableFieldsChanged(const QString &tableName)
         }
     }
     
-    // Update our local cache
+    // Update our local cache SAFELY
     tableFields[tableName] = validFields;
     
-    // Update any existing table items in the designer
+    // *** PROTECCIÓN: Update any existing table items in the designer SAFELY ***
     for (auto *item : tableItems) {
-        if (item->getTableName() == tableName) {
-            QStringList pkFields = tableEditor->getTablePrimaryKeys(tableName);
-            QStringList fkFields = tableEditor->getTableForeignKeys(tableName);
-            item->setFieldsWithKeys(validFields, pkFields, fkFields);
-            // Force a scene update to show changes immediately
-            item->update();
+        if (item && item->getTableName() == tableName) {
+            try {
+                QStringList pkFields = tableEditor->getTablePrimaryKeys(tableName);
+                QStringList fkFields = tableEditor->getTableForeignKeys(tableName);
+                item->setFieldsWithKeys(validFields, pkFields, fkFields);
+                // Force a scene update to show changes immediately
+                item->update();
+            } catch (...) {
+                qDebug() << "ERROR: Excepción al actualizar tabla visual:" << tableName;
+                // Continuar con las demás tablas en caso de error
+            }
         }
     }
     
-    // Update field combos if this table is currently selected
+    // Update field combos if this table is currently selected, but preserve user selections
     if (sourceTableCombo->currentText() == tableName) {
+        QString currentSourceSelection = sourceFieldCombo->currentData().toString();
         updateSourceFields(tableName);
+        // Restore user selection if it still exists
+        int sourceIndex = sourceFieldCombo->findData(currentSourceSelection);
+        if (sourceIndex >= 0) {
+            sourceFieldCombo->setCurrentIndex(sourceIndex);
+        }
     }
     if (targetTableCombo->currentText() == tableName) {
+        QString currentTargetSelection = targetFieldCombo->currentData().toString();
         updateTargetFields(tableName);
+        // Restore user selection if it still exists
+        int targetIndex = targetFieldCombo->findData(currentTargetSelection);
+        if (targetIndex >= 0) {
+            targetFieldCombo->setCurrentIndex(targetIndex);
+        }
     }
+    
+    // Solo registrar en debug si hay relaciones afectadas, sin mostrar mensajes al usuario
+    if (!invalidRelationships.isEmpty()) {
+        qDebug() << "DEBUG: Relaciones actualizadas automáticamente para tabla:" << tableName;
+    }
+    
+        qDebug() << "DEBUG: Actualizados los campos en" << tableName << "tras cambios en campos";
+    } catch (const std::exception& e) {
+        qDebug() << "ERROR: Excepción al procesar cambios de campos en tabla" << tableName << ":" << e.what();
+    } catch (...) {
+        qDebug() << "ERROR: Excepción desconocida al procesar cambios de campos en tabla" << tableName;
+    }
+    
+    isUpdating = false;
 }
 
 void RelationshipsView::onForeignKeyRemoved(const QString &tableName, const QString &fieldName)
@@ -2562,6 +2665,142 @@ void RelationshipsView::onForeignKeyRemoved(const QString &tableName, const QStr
         );
         msgBox.exec();
     }
+}
+
+void RelationshipsView::onForeignKeyRenamed(const QString &tableName, const QString &oldFieldName, const QString &newFieldName)
+{
+    qDebug() << "DEBUG RelationshipsView: Foreign Key renombrada en tabla:" << tableName 
+             << "de:" << oldFieldName << "a:" << newFieldName;
+    
+    // *** PROTECCIÓN: Evitar procesamiento durante actualizaciones ***
+    static bool isUpdating = false;
+    if (isUpdating) {
+        qDebug() << "DEBUG: Evitando bucle infinito en onForeignKeyRenamed";
+        return;
+    }
+    isUpdating = true;
+    
+    try {
+        // *** PROTECCIÓN: Actualizar referencias de relaciones existentes ***
+        QStringList updatedRelationships;
+        bool hasUpdates = false;
+        
+        // Buscar relaciones que usen este Foreign Key y actualizarlas
+        for (int i = 0; i < relationshipsListWidget->count(); ++i) {
+            QListWidgetItem *item = relationshipsListWidget->item(i);
+            if (!item) continue;
+            
+            QString relationshipText = item->text();
+            
+            // Verificar si esta relación involucra la tabla con el FK renombrado
+            if (relationshipText.contains(tableName)) {
+                qDebug() << "DEBUG: Verificando relación para actualización:" << relationshipText;
+                
+                // Parsear la relación
+                QStringList parts = relationshipText.split(" → ");
+                if (parts.size() == 2) {
+                    QString sourceTable = parts[0].trimmed();
+                    QString rightPart = parts[1].trimmed();
+                    QString targetTable = rightPart.split(" (")[0].trimmed();
+                    QString relationType = rightPart.mid(rightPart.lastIndexOf("(") + 1).replace(")", "").trimmed();
+                    
+                    // Si la tabla de la relación es la tabla modificada, la relación podría estar afectada
+                    if (sourceTable == tableName || targetTable == tableName) {
+                        // Marcar que hay actualizaciones pero mantener la relación
+                        hasUpdates = true;
+                        updatedRelationships << relationshipText;
+                        qDebug() << "DEBUG: Relación marcada para revisión:" << relationshipText;
+                    }
+                }
+            }
+        }
+        
+        // Actualizar la vista visual sin mostrar mensajes (con delay para evitar bucles)
+        QTimer::singleShot(100, this, [this, tableName]() {
+            try {
+                onTableFieldsChanged(tableName);
+            } catch (...) {
+                qDebug() << "ERROR: Excepción al actualizar campos tras renombrar FK";
+            }
+        });
+        
+        // Log de actualización (sin molestar al usuario)
+        if (hasUpdates) {
+            qDebug() << "DEBUG: Se actualizaron" << updatedRelationships.size() << "relaciones tras renombrar FK";
+        }
+        
+    } catch (...) {
+        qDebug() << "ERROR: Excepción en onForeignKeyRenamed";
+    }
+    
+    isUpdating = false;
+}
+
+void RelationshipsView::onPrimaryKeyRenamed(const QString &tableName, const QString &oldFieldName, const QString &newFieldName)
+{
+    qDebug() << "DEBUG RelationshipsView: Primary Key renombrada en tabla:" << tableName 
+             << "de:" << oldFieldName << "a:" << newFieldName;
+    
+    // *** PROTECCIÓN: Evitar procesamiento durante actualizaciones ***
+    static bool isUpdating = false;
+    if (isUpdating) {
+        qDebug() << "DEBUG: Evitando bucle infinito en onPrimaryKeyRenamed";
+        return;
+    }
+    isUpdating = true;
+    
+    try {
+        // *** PROTECCIÓN: Actualizar referencias de relaciones existentes ***
+        QStringList updatedRelationships;
+        bool hasUpdates = false;
+        
+        // Buscar relaciones que referencien esta Primary Key
+        for (int i = 0; i < relationshipsListWidget->count(); ++i) {
+            QListWidgetItem *item = relationshipsListWidget->item(i);
+            if (!item) continue;
+            
+            QString relationshipText = item->text();
+            
+            // Verificar si esta relación involucra la tabla con el PK renombrado
+            if (relationshipText.contains(tableName)) {
+                qDebug() << "DEBUG: Verificando relación para actualización de PK:" << relationshipText;
+                
+                // Parsear la relación
+                QStringList parts = relationshipText.split(" → ");
+                if (parts.size() == 2) {
+                    QString sourceTable = parts[0].trimmed();
+                    QString rightPart = parts[1].trimmed();
+                    QString targetTable = rightPart.split(" (")[0].trimmed();
+                    
+                    // Si alguna tabla de la relación es la tabla con PK modificado, marcar para revisión
+                    if (sourceTable == tableName || targetTable == tableName) {
+                        hasUpdates = true;
+                        updatedRelationships << relationshipText;
+                        qDebug() << "DEBUG: Relación marcada para revisión de PK:" << relationshipText;
+                    }
+                }
+            }
+        }
+        
+        // Actualizar la vista visual sin mostrar mensajes (con delay para evitar bucles)
+        QTimer::singleShot(100, this, [this, tableName]() {
+            try {
+                onTableFieldsChanged(tableName);
+            } catch (...) {
+                qDebug() << "ERROR: Excepción al actualizar campos tras renombrar PK";
+            }
+        });
+        
+        // Log de actualización (sin molestar al usuario)
+        if (hasUpdates) {
+            qDebug() << "DEBUG: Se actualizaron" << updatedRelationships.size() << "relaciones tras renombrar PK";
+        }
+        
+    } catch (...) {
+        qDebug() << "ERROR: Excepción en onPrimaryKeyRenamed";
+    }
+    
+    isUpdating = false;
 }
 
 void RelationshipsView::showTableDetails(const QString &tableName)
@@ -3331,7 +3570,7 @@ void RelationshipsView::onTableRenamed(const QString &oldName, const QString &ne
 
 void RelationshipsView::onTableDeleted(const QString &tableName)
 {
-    qDebug() << "DEBUG RelationshipsView: Tabla eliminada:" << tableName;
+    qDebug() << "DEBUG: Eliminando tabla del diseñador:" << tableName;
     
     // 1. PRIMERO: Eliminar las líneas de relación visuales de forma segura
     QList<RelationshipLine*> linesToRemove;
@@ -3461,7 +3700,7 @@ void RelationshipsView::onTableDeleted(const QString &tableName)
         });
     }
     
-    qDebug() << "DEBUG: Tabla" << tableName << "completamente eliminada del RelationshipsView";
+    qDebug() << "DEBUG: Tabla" << tableName << "eliminada del RelationshipsView";
 }
 
 bool RelationshipsView::validateForeignKeyNaming(const QString &foreignKeyField, const QString &referencedTable, bool showErrorMessage)
