@@ -16,6 +16,9 @@
 #include <QDebug>
 #include <QTimer>
 #include <cmath>
+#include <QStyleFactory>
+#include <QAbstractButton>
+#include <QPalette>
 
 RelationshipsView::RelationshipsView(QWidget *parent)
     : QWidget(parent), isDarkTheme(false), tableEditor(nullptr)
@@ -768,27 +771,35 @@ void RelationshipsView::createPropertiesPanel()
     titleLabel->setStyleSheet("color: #C62828; background: transparent;");
     
     // Info button - más visible y enfocado
-    QPushButton *infoButton = new QPushButton("�");
+    // Info button - más visible y enfocado con emoji
+    QPushButton *infoButton = new QPushButton(QString::fromUtf8("ℹ️"));  // emoji info
     infoButton->setFixedSize(36, 36);
+
+    // Aumentar un poco el tamaño de la fuente para que se vea centrado
+    QFont f = infoButton->font();
+    f.setPointSize(16);
+    f.setBold(true);
+    infoButton->setFont(f);
+
     infoButton->setStyleSheet(
         "QPushButton {"
-            "background: #FF9800;"
-            "color: white;"
-            "border: 3px solid #F57C00;"
-            "border-radius: 18px;"
-            "font-size: 18px;"
-            "font-weight: bold;"
+        "background: #FF9800;"
+        "color: white;"
+        "border: 3px solid #F57C00;"
+        "border-radius: 18px;"
+        "font-size: 16px;"
+        "font-weight: bold;"
         "}"
         "QPushButton:hover {"
-            "background: #F57C00;"
-            "border: 3px solid #E65100;"
-            "transform: scale(1.15);"
+        "background: #F57C00;"
+        "border: 3px solid #E65100;"
         "}"
         "QPushButton:pressed {"
-            "background: #E65100;"
+        "background: #E65100;"
         "}"
-    );
-    infoButton->setToolTip("💡 Guía de relaciones y validaciones");
+        );
+    infoButton->setToolTip(QString::fromUtf8("💡 Guía de relaciones y validaciones"));
+
     
     titleLayout->addWidget(titleLabel);
     titleLayout->addWidget(infoButton);
@@ -1427,14 +1438,134 @@ void RelationshipsView::onCreateRelationship()
     } else if (relationshipType.contains("N:M")) {
         shortType = "N:M";
     }
-    
+
     if (sourceTable.isEmpty() || targetTable.isEmpty()) {
-        QMessageBox::warning(this, "Error", "Debe seleccionar ambas tablas");
+        QMessageBox m(this);
+        m.setIcon(QMessageBox::Warning);
+        m.setWindowTitle("Error");
+        m.setText("Debe seleccionar ambas tablas");
+        m.setStandardButtons(QMessageBox::Ok);
+
+        // Forzar estilo no nativo
+        m.setStyle(QStyleFactory::create("Fusion"));
+
+        // Paleta blanca para que no herede gris del sistema
+        QPalette pal = m.palette();
+        pal.setColor(QPalette::Window, Qt::white);
+        pal.setColor(QPalette::Base, Qt::white);
+        pal.setColor(QPalette::Text, Qt::black);
+        pal.setColor(QPalette::WindowText, Qt::black);
+        pal.setColor(QPalette::Button, QColor("#F3F4F6"));
+        pal.setColor(QPalette::ButtonText, Qt::black);
+        m.setPalette(pal);
+
+        // Texto negro en labels del cuadro
+        m.setStyleSheet(
+            "QMessageBox { background-color: white; }"
+            "QMessageBox QLabel { color: #111827; font-size: 14px; }"
+            );
+
+        // **Clave**: estilizar el botón directamente para ganar a tu stylesheet global
+        if (QAbstractButton* ok = m.button(QMessageBox::Ok)) {
+            ok->setStyleSheet(
+                "color: #111827;"
+                "background: #F3F4F6;"
+                "border: 1px solid #D1D5DB;"
+                "border-radius: 6px;"
+                "padding: 6px 12px;"
+                );
+            // Por si el estilo global insiste:
+            QPalette bp = ok->palette();
+            bp.setColor(QPalette::ButtonText, Qt::black);
+            bp.setColor(QPalette::WindowText, Qt::black);
+            ok->setPalette(bp);
+            ok->setAutoFillBackground(true);
+        }
+
+        m.exec();
         return;
     }
     
     if (sourceTable == targetTable) {
-        QMessageBox::warning(this, "Error", "No puede crear una relación de una tabla consigo misma");
+        QMessageBox m(this);
+        m.setIcon(QMessageBox::Warning);
+        m.setWindowTitle("Error");
+        m.setText("No puede crear una relación de una tabla consigo misma");
+        m.setStandardButtons(QMessageBox::Ok);
+
+        m.setStyle(QStyleFactory::create("Fusion"));
+
+        QPalette pal = m.palette();
+        pal.setColor(QPalette::Window, Qt::white);
+        pal.setColor(QPalette::Base, Qt::white);
+        pal.setColor(QPalette::Text, Qt::black);
+        pal.setColor(QPalette::WindowText, Qt::black);
+        pal.setColor(QPalette::Button, QColor("#F3F4F6"));
+        pal.setColor(QPalette::ButtonText, Qt::black);
+        m.setPalette(pal);
+
+        m.setStyleSheet(
+            "QMessageBox { background-color: white; }"
+            "QMessageBox QLabel { color: #111827; font-size: 14px; }"
+            );
+
+        if (QAbstractButton* ok = m.button(QMessageBox::Ok)) {
+            ok->setStyleSheet(
+                "color: #111827;"
+                "background: #F3F4F6;"
+                "border: 1px solid #D1D5DB;"
+                "border-radius: 6px;"
+                "padding: 6px 12px;"
+                );
+            QPalette bp = ok->palette();
+            bp.setColor(QPalette::ButtonText, Qt::black);
+            bp.setColor(QPalette::WindowText, Qt::black);
+            ok->setPalette(bp);
+            ok->setAutoFillBackground(true);
+        }
+
+        m.exec();
+        return;
+    }
+    if (sourceTable == targetTable) {
+        QMessageBox m(this);
+        m.setIcon(QMessageBox::Warning);
+        m.setWindowTitle("Error");
+        m.setText("No puede crear una relación de una tabla consigo misma");
+        m.setStandardButtons(QMessageBox::Ok);
+
+        m.setStyle(QStyleFactory::create("Fusion"));
+
+        QPalette pal = m.palette();
+        pal.setColor(QPalette::Window, Qt::white);
+        pal.setColor(QPalette::Base, Qt::white);
+        pal.setColor(QPalette::Text, Qt::black);
+        pal.setColor(QPalette::WindowText, Qt::black);
+        pal.setColor(QPalette::Button, QColor("#F3F4F6"));
+        pal.setColor(QPalette::ButtonText, Qt::black);
+        m.setPalette(pal);
+
+        m.setStyleSheet(
+            "QMessageBox { background-color: white; }"
+            "QMessageBox QLabel { color: #111827; font-size: 14px; }"
+            );
+
+        if (QAbstractButton* ok = m.button(QMessageBox::Ok)) {
+            ok->setStyleSheet(
+                "color: #111827;"
+                "background: #F3F4F6;"
+                "border: 1px solid #D1D5DB;"
+                "border-radius: 6px;"
+                "padding: 6px 12px;"
+                );
+            QPalette bp = ok->palette();
+            bp.setColor(QPalette::ButtonText, Qt::black);
+            bp.setColor(QPalette::WindowText, Qt::black);
+            ok->setPalette(bp);
+            ok->setAutoFillBackground(true);
+        }
+
+        m.exec();
         return;
     }
     
@@ -2025,7 +2156,47 @@ void RelationshipsView::onCreateRelationship()
     // *** NUEVO: Guardar estado después de crear relación ***
     saveDesignerState();
     
-    QMessageBox::information(this, "Éxito", "Relación creada correctamente");
+    {
+        QMessageBox m(this);
+        m.setIcon(QMessageBox::Information);
+        m.setWindowTitle("Éxito");
+        m.setText("Relación creada correctamente");
+        m.setStandardButtons(QMessageBox::Ok);
+
+        m.setStyle(QStyleFactory::create("Fusion"));
+
+        QPalette pal = m.palette();
+        pal.setColor(QPalette::Window, Qt::white);
+        pal.setColor(QPalette::Base, Qt::white);
+        pal.setColor(QPalette::Text, Qt::black);
+        pal.setColor(QPalette::WindowText, Qt::black);
+        pal.setColor(QPalette::Button, QColor("#ECFDF5"));
+        pal.setColor(QPalette::ButtonText, Qt::black);
+        m.setPalette(pal);
+
+        m.setStyleSheet(
+            "QMessageBox { background-color: white; }"
+            "QMessageBox QLabel { color: #111827; font-size: 14px; }"
+            );
+
+        if (QAbstractButton* ok = m.button(QMessageBox::Ok)) {
+            ok->setStyleSheet(
+                "color: #111827;"
+                "background: #ECFDF5;"
+                "border: 1px solid #A7F3D0;"
+                "border-radius: 6px;"
+                "padding: 6px 12px;"
+                );
+            QPalette bp = ok->palette();
+            bp.setColor(QPalette::ButtonText, Qt::black);
+            bp.setColor(QPalette::WindowText, Qt::black);
+            ok->setPalette(bp);
+            ok->setAutoFillBackground(true);
+        }
+
+        m.exec();
+    }
+
 }
 
 void RelationshipsView::onDeleteRelationship()
@@ -2079,12 +2250,56 @@ void RelationshipsView::onDeleteRelationship()
         
         // *** NUEVO: Guardar estado después de eliminar relación ***
         saveDesignerState();
-        
-        // Mostrar mensaje de confirmación (más compacto)
-        QMessageBox::information(this, "🗑️ Relación Eliminada", 
-            QString("La relación '%1' ha sido eliminada.\n\n"
-                   "Las tablas permanecen en el diseñador para futuras relaciones.")
-                   .arg(relationshipText));
+        \
+        // Mostrar mensaje de confirmación (texto botón negro)
+        {
+            QMessageBox m(this);
+            m.setIcon(QMessageBox::Information);
+            m.setWindowTitle(QString::fromUtf8("🗑️ Relación Eliminada"));
+            m.setText(
+                QString("La relación '%1' ha sido eliminada.\n\n"
+                        "Las tablas permanecen en el diseñador para futuras relaciones.")
+                    .arg(relationshipText)
+                );
+            m.setStandardButtons(QMessageBox::Ok);
+
+            // Evitar diálogo nativo y forzar colores
+            m.setStyle(QStyleFactory::create("Fusion"));
+
+            QPalette pal = m.palette();
+            pal.setColor(QPalette::Window, Qt::white);
+            pal.setColor(QPalette::Base, Qt::white);
+            pal.setColor(QPalette::Text, Qt::black);
+            pal.setColor(QPalette::WindowText, Qt::black);
+            pal.setColor(QPalette::Button, QColor("#ECFDF5"));
+            pal.setColor(QPalette::ButtonText, Qt::black);
+            m.setPalette(pal);
+
+            // Labels negros
+            m.setStyleSheet(
+                "QMessageBox { background-color: white; }"
+                "QMessageBox QLabel { color: #111827; font-size: 14px; }"
+                );
+
+            // Forzar estilo directo al botón para vencer cualquier stylesheet global
+            if (QAbstractButton* ok = m.button(QMessageBox::Ok)) {
+                ok->setStyleSheet(
+                    "color: #111827;"
+                    "background: #ECFDF5;"
+                    "border: 1px solid #A7F3D0;"
+                    "border-radius: 6px;"
+                    "padding: 6px 12px;"
+                    );
+                QPalette bp = ok->palette();
+                bp.setColor(QPalette::ButtonText, Qt::black);
+                bp.setColor(QPalette::WindowText, Qt::black);
+                ok->setPalette(bp);
+                ok->setAutoFillBackground(true);
+            }
+
+            m.exec();
+        }
+
         
     } else {
         // No hay relación seleccionada

@@ -2668,6 +2668,39 @@ QStringList TableView::getCurrentTextSizes() const
     return textSizes;
 }
 
+void TableView::onNumberDecimalsChanged(const QString &dec)
+{
+    qDebug() << "DEBUG: Decimales cambiados a:" << dec
+             << " | Fila:" << currentSelectedRow;
+
+    if (currentSelectedRow < 0) return;
+
+    // Asegurar storage por fila (default "2")
+    while (fieldDecimalPlaces.size() <= currentSelectedRow)
+        fieldDecimalPlaces.append("2");
+
+    // Guardar solo si hay cambio real
+    if (fieldDecimalPlaces[currentSelectedRow] != dec) {
+        fieldDecimalPlaces[currentSelectedRow] = dec;
+        qDebug() << "DEBUG: Guardado decimales =" << dec
+                 << " para fila " << currentSelectedRow;
+
+        // Refrescar vistas / sincronizar como haces en otros cambios
+        emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+        emit tableDesignChangedWithAllFormats(
+            getCurrentFieldNames(),
+            getCurrentFieldTypes(),
+            getCurrentCurrencyFormats(),
+            getCurrentMillaresDecimals(),
+            getCurrentNumberTypes(),
+            getCurrentDateFormats()
+            // Si luego quieres propagar también los decimales de números,
+            // puedes extender esta señal para incluir getCurrentDecimalPlaces().
+            );
+    }
+}
+
+
 void TableView::createSpecificPropertiesWidgets()
 {
     // Widget contenedor para propiedades específicas con mejor distribución
@@ -2741,6 +2774,26 @@ void TableView::createSpecificPropertiesWidgets()
     numberTypeCombo->setMinimumHeight(35); // Altura mínima para el combo
     numberLayout->addWidget(numberTypeCombo);
     numberLayout->addStretch();
+
+    // ----- Decimales solo para Decimal/Doble -----
+    numberDecimalsLabel = new QLabel("Decimales:");
+    numberDecimalsLabel->setStyleSheet("QLabel { color: #475569; font-weight: bold; }");
+    numberDecimalsLabel->setMinimumWidth(80);
+
+    numberDecimalsCombo = new QComboBox();
+    numberDecimalsCombo->addItems({"0","1","2","3","4","5","6"});
+    numberDecimalsCombo->setCurrentText("2"); // default
+    numberDecimalsCombo->setStyleSheet(getComboStyle());
+    numberDecimalsCombo->setMaximumWidth(80);
+    numberDecimalsCombo->setMinimumHeight(35);
+
+    numberLayout->addWidget(numberDecimalsLabel);
+    numberLayout->addWidget(numberDecimalsCombo);
+    numberLayout->addStretch();
+
+    // Conexión
+    connect(numberDecimalsCombo, &QComboBox::currentTextChanged,
+            this, &TableView::onNumberDecimalsChanged);
     
     // Label para mostrar información del tamaño del campo
     numberSizeLabel = new QLabel("Tamaño: 32 bits (-2,147,483,648 a 2,147,483,647)");
@@ -2808,7 +2861,7 @@ void TableView::createSpecificPropertiesWidgets()
     dateLayout->addWidget(dateFormatLabel);
     
     dateFormatCombo = new QComboBox();
-    dateFormatCombo->addItems({"DD-MM-YY", "DD/MM/YY", "DD/MESTEXTO/YYYY"});
+    dateFormatCombo->addItems({"DD-MM-YY", "DD/MM/YY"});
     dateFormatCombo->setStyleSheet(getComboStyle());
     dateFormatCombo->setMaximumWidth(200);
     dateFormatCombo->setMinimumHeight(35); // Altura mínima para el combo
@@ -2889,45 +2942,68 @@ void TableView::updateSpecificProperties(const QString &dataType)
         // Reactivar señales
         textSizeEdit->blockSignals(false);
     } else if (dataType == "Números") {
-        numberPropertiesWidget->show();
-        
-        // Asegurar que la lista tenga el tamaño correcto
-        while (fieldNumberTypes.size() <= currentSelectedRow) {
-            fieldNumberTypes.append("Entero"); // Valor por defecto
-        }
-        
-        // Bloquear señales para evitar ciclos
-        numberTypeCombo->blockSignals(true);
-        
-        // Cargar el tipo guardado para esta fila
-        if (currentSelectedRow >= 0 && currentSelectedRow < fieldNumberTypes.size()) {
-            QString savedType = fieldNumberTypes[currentSelectedRow];
-            if (!savedType.isEmpty()) {
-                numberTypeCombo->setCurrentText(savedType);
-            } else {
-                numberTypeCombo->setCurrentText("Entero");
-                fieldNumberTypes[currentSelectedRow] = "Entero";
-            }
+    numberPropertiesWidget->show();
+
+    // Asegurar que la lista tenga el tamaño correcto
+    while (fieldNumberTypes.size() <= currentSelectedRow) {
+        fieldNumberTypes.append("Entero"); // Valor por defecto
+    }
+
+    // Bloquear señales para evitar ciclos
+    numberTypeCombo->blockSignals(true);
+
+    // Cargar el tipo guardado para esta fila
+    if (currentSelectedRow >= 0 && currentSelectedRow < fieldNumberTypes.size()) {
+        QString savedType = fieldNumberTypes[currentSelectedRow];
+        if (!savedType.isEmpty()) {
+            numberTypeCombo->setCurrentText(savedType);
         } else {
             numberTypeCombo->setCurrentText("Entero");
+            fieldNumberTypes[currentSelectedRow] = "Entero";
         }
-        
-        // Actualizar el label de información de tamaño según el tipo seleccionado
-        QString currentType = numberTypeCombo->currentText();
-        QString sizeInfo = "";
-        if (currentType == "Entero") {
-            sizeInfo = "Tamaño: 32 bits (-2,147,483,648 a 2,147,483,647)";
-        } else if (currentType == "Decimal") {
-            sizeInfo = "Tamaño: 64 bits (15-17 dígitos de precisión)";
-        } else if (currentType == "Doble") {
-            sizeInfo = "Tamaño: 64 bits (15-17 dígitos de precisión, mayor rango)";
-        } else if (currentType == "Byte") {
-            sizeInfo = "Tamaño: 8 bits (0 a 255)";
+    } else {
+        numberTypeCombo->setCurrentText("Entero");
+    }
+
+    // === Define currentType UNA sola vez y reutiliza ===
+    QString currentType = numberTypeCombo->currentText();
+
+    // Actualizar el label de información de tamaño según el tipo seleccionado
+    QString sizeInfo;
+    if (currentType == "Entero") {
+        sizeInfo = "Tamaño: 32 bits (-2,147,483,648 a 2,147,483,647)";
+    } else if (currentType == "Decimal") {
+        sizeInfo = "Tamaño: 64 bits (15-17 dígitos de precisión)";
+    } else if (currentType == "Doble") {
+        sizeInfo = "Tamaño: 64 bits (15-17 dígitos de precisión, mayor rango)";
+    } else if (currentType == "Byte") {
+        sizeInfo = "Tamaño: 8 bits (0 a 255)";
+    }
+    numberSizeLabel->setText(sizeInfo);
+
+    numberTypeCombo->blockSignals(false);
+
+    // ----- Decimales (solo Decimal/Doble) -----
+    while (fieldDecimalPlaces.size() <= currentSelectedRow) {
+        fieldDecimalPlaces.append("2"); // default 2
+    }
+
+    const bool needsDecimals = (currentType == "Decimal" || currentType == "Doble");
+    if (numberDecimalsLabel) numberDecimalsLabel->setVisible(needsDecimals);
+    if (numberDecimalsCombo) {
+        numberDecimalsCombo->blockSignals(true);
+        numberDecimalsCombo->setVisible(needsDecimals);
+        numberDecimalsCombo->setEnabled(needsDecimals);
+        if (needsDecimals) {
+            QString savedDec = fieldDecimalPlaces[currentSelectedRow];
+            if (savedDec.isEmpty()) savedDec = "2";
+            numberDecimalsCombo->setCurrentText(savedDec);
+            numberDecimalsCombo->setToolTip("Número de decimales para este campo (0–6).");
         }
-        numberSizeLabel->setText(sizeInfo);
-        
-        // Reactivar señales
-        numberTypeCombo->blockSignals(false);
+        numberDecimalsCombo->blockSignals(false);
+    }
+
+
     } else if (dataType == "moneda") {
         currencyPropertiesWidget->show();
         
@@ -3098,9 +3174,9 @@ void TableView::onNumberTypeChanged(const QString &text)
 {
     qDebug() << "DEBUG: Tipo de número cambiado a:" << text;
     qDebug() << "DEBUG: Fila actual seleccionada:" << currentSelectedRow;
-    
-    // Mostrar información sobre los tamaños según el tipo seleccionado
-    QString sizeInfo = "";
+
+    // ----- Info de tamaño según tipo -----
+    QString sizeInfo;
     if (text == "Entero") {
         sizeInfo = "Tamaño: 32 bits (-2,147,483,648 a 2,147,483,647)";
     } else if (text == "Decimal") {
@@ -3110,35 +3186,65 @@ void TableView::onNumberTypeChanged(const QString &text)
     } else if (text == "Byte") {
         sizeInfo = "Tamaño: 8 bits (0 a 255)";
     }
-    
-    // Actualizar el label de información de tamaño
+
     if (!sizeInfo.isEmpty() && numberSizeLabel) {
         numberSizeLabel->setText(sizeInfo);
         qDebug() << "DEBUG: Información de tamaño actualizada:" << sizeInfo;
     }
-    
-    // También actualizar el tooltip del combo
-    if (!sizeInfo.isEmpty()) {
+    if (!sizeInfo.isEmpty() && numberTypeCombo) {
         numberTypeCombo->setToolTip(sizeInfo);
     }
-    
-    // Guardar el tipo de número para el campo actual
+
+    // ----- Guardar el tipo por fila -----
     if (currentSelectedRow >= 0) {
-        // Asegurar que la lista tenga el tamaño correcto
-        while (fieldNumberTypes.size() <= currentSelectedRow) {
-            fieldNumberTypes.append("Entero"); // Valor por defecto
-        }
-        
-        // Guardar el tipo seleccionado para esta fila
+        while (fieldNumberTypes.size() <= currentSelectedRow)
+            fieldNumberTypes.append("Entero");
         fieldNumberTypes[currentSelectedRow] = text;
         qDebug() << "DEBUG: Guardado tipo de número" << text << "para fila" << currentSelectedRow;
         qDebug() << "DEBUG: Lista completa de tipos de números:" << fieldNumberTypes;
     }
-    
-    // Emitir señal para actualizar vista de datos
+
+    // ----- NUEVO: Decimales visibles solo para Decimal/Doble -----
+    const bool needsDecimals = (text == "Decimal" || text == "Doble");
+
+    if (numberDecimalsLabel)
+        numberDecimalsLabel->setVisible(needsDecimals);
+
+    if (numberDecimalsCombo) {
+        numberDecimalsCombo->setVisible(needsDecimals);
+        numberDecimalsCombo->setEnabled(needsDecimals);
+
+        if (needsDecimals && currentSelectedRow >= 0) {
+            // Asegurar storage y cargar valor guardado
+            while (fieldDecimalPlaces.size() <= currentSelectedRow)
+                fieldDecimalPlaces.append("2"); // default 2
+
+            QString savedDec = fieldDecimalPlaces[currentSelectedRow];
+            if (savedDec.isEmpty()) savedDec = "2";
+
+            numberDecimalsCombo->blockSignals(true);
+            numberDecimalsCombo->setCurrentText(savedDec);
+            numberDecimalsCombo->blockSignals(false);
+
+            numberDecimalsCombo->setToolTip("Número de decimales para este campo (0–6).");
+            qDebug() << "DEBUG: Decimales visibles. Valor para fila" << currentSelectedRow << ":" << savedDec;
+        } else {
+            qDebug() << "DEBUG: Decimales ocultos para tipo:" << text;
+        }
+    }
+
+    // ----- Emitir señales existentes -----
     emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
-    // Emitir señal específica con todos los formatos incluyendo tipos de números
-    emit tableDesignChangedWithAllFormats(getCurrentFieldNames(), getCurrentFieldTypes(), getCurrentCurrencyFormats(), getCurrentMillaresDecimals(), getCurrentNumberTypes(), getCurrentDateFormats());
+    emit tableDesignChangedWithAllFormats(
+        getCurrentFieldNames(),
+        getCurrentFieldTypes(),
+        getCurrentCurrencyFormats(),
+        getCurrentMillaresDecimals(),
+        getCurrentNumberTypes(),
+        getCurrentDateFormats()
+        // Nota: si luego quieres propagar también los decimales de números,
+        // puedes extender este emit para incluir getCurrentDecimalPlaces().
+        );
 }
 
 void TableView::onCurrencyFormatChanged(const QString &text)
@@ -3192,8 +3298,6 @@ void TableView::onDateFormatChanged(const QString &text)
         formatInfo = "Formato: Día-Mes-Año (ejemplo: 25-12-23)";
     } else if (text == "DD/MM/YY") {
         formatInfo = "Formato: Día/Mes/Año (ejemplo: 25/12/23)";
-    } else if (text == "DD/MESTEXTO/YYYY") {
-        formatInfo = "Formato: Día/Mes_Texto/Año (ejemplo: 25/Diciembre/2023)";
     }
     
     qDebug() << "DEBUG: Información de formato:" << formatInfo;
@@ -3301,8 +3405,6 @@ QString TableView::generateExampleData(const QString &dataType, int column)
             return "15-08-24";
         } else if (format == "DD/MM/YY") {
             return "15/08/24";
-        } else if (format == "DD/MESTEXTO/YYYY") {
-            return "15/Agosto/2024";
         } else {
             return "15-08-24";
         }

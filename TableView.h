@@ -127,7 +127,8 @@ private slots:
     void onFieldItemChanged(QTableWidgetItem *item);
     void onAddRowClicked();
     void onDeleteRowClicked();
-    
+    void onNumberDecimalsChanged(const QString &dec);
+
     // Slots para propiedades específicas
     void onTextSizeChanged(const QString &text);
     void onNumberTypeChanged(const QString &text);
@@ -227,6 +228,11 @@ private:
     QStringList fieldNumberTypes; // Almacenar tipos específicos de números por campo
     QStringList fieldDateFormats; // Almacenar formatos de fecha por campo
     QStringList fieldDecimalPlaces; // Almacenar número de decimales para campos Decimal/Doble
+
+    QLabel *numberDecimalsLabel = nullptr;
+    QComboBox *numberDecimalsCombo = nullptr;
+
+
 };
 
 #endif // TABLEVIEW_H
