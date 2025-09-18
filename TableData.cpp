@@ -2565,13 +2565,26 @@ bool TableData::isFieldForeignKey(const QString &fieldName)
         return false;
     }
     
+    // Limpiar el nombre del campo de iconos y espacios
+    QString cleanFieldName = fieldName;
+    cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
+                                  .remove("🔑🔗")
+                                  .remove("🔑🔶")
+                                  .remove("🔗🔶")
+                                  .remove("🔑")
+                                  .remove("🔗")
+                                  .remove("🔶")
+                                  .trimmed();
+    
+    qDebug() << "DEBUG: Campo original:" << fieldName << "-> Campo limpio:" << cleanFieldName;
+    
     // Método corregido: SOLO verificar si el campo está en la lista de FK de TableEditor
     QStringList foreignKeys = tableEditor->getTableForeignKeys(currentTableName);
     
     // Verificar si el campo está en la lista de foreign keys
-    bool isFK = foreignKeys.contains(fieldName);
+    bool isFK = foreignKeys.contains(cleanFieldName);
     
-    qDebug() << "DEBUG: Campo" << fieldName << "- Es FK:" << isFK << "según TableEditor";
+    qDebug() << "DEBUG: Campo" << cleanFieldName << "- Es FK:" << isFK << "según TableEditor";
     qDebug() << "DEBUG: Lista FK completa de TableEditor para tabla" << currentTableName << ":" << foreignKeys;
     
     return isFK;
@@ -2589,10 +2602,23 @@ bool TableData::hasEstablishedRelationship(const QString &fieldName)
         return false;
     }
     
-    // Usar el nuevo método de RelationshipsView para verificar relaciones reales
-    bool hasRelation = relationshipsView->hasRelationshipForField(currentTableName, fieldName);
+    // Limpiar el nombre del campo de iconos y espacios
+    QString cleanFieldName = fieldName;
+    cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
+                                  .remove("🔑🔗")
+                                  .remove("🔑🔶")
+                                  .remove("🔗🔶")
+                                  .remove("🔑")
+                                  .remove("🔗")
+                                  .remove("🔶")
+                                  .trimmed();
     
-    qDebug() << "DEBUG: Campo" << fieldName << "en tabla" << currentTableName << "tiene relación establecida:" << hasRelation;
+    qDebug() << "DEBUG: Campo original:" << fieldName << "-> Campo limpio:" << cleanFieldName;
+    
+    // Usar el nuevo método de RelationshipsView para verificar relaciones reales
+    bool hasRelation = relationshipsView->hasRelationshipForField(currentTableName, cleanFieldName);
+    
+    qDebug() << "DEBUG: Campo" << cleanFieldName << "en tabla" << currentTableName << "tiene relación establecida:" << hasRelation;
     
     return hasRelation;
 }
@@ -2601,14 +2627,25 @@ QString TableData::getReferencedTable(const QString &fieldName)
 {
     if (!relationshipsView || !tableEditor) return "";
     
-    qDebug() << "DEBUG: getReferencedTable para campo" << fieldName;
+    // Limpiar el nombre del campo de iconos y espacios
+    QString cleanFieldName = fieldName;
+    cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
+                                  .remove("🔑🔗")
+                                  .remove("🔑🔶")
+                                  .remove("🔗🔶")
+                                  .remove("🔑")
+                                  .remove("🔗")
+                                  .remove("🔶")
+                                  .trimmed();
+    
+    qDebug() << "DEBUG: getReferencedTable para campo" << fieldName << "-> limpio:" << cleanFieldName;
     
     // Método mejorado: buscar en las relaciones creadas
     // TODO: Implementar acceso real a las relaciones guardadas en RelationshipsView
     
     // Por ahora, aproximación simple basada en convenciones de nomenclatura
-    if (fieldName.endsWith("_id")) {
-        QString tableName = fieldName;
+    if (cleanFieldName.endsWith("_id")) {
+        QString tableName = cleanFieldName;
         tableName.remove("_id");
         
         qDebug() << "DEBUG: Tabla inferida del campo FK:" << tableName;
@@ -2620,7 +2657,7 @@ QString TableData::getReferencedTable(const QString &fieldName)
         // Buscar tabla exacta primero
         for (const QString &table : availableTables) {
             if (table.toLower() == tableName.toLower()) {
-                qDebug() << "DEBUG: FK" << fieldName << "referencia tabla exacta" << table;
+                qDebug() << "DEBUG: FK" << cleanFieldName << "referencia tabla exacta" << table;
                 return table;
             }
         }
@@ -2629,12 +2666,12 @@ QString TableData::getReferencedTable(const QString &fieldName)
         for (const QString &table : availableTables) {
             if (table.toLower().contains(tableName.toLower()) ||
                 tableName.toLower().contains(table.toLower())) {
-                qDebug() << "DEBUG: FK" << fieldName << "referencia tabla parcial" << table;
+                qDebug() << "DEBUG: FK" << cleanFieldName << "referencia tabla parcial" << table;
                 return table;
             }
         }
         
-        qDebug() << "DEBUG: No se encontró tabla referenciada para FK" << fieldName;
+        qDebug() << "DEBUG: No se encontró tabla referenciada para FK" << cleanFieldName;
         
         // Si no se encuentra, retornar el nombre inferido con capitalización correcta
         tableName[0] = tableName[0].toLower(); // Primera letra minúscula para coincidir con el ejemplo
@@ -2648,8 +2685,19 @@ QString TableData::getReferencedField(const QString &fieldName)
 {
     if (!tableEditor) return "Id";
     
+    // Limpiar el nombre del campo de iconos y espacios
+    QString cleanFieldName = fieldName;
+    cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
+                                  .remove("🔑🔗")
+                                  .remove("🔑🔶")
+                                  .remove("🔗🔶")
+                                  .remove("🔑")
+                                  .remove("🔗")
+                                  .remove("🔶")
+                                  .trimmed();
+    
     // Obtener la tabla referenciada
-    QString referencedTable = getReferencedTable(fieldName);
+    QString referencedTable = getReferencedTable(cleanFieldName);
     if (referencedTable.isEmpty()) return "Id";
     
     // Obtener los campos de la tabla referenciada
