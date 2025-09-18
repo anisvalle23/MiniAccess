@@ -83,6 +83,13 @@ public:
     QString getMillaresDecimalsForColumn(int column) const; // Obtener decimales para columna específica
     QString getTextSizeForColumn(int column) const; // Obtener tamaño de texto para columna específica
     
+    // Métodos para filtros y búsqueda
+    void createFilterControls();
+    void applyFilters();
+    void clearFilters();
+    void sortByColumn(int column, Qt::SortOrder order);
+    void sortDataRowsOnly(int column, bool ascending); // Nueva función para ordenar solo filas con datos
+    
     // Actualizar tema
     void updateTheme(bool isDark);
     
@@ -156,6 +163,15 @@ private:
     
     // Referencia a TableEditor para acceso a datos
     TableEditor *tableEditor;
+
+    // Controles de filtro y búsqueda
+    QLineEdit *searchField;
+    QComboBox *sortColumnCombo;
+    QComboBox *sortOrderCombo;
+    QComboBox *numberCondition;
+    QLineEdit *numberValue1;
+    QLineEdit *numberValue2;
+    QPushButton *clearFiltersBtn;
 
     mutable QLabel *m_warnLabel = nullptr;
     mutable QTimer *m_warnTimer = nullptr;

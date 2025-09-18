@@ -374,6 +374,9 @@ void TableData::createUI()
     // Crear header
     createHeader();
     
+    // Crear controles de filtro
+    createFilterControls();
+    
     // Crear área de tabla con contenido
     QWidget *contentWidget = new QWidget();
     QVBoxLayout *contentLayout = new QVBoxLayout(contentWidget);
@@ -595,6 +598,158 @@ void TableData::createHeader()
     mainLayout->addWidget(headerWidget);
 }
 
+void TableData::createFilterControls()
+{
+    // Widget contenedor para filtros
+    QWidget *filterWidget = new QWidget();
+    filterWidget->setFixedHeight(50);
+    filterWidget->setStyleSheet(
+        "QWidget {"
+        "background-color: #f8f9fa;"
+        "border-bottom: 1px solid #dee2e6;"
+        "}"
+    );
+    
+    QHBoxLayout *filterLayout = new QHBoxLayout(filterWidget);
+    filterLayout->setContentsMargins(20, 8, 20, 8);
+    filterLayout->setSpacing(15);
+    
+    // Etiqueta de búsqueda
+    QLabel *searchLabel = new QLabel("🔍 Buscar:");
+    searchLabel->setFont(QFont("Inter", 12, QFont::Medium));
+    searchLabel->setStyleSheet("QLabel { color: #374151; }");
+    
+    // Campo de búsqueda
+    searchField = new QLineEdit();
+    searchField->setPlaceholderText("Escribe para filtrar datos...");
+    searchField->setMaximumWidth(200);
+    searchField->setStyleSheet(
+        "QLineEdit {"
+        "background-color: white;"
+        "border: 1px solid #d1d5db;"
+        "border-radius: 4px;"
+        "padding: 6px 10px;"
+        "font-size: 12px;"
+        "}"
+        "QLineEdit:focus {"
+        "border-color: #3b82f6;"
+        "outline: none;"
+        "}"
+    );
+    
+    // Filtro numérico
+    QLabel *numberLabel = new QLabel("🔢 Números:");
+    numberLabel->setFont(QFont("Inter", 12, QFont::Medium));
+    numberLabel->setStyleSheet("QLabel { color: #374151; }");
+    
+    numberCondition = new QComboBox();
+    numberCondition->addItems({"Sin filtro", "Mayor que", "Menor que", "Igual a", "Entre"});
+    numberCondition->setMaximumWidth(100);
+    numberCondition->setStyleSheet(
+        "QComboBox {"
+        "background-color: white;"
+        "border: 1px solid #d1d5db;"
+        "border-radius: 4px;"
+        "padding: 4px 8px;"
+        "font-size: 11px;"
+        "}"
+    );
+    
+    numberValue1 = new QLineEdit();
+    numberValue1->setPlaceholderText("Valor");
+    numberValue1->setMaximumWidth(70);
+    numberValue1->setStyleSheet(searchField->styleSheet());
+    
+    numberValue2 = new QLineEdit();
+    numberValue2->setPlaceholderText("Hasta");
+    numberValue2->setMaximumWidth(70);
+    numberValue2->setStyleSheet(searchField->styleSheet());
+    numberValue2->setVisible(false); // Solo visible para "Entre"
+    
+    // Etiqueta de ordenamiento
+    QLabel *sortLabel = new QLabel("📊 Ordenar por:");
+    sortLabel->setFont(QFont("Inter", 12, QFont::Medium));
+    sortLabel->setStyleSheet("QLabel { color: #374151; }");
+    
+    // Combo de columnas
+    sortColumnCombo = new QComboBox();
+    sortColumnCombo->setMaximumWidth(120);
+    sortColumnCombo->setStyleSheet(
+        "QComboBox {"
+        "background-color: white;"
+        "border: 1px solid #d1d5db;"
+        "border-radius: 4px;"
+        "padding: 4px 8px;"
+        "font-size: 12px;"
+        "}"
+    );
+    
+    // Combo de orden
+    sortOrderCombo = new QComboBox();
+    sortOrderCombo->addItems({"↑ Ascendente", "↓ Descendente"});
+    sortOrderCombo->setMaximumWidth(110);
+    sortOrderCombo->setStyleSheet(
+        "QComboBox {"
+        "background-color: white;"
+        "border: 1px solid #d1d5db;"
+        "border-radius: 4px;"
+        "padding: 4px 8px;"
+        "font-size: 12px;"
+        "}"
+    );
+    
+    // Botón limpiar filtros
+    clearFiltersBtn = new QPushButton("🗑️ Limpiar");
+    clearFiltersBtn->setMaximumWidth(80);
+    clearFiltersBtn->setStyleSheet(
+        "QPushButton {"
+        "background-color: #6b7280;"
+        "color: white;"
+        "border: none;"
+        "border-radius: 4px;"
+        "padding: 6px 12px;"
+        "font-size: 12px;"
+        "font-weight: 500;"
+        "}"
+        "QPushButton:hover {"
+        "background-color: #4b5563;"
+        "}"
+        "QPushButton:pressed {"
+        "background-color: #374151;"
+        "}"
+    );
+    
+    // Agregar widgets al layout
+    filterLayout->addWidget(searchLabel);
+    filterLayout->addWidget(searchField);
+    filterLayout->addSpacing(10);
+    filterLayout->addWidget(numberLabel);
+    filterLayout->addWidget(numberCondition);
+    filterLayout->addWidget(numberValue1);
+    filterLayout->addWidget(numberValue2);
+    filterLayout->addSpacing(10);
+    filterLayout->addWidget(sortLabel);
+    filterLayout->addWidget(sortColumnCombo);
+    filterLayout->addWidget(sortOrderCombo);
+    filterLayout->addSpacing(10);
+    filterLayout->addWidget(clearFiltersBtn);
+    filterLayout->addStretch();
+    
+    // Conectar señales
+    connect(searchField, &QLineEdit::textChanged, this, &TableData::applyFilters);
+    connect(numberCondition, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
+        numberValue2->setVisible(index == 4); // "Entre" es el índice 4
+        applyFilters();
+    });
+    connect(numberValue1, &QLineEdit::textChanged, this, &TableData::applyFilters);
+    connect(numberValue2, &QLineEdit::textChanged, this, &TableData::applyFilters);
+    connect(sortColumnCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &TableData::applyFilters);
+    connect(sortOrderCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &TableData::applyFilters);
+    connect(clearFiltersBtn, &QPushButton::clicked, this, &TableData::clearFilters);
+    
+    mainLayout->addWidget(filterWidget);
+}
+
 void TableData::setupTableForPersonData()
 {
     // Configuración para entrada de datos reales - empezar solo con Id
@@ -673,6 +828,26 @@ void TableData::setupDataView(const QStringList &fieldNames, const QStringList &
     // Configurar tabla con nuevos campos
     dataTable->setColumnCount(fieldNames.size());
     dataTable->setHorizontalHeaderLabels(fieldNames);
+    
+    // Actualizar combo de ordenamiento con nuevos campos
+    if (sortColumnCombo) {
+        sortColumnCombo->blockSignals(true);
+        sortColumnCombo->clear();
+        for (const QString &fieldName : fieldNames) {
+            // Limpiar iconos de los nombres de campo para el combo
+            QString cleanName = fieldName;
+            cleanName = cleanName.remove("🔑🔗🔶")
+                                 .remove("🔑🔗")
+                                 .remove("🔑🔶")
+                                 .remove("🔗🔶")
+                                 .remove("🔑")
+                                 .remove("🔗")
+                                 .remove("🔶")
+                                 .trimmed();
+            sortColumnCombo->addItem(cleanName);
+        }
+        sortColumnCombo->blockSignals(false);
+    }
     
     // Configurar el número inicial de filas - solo si hay datos existentes
     int initialRows = existingData.isEmpty() ? 0 : existingData.size(); // Sin filas si no hay datos existentes
@@ -2592,4 +2767,331 @@ QStringList TableData::getTableData(const QString &tableName, const QString &fie
     
     qDebug() << "DEBUG: Valores encontrados para validación:" << result;
     return result;
+}
+
+void TableData::applyFilters()
+{
+    if (!dataTable) return;
+    
+    QString searchText = searchField ? searchField->text().trimmed().toLower() : "";
+    
+    // Obtener configuración de filtro numérico
+    QString numCondition = numberCondition ? numberCondition->currentText() : "Sin filtro";
+    QString numValue1Text = numberValue1 ? numberValue1->text().trimmed() : "";
+    QString numValue2Text = numberValue2 ? numberValue2->text().trimmed() : "";
+    
+    bool hasNumberFilter = (numCondition != "Sin filtro" && !numValue1Text.isEmpty());
+    double numVal1 = 0, numVal2 = 0;
+    bool numVal1Ok = false, numVal2Ok = false;
+    
+    if (hasNumberFilter) {
+        numVal1 = numValue1Text.toDouble(&numVal1Ok);
+        if (numCondition == "Entre" && !numValue2Text.isEmpty()) {
+            numVal2 = numValue2Text.toDouble(&numVal2Ok);
+        }
+    }
+    
+    // Aplicar filtros
+    for (int row = 0; row < dataTable->rowCount(); ++row) {
+        bool shouldShow = true;
+        
+        // Verificar si es la fila vacía (última fila para nuevos datos)
+        bool isEmptyRow = true;
+        for (int col = 0; col < dataTable->columnCount(); ++col) {
+            QTableWidgetItem *item = dataTable->item(row, col);
+            if (item && !item->text().trimmed().isEmpty()) {
+                isEmptyRow = false;
+                break;
+            }
+        }
+        
+        // Siempre mostrar la fila vacía para permitir agregar datos
+        if (isEmptyRow && row == dataTable->rowCount() - 1) {
+            dataTable->setRowHidden(row, false);
+            continue;
+        }
+        
+        // Filtro de texto
+        if (!searchText.isEmpty()) {
+            shouldShow = false;
+            for (int col = 0; col < dataTable->columnCount(); ++col) {
+                QTableWidgetItem *item = dataTable->item(row, col);
+                if (item && item->text().toLower().contains(searchText)) {
+                    shouldShow = true;
+                    break;
+                }
+            }
+        }
+        
+        // Filtro numérico (aplicar solo si pasa el filtro de texto)
+        if (shouldShow && hasNumberFilter && numVal1Ok) {
+            bool passesNumFilter = false;
+            
+            // Verificar cada columna para valores numéricos
+            for (int col = 0; col < dataTable->columnCount(); ++col) {
+                QTableWidgetItem *item = dataTable->item(row, col);
+                if (!item || item->text().trimmed().isEmpty()) continue;
+                
+                bool ok = false;
+                double cellValue = item->text().toDouble(&ok);
+                if (!ok) continue; // No es un número, saltar esta celda
+                
+                bool matches = false;
+                if (numCondition == "Mayor que") {
+                    matches = cellValue > numVal1;
+                } else if (numCondition == "Menor que") {
+                    matches = cellValue < numVal1;
+                } else if (numCondition == "Igual a") {
+                    matches = qAbs(cellValue - numVal1) < 0.0001; // Comparación de flotantes
+                } else if (numCondition == "Entre" && numVal2Ok) {
+                    double minVal = qMin(numVal1, numVal2);
+                    double maxVal = qMax(numVal1, numVal2);
+                    matches = cellValue >= minVal && cellValue <= maxVal;
+                }
+                
+                if (matches) {
+                    passesNumFilter = true;
+                    break;
+                }
+            }
+            
+            shouldShow = passesNumFilter;
+        }
+        
+        dataTable->setRowHidden(row, !shouldShow);
+    }
+    
+    // Aplicar ordenamiento si está seleccionado
+    if (sortColumnCombo && sortColumnCombo->currentIndex() >= 0) {
+        int column = sortColumnCombo->currentIndex();
+        bool ascending = (sortOrderCombo && sortOrderCombo->currentIndex() == 0); // 0 = Ascendente, 1 = Descendente
+        sortDataRowsOnly(column, ascending);
+    }
+}
+
+void TableData::clearFilters()
+{
+    // Limpiar campo de búsqueda
+    if (searchField) {
+        searchField->clear();
+    }
+    
+    // Limpiar filtros numéricos
+    if (numberCondition) {
+        numberCondition->setCurrentIndex(0); // "Sin filtro"
+    }
+    if (numberValue1) {
+        numberValue1->clear();
+    }
+    if (numberValue2) {
+        numberValue2->clear();
+        numberValue2->setVisible(false);
+    }
+    
+    // Resetear combos de ordenamiento
+    if (sortColumnCombo) {
+        sortColumnCombo->setCurrentIndex(0);
+    }
+    if (sortOrderCombo) {
+        sortOrderCombo->setCurrentIndex(0);
+    }
+    
+    // Mostrar todas las filas
+    if (dataTable) {
+        for (int row = 0; row < dataTable->rowCount(); ++row) {
+            dataTable->setRowHidden(row, false);
+        }
+        
+        // Restaurar orden original
+        dataTable->sortItems(0, Qt::AscendingOrder);
+    }
+}
+
+void TableData::sortByColumn(int column, Qt::SortOrder order)
+{
+    if (!dataTable || column < 0 || column >= dataTable->columnCount()) return;
+    
+    // Temporalmente desconectar señales para evitar loops
+    dataTable->blockSignals(true);
+    
+    // Separar filas con datos de filas vacías
+    QList<QStringList> rowsWithData;
+    QList<QStringList> emptyRows;
+    QList<int> rowsWithDataOriginalIndex;
+    QList<int> emptyRowsOriginalIndex;
+    
+    for (int row = 0; row < dataTable->rowCount(); ++row) {
+        if (dataTable->isRowHidden(row)) continue; // Saltar filas ocultas
+        
+        QStringList rowValues;
+        bool hasData = false;
+        
+        for (int col = 0; col < dataTable->columnCount(); ++col) {
+            QTableWidgetItem *item = dataTable->item(row, col);
+            QString value = item ? item->text().trimmed() : "";
+            rowValues << value;
+            if (!value.isEmpty()) {
+                hasData = true;
+            }
+        }
+        
+        if (hasData) {
+            rowsWithData.append(rowValues);
+            rowsWithDataOriginalIndex.append(row);
+        } else {
+            emptyRows.append(rowValues);
+            emptyRowsOriginalIndex.append(row);
+        }
+    }
+    
+    // Ordenar solo las filas con datos
+    std::sort(rowsWithData.begin(), rowsWithData.end(), [column, order](const QStringList &a, const QStringList &b) {
+        if (column >= a.size() || column >= b.size()) return false;
+        
+        QString valA = a[column].trimmed();
+        QString valB = b[column].trimmed();
+        
+        // Si uno está vacío y el otro no, el vacío va al final
+        if (valA.isEmpty() && !valB.isEmpty()) return order == Qt::DescendingOrder;
+        if (!valA.isEmpty() && valB.isEmpty()) return order == Qt::AscendingOrder;
+        if (valA.isEmpty() && valB.isEmpty()) return false;
+        
+        // Intentar ordenamiento numérico si ambos son números
+        bool aIsNum, bIsNum;
+        double numA = valA.toDouble(&aIsNum);
+        double numB = valB.toDouble(&bIsNum);
+        
+        if (aIsNum && bIsNum) {
+            return (order == Qt::AscendingOrder) ? numA < numB : numA > numB;
+        }
+        
+        // Ordenamiento alfabético
+        int comparison = valA.compare(valB, Qt::CaseInsensitive);
+        return (order == Qt::AscendingOrder) ? comparison < 0 : comparison > 0;
+    });
+    
+    // Aplicar datos ordenados: primero filas con datos, luego filas vacías
+    QList<QStringList> allSortedRows = rowsWithData + emptyRows;
+    QList<int> allOriginalIndexes = rowsWithDataOriginalIndex + emptyRowsOriginalIndex;
+    
+    int targetRow = 0;
+    for (int i = 0; i < allSortedRows.size(); ++i) {
+        // Encontrar siguiente fila visible
+        while (targetRow < dataTable->rowCount() && dataTable->isRowHidden(targetRow)) {
+            targetRow++;
+        }
+        
+        if (targetRow >= dataTable->rowCount()) break;
+        
+        const QStringList &rowValues = allSortedRows[i];
+        
+        // Aplicar valores
+        for (int col = 0; col < rowValues.size() && col < dataTable->columnCount(); ++col) {
+            QTableWidgetItem *item = dataTable->item(targetRow, col);
+            if (item) {
+                item->setText(rowValues[col]);
+            }
+        }
+        targetRow++;
+    }
+    
+    // Reconectar señales
+    dataTable->blockSignals(false);
+}
+
+void TableData::sortDataRowsOnly(int column, bool ascending)
+{
+    if (!dataTable || column < 0 || column >= dataTable->columnCount()) return;
+    
+    qDebug() << "DEBUG: Ordenando solo filas con datos - Columna:" << column << "Ascendente:" << ascending;
+    
+    // Bloquear señales durante el ordenamiento
+    dataTable->blockSignals(true);
+    
+    // Identificar filas con datos (excluyendo fila vacía al final)
+    QList<QStringList> dataRows;
+    QList<int> originalRowNumbers;
+    int totalRows = dataTable->rowCount();
+    
+    for (int row = 0; row < totalRows; row++) {
+        // Verificar si la fila tiene datos
+        bool hasData = false;
+        QStringList rowData;
+        
+        for (int col = 0; col < dataTable->columnCount(); col++) {
+            QTableWidgetItem *item = dataTable->item(row, col);
+            QString cellText = item ? item->text().trimmed() : "";
+            rowData << cellText;
+            if (!cellText.isEmpty()) {
+                hasData = true;
+            }
+        }
+        
+        // Solo incluir filas con datos Y que estén visibles
+        if (hasData && !dataTable->isRowHidden(row)) {
+            dataRows << rowData;
+            originalRowNumbers << row;
+        }
+    }
+    
+    qDebug() << "DEBUG: Encontradas" << dataRows.size() << "filas con datos para ordenar";
+    
+    // Ordenar las filas con datos
+    std::sort(dataRows.begin(), dataRows.end(), [column, ascending](const QStringList &a, const QStringList &b) {
+        if (column >= a.size() || column >= b.size()) return false;
+        
+        QString aVal = a[column];
+        QString bVal = b[column];
+        
+        // Intentar comparación numérica
+        bool aIsNum, bIsNum;
+        double aNum = aVal.toDouble(&aIsNum);
+        double bNum = bVal.toDouble(&bIsNum);
+        
+        if (aIsNum && bIsNum) {
+            return ascending ? aNum < bNum : aNum > bNum;
+        }
+        
+        // Comparación de texto
+        int result = aVal.compare(bVal, Qt::CaseInsensitive);
+        return ascending ? result < 0 : result > 0;
+    });
+    
+    // Aplicar el nuevo orden solo a las filas con datos visibles
+    int targetRow = 0;
+    for (int i = 0; i < dataRows.size(); i++) {
+        // Buscar la próxima fila visible
+        while (targetRow < totalRows && dataTable->isRowHidden(targetRow)) {
+            targetRow++;
+        }
+        
+        if (targetRow >= totalRows) break;
+        
+        // Verificar si la fila objetivo tiene datos (no es la fila vacía)
+        bool targetHasData = false;
+        for (int col = 0; col < dataTable->columnCount(); col++) {
+            QTableWidgetItem *item = dataTable->item(targetRow, col);
+            if (item && !item->text().trimmed().isEmpty()) {
+                targetHasData = true;
+                break;
+            }
+        }
+        
+        // Solo actualizar si la fila objetivo debe tener datos
+        if (targetHasData || targetRow < totalRows - 1) {
+            const QStringList &rowData = dataRows[i];
+            for (int col = 0; col < rowData.size() && col < dataTable->columnCount(); col++) {
+                QTableWidgetItem *item = dataTable->item(targetRow, col);
+                if (item) {
+                    item->setText(rowData[col]);
+                }
+            }
+        }
+        targetRow++;
+    }
+    
+    // Reconectar señales
+    dataTable->blockSignals(false);
+    
+    qDebug() << "DEBUG: Ordenamiento de filas con datos completado";
 }
