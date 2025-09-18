@@ -85,6 +85,10 @@ public:
     
     // Actualizar tema
     void updateTheme(bool isDark);
+    
+    // Acceso a formatos guardados
+    QStringList getSavedDateFormats() const { return savedDateFormats; }
+    QString formatDateWithTextMonth(const QDate &date, const QString &format) const; // Convertir fecha a formato con mes en texto
 
 
 public slots:
@@ -113,6 +117,7 @@ private:
     QString generateExampleData(const QString &dataType, int column);
     void applyCurrencyFormats(); // Aplicar formatos de moneda específicos
     void applyNumberFormats(); // Aplicar formatos de números específicos
+    void applyDateFormats(); // Aplicar formatos de fecha específicos
     
     // Métodos para validación de llaves foráneas
     bool validateForeignKeyConstraints(int row);

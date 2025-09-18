@@ -3838,3 +3838,91 @@ bool RelationshipsView::validateForeignKeyNaming(const QString &foreignKeyField,
     
     return isValid;
 }
+
+bool RelationshipsView::hasRelationshipForField(const QString &tableName, const QString &fieldName)
+{
+    qDebug() << "DEBUG RelationshipsView::hasRelationshipForField:" << tableName << fieldName;
+    
+    // Limpiar el nombre del campo de iconos y espacios
+    QString cleanFieldName = fieldName;
+    cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
+                                  .remove("🔑🔗")
+                                  .remove("🔑🔶")
+                                  .remove("🔗🔶")
+                                  .remove("🔑")
+                                  .remove("🔗")
+                                  .remove("🔶")
+                                  .trimmed();
+    
+    qDebug() << "DEBUG: Campo limpio para verificación:" << cleanFieldName;
+    
+    // Buscar en las relaciones existentes
+    for (int i = 0; i < relationshipsListWidget->count(); ++i) {
+        QListWidgetItem *item = relationshipsListWidget->item(i);
+        if (!item) continue;
+        
+        QString relationshipText = item->text();
+        qDebug() << "DEBUG: Verificando relación:" << relationshipText;
+        
+        // Parsear la relación: "tabla1 → tabla2 (tipo)"
+        QStringList parts = relationshipText.split(" → ");
+        if (parts.size() != 2) continue;
+        
+        QString sourceTable = parts[0].trimmed();
+        QString rightPart = parts[1].trimmed();
+        QString targetTable = rightPart.split(" (")[0].trimmed();
+        
+        qDebug() << "DEBUG: Relación parseada - Source:" << sourceTable << "Target:" << targetTable;
+        
+        // Verificar si esta relación involucra la tabla especificada
+        if (sourceTable == tableName) {
+            // Esta tabla es origen de la relación
+            // Verificar si el campo está relacionado con la tabla destino
+            QString tableCore = targetTable.toLower();
+            QString fieldCore = cleanFieldName.toLower();
+            
+            // Remover prefijos/sufijos comunes del campo
+            fieldCore = fieldCore.replace("id_", "").replace("_id", "").replace("id", "");
+            
+            // Crear versión singular de la tabla
+            QString tableSingular = tableCore;
+            if (tableCore.endsWith("s") && tableCore.length() > 2) {
+                tableSingular = tableCore.left(tableCore.length() - 1);
+            }
+            
+            qDebug() << "DEBUG: Verificando si field core" << fieldCore << "coincide con tabla" << tableCore << "o singular" << tableSingular;
+            
+            // Verificar coincidencia semántica
+            if (fieldCore == tableCore || fieldCore == tableSingular ||
+                tableCore.contains(fieldCore) || tableSingular.contains(fieldCore) ||
+                fieldCore.contains(tableCore) || fieldCore.contains(tableSingular)) {
+                qDebug() << "DEBUG: ✅ Relación encontrada para campo" << cleanFieldName << "en tabla" << tableName;
+                return true;
+            }
+        }
+        
+        if (targetTable == tableName) {
+            // Esta tabla es destino de la relación
+            qDebug() << "DEBUG: Tabla" << tableName << "es destino de relación desde" << sourceTable;
+            
+            // Verificar si el campo FK apunta a la tabla source
+            // Por ejemplo: maestro_id debería apuntar a la tabla "maestro"
+            QString expectedSourceTable = cleanFieldName;
+            if (expectedSourceTable.endsWith("_id")) {
+                expectedSourceTable = expectedSourceTable.left(expectedSourceTable.length() - 3);
+            } else if (expectedSourceTable.startsWith("id_")) {
+                expectedSourceTable = expectedSourceTable.mid(3);
+            }
+            
+            qDebug() << "DEBUG: Campo esperado de tabla source:" << expectedSourceTable << "Tabla source real:" << sourceTable;
+            
+            if (expectedSourceTable.compare(sourceTable, Qt::CaseInsensitive) == 0) {
+                qDebug() << "DEBUG: ✅ Relación encontrada para campo" << cleanFieldName << "en tabla" << tableName;
+                return true;
+            }
+        }
+    }
+    
+    qDebug() << "DEBUG: ❌ No se encontró relación establecida para campo" << cleanFieldName << "en tabla" << tableName;
+    return false;
+}

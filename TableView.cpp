@@ -501,6 +501,43 @@ void TableView::createTableArea()
     headers << "Nombre del Campo" << "Tipo de Datos" << "Descripción";
     tableWidget->setHorizontalHeaderLabels(headers);
     
+    // Agregar tooltip informativo al header de "Nombre del Campo"
+    QHeaderView *headerView = tableWidget->horizontalHeader();
+    if (headerView) {
+        // Configurar tooltip para la primera columna (Nombre del Campo)
+        headerView->setToolTip("💡 Tip para Foreign Keys:\nUse nombres similares a la tabla destino para mayor claridad.\nEjemplo: Si conecta a tabla 'Usuarios', use 'usuario_id' o 'id_usuario'");
+        
+        // También podemos usar el modelo para establecer tooltips específicos por sección
+        connect(headerView, &QHeaderView::sectionEntered, this, [this](int logicalIndex) {
+            if (logicalIndex == 0) {
+                tableWidget->horizontalHeader()->setToolTip(
+                    "💡 Tip para Foreign Keys:\n"
+                    "Use nombres similares a la tabla destino para mayor claridad.\n"
+                    "Ejemplo: Si conecta a tabla 'Usuarios', use 'usuario_id' o 'id_usuario'"
+                );
+            }
+        });
+    }
+    
+    // Personalizar el header para mostrar íconos en lugar de líneas
+    headerView->setStyleSheet(
+        "QHeaderView::section {"
+            "background-color: #F8F9FA;"
+            "color: #374151;"
+            "border: 1px solid #E5E7EB;"
+            "font-weight: 600;"
+            "font-size: 13px;"
+            "padding: 8px 12px;"
+            "text-align: left;"
+        "}"
+        "QHeaderView::section:hover {"
+            "background-color: #E5E7EB;"
+        "}"
+        "QHeaderView::section:first {"
+            "border-left: none;"
+        "}"
+    );
+    
     // Configurar anchos - más compactos como TableData
     tableWidget->setColumnWidth(0, 150);
     tableWidget->setColumnWidth(1, 120);
@@ -887,8 +924,16 @@ void TableView::onFieldNameChanged(const QString &text)
         QTableWidgetItem *item = tableWidget->item(currentSelectedRow, 0);
         if (item) {
             if (!text.isEmpty()) {
+                // *** PROTECCIÓN CRÍTICA: Evitar procesamiento simultáneo ***
+                static bool isProcessingFieldChange = false;
+                if (isProcessingFieldChange) {
+                    qDebug() << "DEBUG: Evitando procesamiento simultáneo de cambio de campo";
+                    return;
+                }
+                isProcessingFieldChange = true;
+                
                 // *** PROTECCIÓN: Bloquear señales durante el proceso de actualización ***
-                blockSignals(true);
+                bool wasBlocked = blockSignals(true);
                 
                 try {
                     // *** PROTECCIÓN: Obtener el nombre anterior del campo ***
@@ -902,6 +947,14 @@ void TableView::onFieldNameChanged(const QString &text)
                                               .remove("🔗")
                                               .remove("🔶")
                                               .trimmed();
+                    
+                    // *** VALIDACIÓN: Solo procesar si realmente hay cambio ***
+                    if (oldFieldName == text) {
+                        qDebug() << "DEBUG: No hay cambio real en el nombre del campo, ignorando";
+                        blockSignals(wasBlocked);
+                        isProcessingFieldChange = false;
+                        return;
+                    }
                     
                     // Verificar el estado de Primary Key y Foreign Key
                     bool isPrimaryKey = (primaryKeyRow == currentSelectedRow);
@@ -963,14 +1016,21 @@ void TableView::onFieldNameChanged(const QString &text)
                     qDebug() << "ERROR: Excepción en onFieldNameChanged";
                 }
                 
-                // Restaurar señales
-                blockSignals(false);
+                // Restaurar señales y flag de protección
+                blockSignals(wasBlocked);
+                isProcessingFieldChange = false;
             } else {
                 item->setText(text);
                 item->setToolTip("");
             }
         }
-        ensureEmptyRowExists();
+        
+        // Asegurar que siempre haya una fila vacía con protección adicional
+        try {
+            ensureEmptyRowExists();
+        } catch (...) {
+            qDebug() << "ERROR: Problema al asegurar fila vacía";
+        }
     }
 }
 
@@ -2921,7 +2981,7 @@ void TableView::createSpecificPropertiesWidgets()
     dateLayout->addWidget(dateFormatLabel);
     
     dateFormatCombo = new QComboBox();
-    dateFormatCombo->addItems({"DD-MM-YY", "DD/MM/YY"});
+    dateFormatCombo->addItems({"DD-MM-YY", "DD/MM/YY", "DD/MESTEXTO/YYYY"});
     dateFormatCombo->setStyleSheet(getComboStyle());
     dateFormatCombo->setMaximumWidth(200);
     dateFormatCombo->setMinimumHeight(35); // Altura mínima para el combo

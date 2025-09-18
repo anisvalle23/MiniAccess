@@ -32,7 +32,23 @@ QWidget *DataFieldDelegate::createEditor(QWidget *parent,
         dateEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
         dateEdit->setCalendarPopup(true);
-        dateEdit->setDisplayFormat("dd-MM-yyyy");
+        
+        // Obtener el formato de fecha para esta columna
+        QString dateFormat = "dd-MM-yyyy"; // formato por defecto
+        if (owner && index.column() < owner->getSavedDateFormats().size()) {
+            QString savedFormat = owner->getSavedDateFormats().at(index.column());
+            if (savedFormat == "DD-MM-YY") {
+                dateFormat = "dd-MM-yy";
+            } else if (savedFormat == "DD/MM/YY") {
+                dateFormat = "dd/MM/yy";
+            } else if (savedFormat == "DD/MESTEXTO/YYYY") {
+                // Para el editor, usamos formato numérico normal, 
+                // la conversión a texto se hace al mostrar
+                dateFormat = "dd/MM/yyyy";
+            }
+        }
+        
+        dateEdit->setDisplayFormat(dateFormat);
         dateEdit->setDate(QDate::currentDate());
         dateEdit->setMinimumDate(QDate(1900,1,1));
         dateEdit->setMaximumDate(QDate(2100,12,31));
@@ -228,9 +244,20 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
 {
     if (auto *dateEdit = qobject_cast<QDateEdit*>(editor)) {
         const QDate d = dateEdit->date();
-        model->setData(index, d.toString("dd-MM-yyyy"), Qt::EditRole);
-        if (auto *owner = qobject_cast<TableData*>(this->parent()))
-            owner->clearCellError(index.row(), index.column());
+        const TableData *owner = qobject_cast<const TableData*>(this->parent());
+        
+        // Usar el formato específico de la columna
+        QString formattedDate;
+        if (owner && index.column() < owner->getSavedDateFormats().size()) {
+            QString savedFormat = owner->getSavedDateFormats().at(index.column());
+            formattedDate = owner->formatDateWithTextMonth(d, savedFormat);
+        } else {
+            formattedDate = d.toString("dd-MM-yyyy");
+        }
+        
+        model->setData(index, formattedDate, Qt::EditRole);
+        if (owner)
+            const_cast<TableData*>(owner)->clearCellError(index.row(), index.column());
         return;
     }
 
@@ -287,7 +314,14 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
                                         ? QString("dd%1MM%1yyyy").arg(sep)
                                         : QString("dd%1MM%1yy").arg(sep);
                 const QDate d = QDate::fromString(newText, fmt);
-                newText = d.toString("dd-MM-yyyy");
+                
+                // Aplicar el formato específico de esta columna
+                if (owner && index.column() < owner->getSavedDateFormats().size()) {
+                    QString savedFormat = owner->getSavedDateFormats().at(index.column());
+                    newText = owner->formatDateWithTextMonth(d, savedFormat);
+                } else {
+                    newText = d.toString("dd-MM-yyyy");
+                }
             }
         } else if (type == "Texto corto" || type == "Texto largo") {
             // Validación de tamaño de texto
@@ -812,6 +846,93 @@ void TableData::applyCurrencyFormats()
     dataTable->repaint();
 }
 
+QString TableData::formatDateWithTextMonth(const QDate &date, const QString &format) const
+{
+    if (!date.isValid()) return "";
+    
+    // Arreglo con nombres de meses en español
+    QStringList monthNames = {
+        "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+        "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+    };
+    
+    if (format == "DD/MESTEXTO/YYYY") {
+        int day = date.day();
+        int month = date.month();
+        int year = date.year();
+        
+        if (month >= 1 && month <= 12) {
+            return QString("%1/%2/%3")
+                .arg(day, 2, 10, QChar('0'))  // DD con padding de ceros
+                .arg(monthNames[month])        // Mes en texto
+                .arg(year);                    // YYYY
+        }
+    }
+    
+    // Para otros formatos, usar el formato Qt estándar
+    if (format == "DD-MM-YY") {
+        return date.toString("dd-MM-yy");
+    } else if (format == "DD/MM/YY") {
+        return date.toString("dd/MM/yy");
+    }
+    
+    return date.toString("dd-MM-yyyy"); // Formato por defecto
+}
+
+void TableData::applyDateFormats()
+{
+    qDebug() << "DEBUG: Aplicando formatos de fecha específicos";
+    
+    if (savedDateFormats.isEmpty() || savedFieldTypes.isEmpty()) {
+        qDebug() << "DEBUG: No hay formatos de fecha o tipos de campo guardados";
+        return;
+    }
+    
+    for (int col = 0; col < savedFieldTypes.size() && col < savedDateFormats.size(); ++col) {
+        if (savedFieldTypes.at(col) == "fecha") {
+            QString format = savedDateFormats.at(col);
+            qDebug() << "DEBUG: Aplicando formato de fecha" << format << "a columna" << col;
+            
+            dataTable->blockSignals(true);
+            for (int row = 0; row < dataTable->rowCount(); ++row) {
+                QTableWidgetItem *item = dataTable->item(row, col);
+                if (!item) continue;
+                
+                // Saltar fila de ejemplo
+                QTableWidgetItem *firstItem = dataTable->item(row, 0);
+                if (firstItem && firstItem->toolTip().contains("Ejemplo")) continue;
+
+                const QString text = item->text().trimmed();
+                if (!text.isEmpty()) {
+                    // Intentar parsear la fecha actual
+                    QDate date = QDate::fromString(text, "dd-MM-yyyy");
+                    if (!date.isValid()) {
+                        date = QDate::fromString(text, "dd/MM/yyyy");
+                    }
+                    if (!date.isValid()) {
+                        date = QDate::fromString(text, "dd-MM-yy");
+                    }
+                    if (!date.isValid()) {
+                        date = QDate::fromString(text, "dd/MM/yy");
+                    }
+                    
+                    if (date.isValid()) {
+                        QString formattedDate = formatDateWithTextMonth(date, format);
+                        item->setText(formattedDate);
+                        qDebug() << "DEBUG: Fecha" << text << "convertida a" << formattedDate;
+                    }
+                }
+            }
+            dataTable->blockSignals(false);
+        }
+    }
+    
+    // Forzar actualización visual de la tabla
+    qDebug() << "DEBUG: Forzando actualización visual de fechas";
+    dataTable->viewport()->update();
+    dataTable->repaint();
+}
+
 void TableData::setupDataViewWithFormatsAndDecimals(const QStringList &fieldNames, const QStringList &fieldTypes, const QStringList &currencyFormats, const QStringList &millaresDecimals, int primaryKeyColumn)
 {
     qDebug() << "DEBUG: setupDataViewWithFormatsAndDecimals llamado con:";
@@ -869,12 +990,15 @@ void TableData::setupDataViewWithUniqueFields(const QStringList &fieldNames, con
     qDebug() << "DEBUG: dateFormats:" << dateFormats;    qDebug() << "DEBUG: uniqueColumns:" << uniqueColumns;
     qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
     
-    // Guardar los formatos de moneda, decimales, tamaños de texto y campos únicos
+    // Guardar los formatos de moneda, decimales, tamaños de texto, formatos de fecha y campos únicos
     savedCurrencyFormats = currencyFormats;
     savedMillaresDecimals = millaresDecimals;
     savedTextSizes = textSizes;
+    savedDateFormats = dateFormats;
+    savedUniqueColumns = uniqueColumns;
     qDebug() << "DEBUG: Decimales guardados en savedMillaresDecimals:" << savedMillaresDecimals;
     qDebug() << "DEBUG: Tamaños guardados en savedTextSizes:" << savedTextSizes;
+    qDebug() << "DEBUG: Formatos de fecha guardados en savedDateFormats:" << savedDateFormats;
     qDebug() << "DEBUG: Campos únicos guardados en savedUniqueColumns:" << savedUniqueColumns;
     
     // Llamar al método base para hacer la configuración normal
@@ -882,6 +1006,9 @@ void TableData::setupDataViewWithUniqueFields(const QStringList &fieldNames, con
     
     // Aplicar formatos específicos de moneda después de la configuración básica
     applyCurrencyFormats();
+    
+    // Aplicar formatos específicos de fecha después de la configuración básica
+    applyDateFormats();
 }
 
 void TableData::addPersonRow(const QStringList &personData)
@@ -2173,6 +2300,7 @@ void TableData::setupDataViewWithAllFormats(const QStringList &fieldNames, const
     // Aplicar formatos específicos después de la configuración básica
     applyCurrencyFormats();
     applyNumberFormats(); // Nuevo: aplicar formatos de números
+    applyDateFormats(); // Nuevo: aplicar formatos de fechas
 }
 
 void TableData::applyNumberFormats()
@@ -2278,17 +2406,21 @@ bool TableData::isFieldForeignKey(const QString &fieldName)
 // Nuevo método para verificar si hay relación establecida
 bool TableData::hasEstablishedRelationship(const QString &fieldName)
 {
-    if (!relationshipsView || !tableEditor) return false;
+    qDebug() << "DEBUG TableData::hasEstablishedRelationship para campo:" << fieldName;
+    qDebug() << "DEBUG: relationshipsView es" << (relationshipsView ? "válido" : "NULL");
+    qDebug() << "DEBUG: tableEditor es" << (tableEditor ? "válido" : "NULL");
     
-    QString referencedTable = getReferencedTable(fieldName);
+    if (!relationshipsView || !tableEditor) {
+        qDebug() << "DEBUG: Falta referencia a relationshipsView o tableEditor - retornando false";
+        return false;
+    }
     
-    // Verificar si la tabla referenciada existe
-    QStringList availableTables = tableEditor->getCreatedTables();
-    bool tableExists = availableTables.contains(referencedTable);
+    // Usar el nuevo método de RelationshipsView para verificar relaciones reales
+    bool hasRelation = relationshipsView->hasRelationshipForField(currentTableName, fieldName);
     
-    qDebug() << "DEBUG: Campo FK" << fieldName << "-> Tabla inferida:" << referencedTable << "-> Existe:" << tableExists;
+    qDebug() << "DEBUG: Campo" << fieldName << "en tabla" << currentTableName << "tiene relación establecida:" << hasRelation;
     
-    return tableExists;
+    return hasRelation;
 }
 
 QString TableData::getReferencedTable(const QString &fieldName)

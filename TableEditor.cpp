@@ -9,6 +9,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QDialogButtonBox>
+#include <QPushButton>
 
 TableEditor::TableEditor(QWidget *parent)
     : QWidget(parent), isDarkTheme(false), relationshipsView(nullptr)
@@ -340,11 +341,52 @@ void TableEditor::createTableCreationPanel()
     createTablePanelLayout->setContentsMargins(20, 20, 20, 20); // Márgenes más pequeños
     createTablePanelLayout->setSpacing(20); // Espaciado más compacto
     
-    // Header section - Solo título
+    // Header section - Título con botón de información
+    QWidget *headerWidget = new QWidget();
+    QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    headerLayout->setSpacing(10);
+    
     QLabel *titleLabel = new QLabel("Nueva Tabla");
     titleLabel->setFont(QFont("Inter", 20, QFont::Bold));
     titleLabel->setStyleSheet("QLabel { color: #111827; }");
-    createTablePanelLayout->addWidget(titleLabel);
+    
+    // Botón de información sobre Foreign Keys
+    QPushButton *infoButton = new QPushButton("ℹ️");
+    infoButton->setFixedSize(30, 30);
+    infoButton->setStyleSheet(
+        "QPushButton {"
+            "background-color: #3B82F6;"
+            "color: white;"
+            "border: none;"
+            "border-radius: 15px;"
+            "font-size: 14px;"
+            "font-weight: bold;"
+        "}"
+        "QPushButton:hover {"
+            "background-color: #2563EB;"
+        "}"
+        "QPushButton:pressed {"
+            "background-color: #1D4ED8;"
+        "}"
+    );
+    infoButton->setToolTip("Información sobre Foreign Keys");
+    
+    // Conectar el botón para mostrar información
+    connect(infoButton, &QPushButton::clicked, this, [this]() {
+        QMessageBox::information(this, "💡 Tip para Foreign Keys",
+            "Para crear Foreign Keys efectivas:\n\n"
+            "• Use nombres similares a la tabla destino\n"
+            "• Ejemplo: Si conecta a tabla 'Usuarios' → use 'usuario_id' o 'id_usuario'\n"
+            "• Ejemplo: Si conecta a tabla 'Productos' → use 'producto_id' o 'id_producto'\n\n"
+            "Esto mejora la claridad y comprensión de las relaciones.");
+    });
+    
+    headerLayout->addWidget(titleLabel);
+    headerLayout->addWidget(infoButton);
+    headerLayout->addStretch(); // Empuja todo hacia la izquierda
+    
+    createTablePanelLayout->addWidget(headerWidget);
     
     // Table name input
     QWidget *nameWidget = new QWidget();
