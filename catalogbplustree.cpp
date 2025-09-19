@@ -9,6 +9,9 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QString>
+#include <QFileInfo>
+#include <QHash>
+#include <QDir>
 
 // Implementación de CatalogNode
 CatalogNode::CatalogNode(bool leaf) : isLeaf(leaf), next(nullptr) {}
@@ -576,4 +579,291 @@ std::vector<std::string> CatalogBPlusTree::readAllRecordsJson(const std::string&
         // si no es objeto, lo ignoramos (simple/robusto para principiante)
     }
     return out;
+}
+
+// === Helpers para guardar NDJSON según el meta ===
+static bool loadMetaFields(const QString& metaPath, QJsonArray* outFields, QString* qerr=nullptr) {
+    QJsonObject meta;
+    if (!readJsonFile(metaPath, &meta, qerr)) return false;
+    *outFields = meta.value("fields").toArray();
+    return true;
+}
+
+static QJsonObject findFieldSpec(const QJsonArray& fields, const QString& fname) {
+    for (const auto& v : fields) {
+        const auto o = v.toObject();
+        if (o.value("name").toString().compare(fname, Qt::CaseInsensitive) == 0) return o;
+    }
+    return {};
+}
+
+static QJsonValue toNumberJson(const QString& s, bool integer, bool allowNull) {
+    const QString t = s.trimmed();
+    if (t.isEmpty()) return allowNull ? QJsonValue(QJsonValue::Null) : QJsonValue(0);
+    if (integer) {
+        bool ok=false; qlonglong iv = t.toLongLong(&ok);
+        return ok ? QJsonValue(iv) : (allowNull ? QJsonValue(QJsonValue::Null) : QJsonValue(0));
+    } else {
+        // admite coma decimal
+        QString t = s.trimmed();
+        QString norm = t;
+        norm.replace(',', '.');
+        bool ok = false;
+        double dv = norm.toDouble(&ok);
+        return ok ? QJsonValue(dv) : (allowNull ? QJsonValue(QJsonValue::Null) : QJsonValue(0.0));
+    }
+
+}
+
+static QJsonValue toBoolJson(const QString& s, bool allowNull) {
+    const QString t = s.trimmed().toLower();
+    if (t.isEmpty()) return allowNull ? QJsonValue(QJsonValue::Null) : QJsonValue(false);
+    if (t=="1" || t=="true" || t=="sí" || t=="si" || t=="yes")  return QJsonValue(true);
+    if (t=="0" || t=="false"|| t=="no")                         return QJsonValue(false);
+    return allowNull ? QJsonValue(QJsonValue::Null) : QJsonValue(false);
+}
+
+static QJsonObject uiRowToJsonObject(const QStringList& fieldNamesOrdered,
+                                     const QStringList& uiRow,
+                                     const QJsonArray&  fieldsMeta)
+{
+    QJsonObject obj;
+    for (int i=0; i<fieldNamesOrdered.size(); ++i) {
+        const QString fname = fieldNamesOrdered[i];
+        const QString s     = (i<uiRow.size() ? uiRow[i] : QString());
+
+        const QJsonObject spec = findFieldSpec(fieldsMeta, fname);
+        const QString ftype    = spec.value("type").toString(); // number|currency|text|date|datetime|bool
+        const QString nKind    = spec.value("numberKind").toString("decimal");
+        const int textMax      = spec.value("textMax").toInt(0);
+        const bool allowNull   = spec.value("allowNull").toBool(true);
+
+        if (ftype == "text") {
+            obj.insert(fname, truncateIfNeeded(s, textMax));
+        } else if (ftype == "number") {
+            const bool integer = (nKind.compare("integer", Qt::CaseInsensitive) == 0);
+            obj.insert(fname, toNumberJson(s, integer, allowNull));
+        } else if (ftype == "currency") {
+            // se guarda como número decimal; la moneda (HNL/USD) queda en el meta
+            obj.insert(fname, toNumberJson(s, /*integer=*/false, allowNull));
+        } else if (ftype == "bool") {
+            obj.insert(fname, toBoolJson(s, allowNull));
+        } else if (ftype == "date" || ftype == "datetime") {
+            // guardamos string; validación/format se hace en UI
+            obj.insert(fname, s.trimmed().isEmpty() && allowNull ? QJsonValue(QJsonValue::Null) : QJsonValue(s));
+        } else {
+            // desconocido: guarda como string (con trunc si se definió textMax)
+            obj.insert(fname, textMax>0 ? truncateIfNeeded(s, textMax) : s);
+        }
+    }
+    return obj;
+}
+
+static bool writeNdjsonFileTruncate(const QString& path, const QVector<QJsonObject>& rows, QString* qerr=nullptr) {
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        if (qerr) *qerr = "No se pudo escribir: " + path;
+        return false;
+    }
+    QTextStream ts(&f);
+    for (const auto& o : rows) {
+        ts << QJsonDocument(o).toJson(QJsonDocument::Compact) << "\n";
+    }
+    return true;
+}
+
+bool CatalogBPlusTree::rewriteMadFromRows(const std::string& tablesDir,
+                                          const std::string& tableName,
+                                          const QStringList& fieldNamesOrdered,
+                                          const QList<QStringList>& rows,
+                                          std::string* err)
+{
+    const QString metaPath = tableMetaPathQS(tablesDir, tableName);
+    const QString madPath  = tableMadPathQS (tablesDir, tableName);
+
+    QJsonArray fieldsMeta;
+    QString qerr;
+    if (!loadMetaFields(metaPath, &fieldsMeta, &qerr)) {
+        if (err) *err = qerr.toStdString();
+        return false;
+    }
+
+    QVector<QJsonObject> out;
+    out.reserve(rows.size());
+    for (const auto& r : rows) {
+        out.push_back(uiRowToJsonObject(fieldNamesOrdered, r, fieldsMeta));
+    }
+
+    if (!writeNdjsonFileTruncate(madPath, out, &qerr)) {
+        if (err) *err = qerr.toStdString();
+        return false;
+    }
+    return true;
+}
+
+bool CatalogBPlusTree::appendMadFromRows(const std::string& tablesDir,
+                                         const std::string& tableName,
+                                         const QStringList& fieldNamesOrdered,
+                                         const QList<QStringList>& rows,
+                                         std::string* err)
+{
+    const QString metaPath = tableMetaPathQS(tablesDir, tableName);
+    const QString madPath  = tableMadPathQS (tablesDir, tableName);
+
+    QJsonArray fieldsMeta;
+    QString qerr;
+    if (!loadMetaFields(metaPath, &fieldsMeta, &qerr)) {
+        if (err) *err = qerr.toStdString();
+        return false;
+    }
+
+    QFile f(madPath);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        if (err) *err = std::string("No se pudo abrir para append: ") + madPath.toStdString();
+        return false;
+    }
+    QTextStream ts(&f);
+
+    for (const auto& r : rows) {
+        const QJsonObject o = uiRowToJsonObject(fieldNamesOrdered, r, fieldsMeta);
+        ts << QJsonDocument(o).toJson(QJsonDocument::Compact) << "\n";
+    }
+    return true;
+}
+
+static QString catalogAvlPathQS(const std::string& catalogMetaPath) {
+    QFileInfo fi(QString::fromStdString(catalogMetaPath));
+    return fi.dir().filePath(fi.baseName() + ".avl"); // p.ej. catalog.avl
+}
+
+// POP: toma el último índice libre del .avl (LIFO). Retorna true si obtuvo uno.
+static bool popFreeIdx(const QString& avlPath, int* outIdx) {
+    QFile f(avlPath);
+    if (!f.exists() || !f.open(QIODevice::ReadOnly | QIODevice::Text)) return false;
+    QList<QByteArray> lines;
+    while (!f.atEnd()) lines.push_back(f.readLine());
+    f.close();
+    while (!lines.isEmpty() && lines.last().trimmed().isEmpty()) lines.removeLast();
+    if (lines.isEmpty()) return false;
+
+    bool ok=false;
+    int idx = QString::fromUtf8(lines.last()).trimmed().toInt(&ok);
+    if (!ok) return false;
+    lines.removeLast();
+
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) return false;
+    for (auto& l : lines) f.write(l);
+    f.close();
+
+    *outIdx = idx;
+    return true;
+}
+
+// PUSH: agrega un índice libre al final del .avl
+static void pushFreeIdx(const QString& avlPath, int idx) {
+    QFile f(avlPath);
+    f.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text);
+    QTextStream ts(&f);
+    ts << idx << "\n";
+}
+
+// Devuelve: mapa nombre->índice y total de slots actuales
+static bool scanCatalogMetaQuick(const std::string& catalogMetaPath,
+                                 QHash<QString,int>* slotOfName,
+                                 int* totalSlots) {
+    slotOfName->clear();
+    QFile f(QString::fromStdString(catalogMetaPath));
+    if (!f.exists()) { *totalSlots = 0; return true; }
+    if (!f.open(QIODevice::ReadOnly)) return false;
+
+    const qint64 recSize = sizeof(TableMeta);
+    const qint64 sz = f.size();
+    *totalSlots = int(sz / recSize);
+
+    TableMeta rec{};
+    for (int i=0; i<*totalSlots; ++i) {
+        if (f.read(reinterpret_cast<char*>(&rec), recSize) != recSize) break;
+        if (rec.name[0] != '\0') {
+            slotOfName->insert(QString::fromLatin1(rec.name), i);
+        }
+    }
+    return true;
+}
+
+bool CatalogBPlusTree::upsertCatalogRecordShallow(const std::string& catalogMetaPath,
+                                                  const TableMeta& tm,
+                                                  std::string* err)
+{
+    const QString metaQS = QString::fromStdString(catalogMetaPath);
+    const QString avlQS  = catalogAvlPathQS(catalogMetaPath);
+
+    QFile f(metaQS);
+    if (!f.open(QIODevice::ReadWrite)) {
+        // crear si no existe
+        if (!f.open(QIODevice::WriteOnly)) { if(err)*err=("No se pudo abrir/crear: "+metaQS).toStdString(); return false; }
+        f.close();
+        if (!f.open(QIODevice::ReadWrite)) { if(err)*err=("No se pudo reabrir RW: "+metaQS).toStdString(); return false; }
+    }
+
+    QHash<QString,int> slotOfName; int total=0;
+    if (!scanCatalogMetaQuick(catalogMetaPath, &slotOfName, &total)) {
+        if (err) *err = "No se pudo escanear catalog.meta";
+        return false;
+    }
+
+    const QString key = QString::fromLatin1(tm.name);
+    // Si ya existe -> update in-place
+    if (slotOfName.contains(key)) {
+        const int idx = slotOfName.value(key);
+        const qint64 pos = qint64(idx) * sizeof(TableMeta);
+        if (!f.seek(pos)) { if(err)*err="seek() falló"; return false; }
+        if (f.write(reinterpret_cast<const char*>(&tm), sizeof(TableMeta)) != sizeof(TableMeta)) {
+            if(err)*err="Escritura incompleta (update)"; return false;
+        }
+        return true;
+    }
+
+    // Si no existe -> intentar reusar un slot libre del .avl
+    int reuseIdx = -1;
+    if (!popFreeIdx(avlQS, &reuseIdx)) {
+        reuseIdx = total; // append
+    }
+
+    const qint64 pos = qint64(reuseIdx) * sizeof(TableMeta);
+    if (!f.seek(pos)) { if(err)*err="seek() falló"; return false; }
+    if (f.write(reinterpret_cast<const char*>(&tm), sizeof(TableMeta)) != sizeof(TableMeta)) {
+        if(err)*err="Escritura incompleta (insert)"; return false;
+    }
+    return true;
+}
+
+bool CatalogBPlusTree::deleteCatalogRecordByNameShallow(const std::string& catalogMetaPath,
+                                                        const std::string& tableName,
+                                                        std::string* err)
+{
+    const QString metaQS = QString::fromStdString(catalogMetaPath);
+    const QString avlQS  = catalogAvlPathQS(catalogMetaPath);
+
+    QFile f(metaQS);
+    if (!f.open(QIODevice::ReadWrite)) { if(err)*err=("No se pudo abrir: "+metaQS).toStdString(); return false; }
+
+    QHash<QString,int> slotOfName; int total=0;
+    if (!scanCatalogMetaQuick(catalogMetaPath, &slotOfName, &total)) { if(err)*err="No se pudo escanear catalog.meta"; return false; }
+
+    const QString key = QString::fromStdString(tableName);
+    if (!slotOfName.contains(key)) return true; // idempotente
+
+    const int idx = slotOfName.value(key);
+    const qint64 pos = qint64(idx) * sizeof(TableMeta);
+
+    TableMeta rec{};
+    if (!f.seek(pos)) { if(err)*err="seek() falló"; return false; }
+    if (f.read(reinterpret_cast<char*>(&rec), sizeof(TableMeta)) != sizeof(TableMeta)) { if(err)*err="Lectura incompleta"; return false; }
+
+    rec.name[0] = '\0'; // marca vacío
+    if (!f.seek(pos)) { if(err)*err="seek() falló"; return false; }
+    if (f.write(reinterpret_cast<const char*>(&rec), sizeof(TableMeta)) != sizeof(TableMeta)) { if(err)*err="Escritura incompleta (delete)"; return false; }
+
+    pushFreeIdx(avlQS, idx);
+    return true;
 }

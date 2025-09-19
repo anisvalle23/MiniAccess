@@ -1,6 +1,8 @@
 #include "RelationshipsView.h"
 #include "ThemeManager.h"
 #include "TableEditor.h"
+#include "mainwindow.h"
+#include "catalogbplustree.h"
 #include <QApplication>
 #include <QDir>
 #include <QJsonDocument>
@@ -19,6 +21,41 @@
 #include <QStyleFactory>
 #include <QAbstractButton>
 #include <QPalette>
+#include <QDir>
+#include <QFileInfoList>
+
+static QStringList readFieldsFromMeta(const QString& tablesDir, const QString& tableName) {
+    QStringList out;
+
+    const QString metaPath = QDir(tablesDir).filePath(tableName + ".meta");
+    QFile f(metaPath);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) return out;
+
+    const QJsonDocument d = QJsonDocument::fromJson(f.readAll());
+    if (!d.isObject()) return out;
+    const QJsonObject o = d.object();
+    const QJsonArray fields = o.value("fields").toArray();
+
+    for (const auto& v : fields) {
+        const QJsonObject fo = v.toObject();
+        const QString fname  = fo.value("name").toString().trimmed();
+        const bool isPk      = fo.value("isPrimaryKey").toBool(false);
+        // Si guardaste PK de otra forma, ajusta aquí (p.ej. por nombre "id")
+        if (!fname.isEmpty()) {
+            out << (isPk ? QStringLiteral("🔑 ") + fname : fname);
+        }
+    }
+    return out;
+}
+
+// --- Helper: une, deduplica y ordena una lista de tablas ---
+static QStringList dedupSorted(QStringList lst) {
+    lst.removeDuplicates();
+    std::sort(lst.begin(), lst.end(), [](const QString& a, const QString& b){
+        return a.localeAwareCompare(b) < 0;
+    });
+    return lst;
+}
 
 RelationshipsView::RelationshipsView(QWidget *parent)
     : QWidget(parent), isDarkTheme(false), tableEditor(nullptr)
@@ -163,28 +200,62 @@ void RelationshipsView::applyTableRenameImmediate(const QString& oldName, const 
     qDebug() << "DEBUG: applyTableRenameImmediate OK:" << oldName << "->" << newName;
 }
 
+void RelationshipsView::refreshAvailableTablesFromStorage()
+{
+    availableTables.clear();
+
+    // 1) Intentar árbol (más confiable)
+    if (tableEditor && tableEditor->mainWindow() && tableEditor->mainWindow()->catalog()) {
+        CatalogBPlusTree* cat = tableEditor->mainWindow()->catalog();
+        const std::vector<TableMeta> metas = cat->getAllTables();
+        for (const auto& tm : metas) {
+            QString name = QString::fromUtf8(tm.name).trimmed();
+            if (!name.isEmpty())
+                availableTables << name;
+        }
+    }
+
+    // 2) Fallback: escanear *.meta en tablesDir
+    if (availableTables.isEmpty() && tableEditor && tableEditor->mainWindow()) {
+        const QString tdir = QString::fromStdString(tableEditor->mainWindow()->tablesDir());
+        QDir dir(tdir);
+        const QStringList metas = dir.entryList(QStringList() << "*.meta", QDir::Files);
+        for (const QString& fn : metas) {
+            availableTables << QFileInfo(fn).completeBaseName(); // basename sin extensión
+        }
+    }
+
+    // Normalizar/ordenar
+    availableTables.removeDuplicates();
+    std::sort(availableTables.begin(), availableTables.end(),
+              [](const QString& a, const QString& b){ return a.localeAwareCompare(b) < 0; });
+
+    qDebug() << "DEBUG[RelationshipsView]: tablas disponibles =" << availableTables;
+}
+
 void RelationshipsView::showAllTablesInDesigner()
 {
+    // NEW: refrescar desde storage (árbol o disco)
+    refreshAvailableTablesFromStorage();
+
     // Mostrar todas las tablas disponibles en el diseñador visual
     int tableCount = availableTables.size();
     if (tableCount == 0) {
-        QMessageBox::information(this, "📋 Sin Tablas", 
-            "No hay tablas creadas para mostrar.\n"
-            "Cree tablas primero en la vista de diseño de tablas.");
+        QMessageBox::information(this, "📋 Sin Tablas",
+                                 "No hay tablas creadas para mostrar.\n"
+                                 "Cree tablas primero en la vista de diseño de tablas.");
         return;
     }
-    
-    // Configuración para posicionamiento automático
-    int cols = static_cast<int>(std::ceil(std::sqrt(tableCount))); // Número de columnas en grid
-    int spacing = 200; // Espaciado entre tablas
+
+    // ... el resto de tu función igual ...
+    int cols = static_cast<int>(std::ceil(std::sqrt(tableCount)));
+    int spacing = 200;
     int startX = 50;
     int startY = 50;
-    
-    // Agregar tablas que no estén ya en el diseñador
+
     for (int i = 0; i < tableCount; ++i) {
         const QString &tableName = availableTables[i];
-        
-        // Verificar si la tabla ya existe en el diseñador
+
         bool alreadyExists = false;
         for (auto *item : tableItems) {
             if (item && item->getTableName() == tableName) {
@@ -192,24 +263,19 @@ void RelationshipsView::showAllTablesInDesigner()
                 break;
             }
         }
-        
-        // Solo agregar si no existe
+
         if (!alreadyExists) {
             int row = i / cols;
             int col = i % cols;
             QPointF position(startX + col * spacing, startY + row * spacing);
-            
             addTableToDesigner(tableName, position);
         }
     }
-    
-    // Autoajustar la vista para mostrar todas las tablas (tamaño normal)
+
     if (!tableItems.isEmpty()) {
         designerView->fitInView(designerScene->itemsBoundingRect(), Qt::KeepAspectRatio);
-        // *** CAMBIO: Sin zoom, mantener tamaño normal ***
-        // designerView->scale(0.8, 0.8); // REMOVIDO - mantener tamaño normal
     }
-    
+
     qDebug() << "DEBUG: Mostradas" << tableCount << "tablas en el diseñador visual";
 }
 
@@ -1006,52 +1072,82 @@ void RelationshipsView::loadTables()
     targetTableCombo->clear();
     sourceFieldCombo->clear();
     targetFieldCombo->clear();
-    
-    // Get tables from TableEditor if available
+
+    // 1) Candidatas: creadas en esta sesión (UI)
+    QStringList candidates;
     if (tableEditor) {
-        QStringList createdTables = tableEditor->getCreatedTables();
-        
-        for (const QString &tableName : createdTables) {
-            availableTables.append(tableName);
-            
-            // Create draggable item for tables list
-            QListWidgetItem *item = new QListWidgetItem(tableName);
-            item->setData(Qt::UserRole, tableName);
-            item->setFlags(item->flags() | Qt::ItemIsDragEnabled);
-            tablesListWidget->addItem(item);
-            
-            sourceTableCombo->addItem(tableName);
-            targetTableCombo->addItem(tableName);
-            
-            // Get fields from TableEditor - con llaves incluidas para mostrar las primary keys
-            QStringList fields = tableEditor->getTableFieldsWithKeys(tableName);
-            
-            // Filter out empty fields and ensure we only get actual field names
-            QStringList validFields;
-            for (const QString &field : fields) {
-                QString cleanField = field.trimmed();
-                if (!cleanField.isEmpty()) {
-                    validFields << cleanField;
-                }
-            }
-            
-            // Always store the fields, even if empty
-            tableFields[tableName] = validFields;
-        }
-        
-        // If no tables found, show a helpful message
-        if (createdTables.isEmpty()) {
-            QListWidgetItem *item = new QListWidgetItem("📝 No hay tablas creadas");
-            item->setFlags(Qt::NoItemFlags); // Make it non-selectable and non-draggable
-            item->setForeground(QColor("#999999"));
-            tablesListWidget->addItem(item);
+        candidates += tableEditor->getCreatedTables();
+    }
+
+    // 2) Candidatas: árbol persistido
+    if (tableEditor && tableEditor->mainWindow() && tableEditor->mainWindow()->catalog()) {
+        const auto metas = tableEditor->mainWindow()->catalog()->getAllTables();
+        for (const auto& tm : metas) {
+            const QString name = QString::fromUtf8(tm.name).trimmed();
+            if (!name.isEmpty()) candidates << name;
         }
     }
-    
-    // Remove the fallback predefined tables - only show real tables from TableEditor
-    
-    // *** CAMBIO: NO mostrar tablas automáticamente, solo cuando se use el botón específico ***
-    // Las tablas se agregarán al diseñador solo por el botón "Mostrar Todas las Tablas"
+
+    // 3) Fallback: *.meta en disco
+    QString tablesDir;
+    if (tableEditor && tableEditor->mainWindow()) {
+        tablesDir = QString::fromStdString(tableEditor->mainWindow()->tablesDir());
+        QDir dir(tablesDir);
+        const QStringList metas = dir.entryList(QStringList() << "*.meta", QDir::Files);
+        for (const QString& fn : metas) {
+            candidates << QFileInfo(fn).completeBaseName();
+        }
+    }
+
+    // 4) Únicas y ordenadas
+    availableTables = dedupSorted(candidates);
+
+    // 5) Si no hay, mensaje amable
+    if (availableTables.isEmpty()) {
+        QListWidgetItem *item = new QListWidgetItem("📝 No hay tablas creadas");
+        item->setFlags(Qt::NoItemFlags);
+        item->setForeground(QColor("#999999"));
+        tablesListWidget->addItem(item);
+        return;
+    }
+
+    // 6) Poblar UI (lista y combos) y cargar campos (de TableEditor o meta)
+    for (const QString& tableName : availableTables) {
+        // Lista arrastrable
+        auto *item = new QListWidgetItem(tableName);
+        item->setData(Qt::UserRole, tableName);
+        item->setFlags(item->flags() | Qt::ItemIsDragEnabled);
+        tablesListWidget->addItem(item);
+
+        // Combos
+        sourceTableCombo->addItem(tableName);
+        targetTableCombo->addItem(tableName);
+
+        // Campos (con llaves si se puede)
+        QStringList fieldsWithKeys;
+        if (tableEditor) {
+            fieldsWithKeys = tableEditor->getTableFieldsWithKeys(tableName);
+        }
+
+        if (fieldsWithKeys.isEmpty() && !tablesDir.isEmpty()) {
+            // Intentar leer del .meta si la tabla aún no está abierta en el editor
+            fieldsWithKeys = readFieldsFromMeta(tablesDir, tableName);
+        }
+
+        // Limpia vacíos
+        QStringList validFields;
+        for (QString f : fieldsWithKeys) {
+            f = f.trimmed();
+            if (!f.isEmpty()) validFields << f;
+        }
+
+        tableFields[tableName] = validFields; // aunque quede vacío, lo guardamos
+    }
+
+    // *** Nota ***
+    // Aquí NO añadimos automáticamente las tablas al diseñador visual.
+    // Se mantienen como antes: solo se agregan cuando el usuario pulsa el botón
+    // "Mostrar Todas las Tablas" (que llama showAllTablesInDesigner()).
 }
 
 void RelationshipsView::loadRelationships()

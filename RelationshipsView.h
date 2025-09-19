@@ -68,6 +68,7 @@ public:
     void setTableEditor(TableEditor *tableEditor);
     void onTableRenamed(const QString &oldName, const QString &newName); // Nuevo método para renombrado
     bool hasRelationshipForField(const QString &tableName, const QString &fieldName); // Verificar si existe relación para un campo
+    void refreshAvailableTablesFromStorage();
 
 public slots:
     void onTableFieldsChanged(const QString &tableName); // Slot público para actualización en tiempo real

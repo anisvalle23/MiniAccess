@@ -90,6 +90,7 @@ public:
     explicit TableEditor(QWidget *parent = nullptr);
     void updateTheme(bool isDark);
     void setMainWindow(MainWindow* w) { m_mainWindow = w; }
+    MainWindow* mainWindow() const { return m_mainWindow; }
     void updateTableList();
     // Configurar referencia a RelationshipsView
     void setRelationshipsView(RelationshipsView *relationshipsView);
@@ -103,6 +104,8 @@ public:
     QStringList getTablePrimaryAndForeignKeys(const QString &tableName) const; // Método para obtener campos que son PK y FK
     QString getFieldType(const QString &tableName, const QString &fieldName) const; // Obtener tipo de dato de un campo específico
     QStringList getTableFieldTypes(const QString &tableName) const; // Obtener todos los tipos de datos de una tabla
+
+    void showStyledMessageBox(const QString &title, const QString &message, QMessageBox::Icon icon = QMessageBox::Warning);
     
     // Método para obtener datos de una tabla específica para validación FK
     QStringList getTableColumnData(const QString &tableName, const QString &fieldName) const;
@@ -161,7 +164,6 @@ private:
     void updateTreeWidgetTheme(bool isDark);
     void updateEmptyStateTheme(bool isDark);
     void deleteTable(const QString &tableName);
-    void showStyledMessageBox(const QString &title, const QString &message, QMessageBox::Icon icon = QMessageBox::Warning);
     bool isValidTableName(const QString &name);
     void scheduleDesignAutosave(const QString& tableName);
     

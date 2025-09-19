@@ -1,0 +1,24 @@
+{
+    "fields": [
+        {
+            "allowNull": true,
+            "desc": "",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "name": "id",
+            "numberKind": "integer",
+            "type": "number"
+        },
+        {
+            "allowNull": true,
+            "desc": "",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "name": "id_alumno",
+            "numberKind": "integer",
+            "type": "number"
+        }
+    ],
+    "tableName": "maestros",
+    "version": 1
+}

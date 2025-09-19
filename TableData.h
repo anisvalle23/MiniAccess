@@ -14,6 +14,7 @@
 #include <QLineEdit>
 #include <QComboBox>
 #include <QRegExp>
+#include <QTimer>
 
 // Forward declaration
 class RelationshipsView;
@@ -99,6 +100,9 @@ public:
     // Manejo de Foreign Key changes
     void onForeignKeyRemoved(const QString &tableName, const QString &fieldName); // Notificación cuando se quita FK
 
+    void saveAllToMad();
+    void flushPendingDataSave();
+    void loadDataFromMad();
 
 public slots:
     void onPersonDataChanged(QTableWidgetItem *item);
@@ -109,6 +113,7 @@ private slots:
     void onDesignViewClicked();
     void addNewRow();
     void deleteSelectedRow();
+    void onDataItemChanged(QTableWidgetItem* it);
 
 signals:
     void switchToDesignView();
@@ -177,6 +182,8 @@ private:
 
     mutable QLabel *m_warnLabel = nullptr;
     mutable QTimer *m_warnTimer = nullptr;
+
+    QTimer* dataDebounceTimer = nullptr;
 };
 
 #endif // TABLEDATA_H

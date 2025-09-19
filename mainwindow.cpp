@@ -860,6 +860,7 @@ void MainWindow::switchToView(int viewIndex)
 void MainWindow::onTableCreated(const QString& tableName)
 {
     if (!m_catalog) { qWarning() << "m_catalog nulo"; return; }
+
     std::string fieldsJsonPretty = R"([
         { "name":"id", "type":"number", "desc":"PK", "numberKind":"integer", "allowNull":false }
     ])";
@@ -872,6 +873,22 @@ void MainWindow::onTableCreated(const QString& tableName)
         qWarning() << "[createTableJson] error:" << QString::fromStdString(err);
         return;
     }
+
+    // --- “Tocar” el avail list superficial del catálogo (catalog.avl) ---
+    TableMeta tm{};
+    std::memset(tm.name, 0, sizeof(tm.name));
+    const std::string name = tableName.toStdString();
+    std::strncpy(tm.name, name.c_str(), sizeof(tm.name) - 1);
+    // fieldCount = 1 (solo id) o lo que te devuelva el .meta:
+    tm.fieldCount = 1;
+    std::memset(tm.dataFile, 0, sizeof(tm.dataFile));
+    std::strncpy(tm.dataFile, (name + ".mad").c_str(), sizeof(tm.dataFile) - 1);
+
+    std::string err2;
+    m_catalog->upsertCatalogRecordShallow(m_catalogMetaPath, tm, &err2);
+    if (!err2.empty()) {
+        qWarning() << "[upsertCatalogRecordShallow] aviso:" << QString::fromStdString(err2);
+    }\
 
     qDebug() << "Tabla creada y registrada en catálogo:" << tableName;
 }

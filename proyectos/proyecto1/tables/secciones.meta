@@ -1,0 +1,33 @@
+{
+    "fields": [
+        {
+            "allowNull": true,
+            "desc": "",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "name": "id",
+            "numberKind": "integer",
+            "type": "number"
+        },
+        {
+            "allowNull": true,
+            "desc": "",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "name": "id_maestros",
+            "numberKind": "integer",
+            "type": "number"
+        },
+        {
+            "allowNull": true,
+            "desc": "",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "name": "id_alumnos",
+            "textMax": 255,
+            "type": "text"
+        }
+    ],
+    "tableName": "secciones",
+    "version": 1
+}

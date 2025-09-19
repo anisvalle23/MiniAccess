@@ -17,45 +17,171 @@
 
 static QString buildFieldsArrayJsonFromTableView(TableView* view) {
     QJsonArray fields;
-    const auto names = view->getCurrentFieldNames();
-    const auto types = view->getCurrentFieldTypes();
 
-    for (int i=0; i<names.size() && i<types.size(); ++i) {
+    const QStringList names            = view->getCurrentFieldNames();
+    const QStringList types            = view->getCurrentFieldTypes();
+    const QStringList currencyFormats  = view->getCurrentCurrencyFormats();   // p.ej. "USD", "HNL"
+    const QStringList numberTypes      = view->getCurrentNumberTypes();       // "integer" | "decimal"
+    const QStringList dateFormats      = view->getCurrentDateFormats();       // p.ej. "yyyy-MM-dd"
+    const QStringList millaresDecimals = view->getCurrentMillaresDecimals();  // p.ej. "2"
+    const QStringList textSizes        = view->getCurrentTextSizes();         // p.ej. "50", "500"
+
+    const int pkIndex = view->getPrimaryKeyColumnIndex();
+    const QList<int> uniqueIdxs = view->getUniqueKeyColumnIndexes();
+
+    auto isUniqueAt = [&](int i)->bool { return uniqueIdxs.contains(i); };
+
+    auto safeAt = [](const QStringList& L, int i) -> QString {
+        return (i >= 0 && i < L.size()) ? L[i] : QString();
+    };
+
+    for (int i = 0; i < names.size() && i < types.size(); ++i) {
         QString cleanName = names[i];
         cleanName.replace("🔑","").replace("🔗","").trimmed();
 
-        QJsonObject f;
-        f["name"] = cleanName;
-        f["desc"] = "";
-        f["allowNull"] = true;
+        const QString uiType     = types[i].trimmed().toLower();
+        const QString currCode   = safeAt(currencyFormats,  i).trimmed();   // "USD"/"HNL"/""
+        const QString numKindRaw = safeAt(numberTypes,      i).trimmed();   // "integer"/"decimal"/""
+        const QString dateFmt    = safeAt(dateFormats,      i).trimmed();   // formato o ""
+        const QString milDecStr  = safeAt(millaresDecimals, i).trimmed();   // "0","2",...
+        const QString txtMaxStr  = safeAt(textSizes,        i).trimmed();   // "20","255",...
 
-        const QString t = types[i].toLower();
-        if (t.contains("entero")) {
-            f["type"] = "number";
-            f["numberKind"] = "integer";
-            f["allowNull"] = false;
-        } else if (t.contains("decimal")) {
-            f["type"] = "number";
-            f["numberKind"] = "decimal";
-        } else if (t.contains("moneda")) {
-            f["type"] = "currency";
-            f["currencyCode"] = "HNL";
-        } else if (t.contains("fecha y hora")) {
-            f["type"] = "datetime";
-            f["dateFormat"] = "yyyy-MM-dd HH:mm:ss";
-        } else if (t.contains("fecha")) {
-            f["type"] = "date";
-            f["dateFormat"] = "yyyy-MM-dd";
-        } else {
-            f["type"] = "text";
-            f["textMax"] = 255;
+        QJsonObject f;
+        f["name"]      = cleanName;
+        f["desc"]      = "";
+        f["allowNull"] = true;
+        f["isPrimaryKey"] = (i == pkIndex);
+        f["isUnique"]     = isUniqueAt(i);
+
+        // Si es PK, no permitir nulos
+        if (i == pkIndex) f["allowNull"] = false;
+
+        // Guarda decimales de millares si lo usas para formateo en la vista de datos
+        if (!milDecStr.isEmpty()) {
+            bool ok=false; int md = milDecStr.toInt(&ok);
+            if (ok) f["millaresDecimals"] = md;
         }
+
+        // Mapeo de tipos UI -> meta
+        if (uiType.contains("entero")) {
+            f["type"]       = "number";
+            f["numberKind"] = "integer";
+        } else if (uiType.contains("decimal")) {
+            f["type"]       = "number";
+            f["numberKind"] = "decimal";
+        } else if (uiType.contains("moneda")) {
+            f["type"]        = "currency";
+            f["currencyCode"] = currCode.isEmpty() ? "HNL" : currCode; // respeta USD/HNL seleccionado
+        } else if (uiType.contains("fecha y hora")) {
+            f["type"]       = "datetime";
+            f["dateFormat"] = dateFmt.isEmpty() ? "yyyy-MM-dd HH:mm:ss" : dateFmt;
+        } else if (uiType.contains("fecha")) {
+            f["type"]       = "date";
+            f["dateFormat"] = dateFmt.isEmpty() ? "yyyy-MM-dd" : dateFmt;
+        } else { // texto (corto/largo)
+            f["type"] = "text";
+            int maxLen = 255; // default
+            if (!txtMaxStr.isEmpty()) {
+                bool ok=false; int v = txtMaxStr.toInt(&ok);
+                if (ok && v > 0) maxLen = v;
+            }
+            f["textMax"] = maxLen;   // ahora respeta el tamaño que elegiste (no fijo)
+        }
+
+        // Si tu UI dio explícitamente numberKind en numberTypes[], respétalo
+        if (f["type"] == "number" && !numKindRaw.isEmpty()) {
+            const QString nk = numKindRaw.toLower();
+            if (nk == "integer" || nk == "decimal")
+                f["numberKind"] = nk;
+        }
+
         fields.push_back(f);
     }
 
     QJsonDocument d(fields);
     return QString::fromUtf8(d.toJson(QJsonDocument::Indented));
 }
+
+// Lee tablesDirtableName.meta (JSON) y devuelve listas para tu UI.
+static bool loadMetaToLists(const QString& tablesDir,
+                            const QString& tableName,
+                            QStringList* outFieldNames,
+                            QStringList* outFieldTypes,
+                            QStringList* outCurrencyFormats,
+                            QStringList* outMillaresDecimals,
+                            QStringList* outTextSizes,
+                            QStringList* outNumberTypes,
+                            QStringList* outDateFormats,
+                            QString* err = nullptr)
+{
+    const QString metaPath = tablesDir + "/" + tableName + ".meta";
+    QFile f(metaPath);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        if (err) *err = "No se pudo abrir meta: " + metaPath;
+        return false;
+    }
+    const auto doc = QJsonDocument::fromJson(f.readAll());
+    if (!doc.isObject()) {
+        if (err) *err = "META inválido: " + metaPath;
+        return false;
+    }
+    const QJsonObject root = doc.object();
+    const QJsonArray fields = root.value("fields").toArray();
+
+    outFieldNames->clear();
+    outFieldTypes->clear();
+    outCurrencyFormats->clear();
+    outMillaresDecimals->clear();
+    outTextSizes->clear();
+    outNumberTypes->clear();
+    outDateFormats->clear();
+
+    auto norm = [](const QString& s){ return s.trimmed(); };
+
+    for (const auto& v : fields) {
+        const QJsonObject f = v.toObject();
+        const QString name = norm(f.value("name").toString());
+        const QString type = f.value("type").toString(); // number|currency|text|bool|date|datetime
+        const QString numberKind = f.value("numberKind").toString(); // integer|decimal
+        const QString currencyCode = f.value("currencyCode").toString(); // ej HNL|USD
+        const int textMax = f.value("textMax").toInt(0);
+        const QString dateFmt = f.value("dateFormat").toString();
+
+        if (name.isEmpty()) continue;
+
+        // Mapea a los strings que usa tu TableView
+        QString uiType;
+        if (type == "number") {
+            uiType = (numberKind.compare("integer", Qt::CaseInsensitive)==0) ? "Entero" : "Decimal";
+        } else if (type == "currency") {
+            uiType = "Moneda";
+        } else if (type == "text") {
+            uiType = "Texto";
+        } else if (type == "bool") {
+            uiType = "Bool";
+        } else if (type == "date") {
+            uiType = "Fecha";
+        } else if (type == "datetime") {
+            uiType = "Fecha y hora";
+        } else {
+            uiType = "Texto";
+        }
+
+        outFieldNames->append(name);
+        outFieldTypes->append(uiType);
+
+        // Formatos paralelos (si tu TableData/TableView los usa)
+        outCurrencyFormats->append(!currencyCode.isEmpty() ? currencyCode : ""); // ej "HNL"
+        outMillaresDecimals->append("");                                         // si luego manejas #decimales
+        outTextSizes->append(textMax > 0 ? QString::number(textMax) : "");
+        outNumberTypes->append(type=="number" ? numberKind : "");
+        outDateFormats->append(!dateFmt.isEmpty() ? dateFmt
+                                                  : (uiType=="Fecha y hora" ? "yyyy-MM-dd HH:mm:ss"
+                                                     : uiType=="Fecha" ? "yyyy-MM-dd" : ""));
+    }
+    return true;
+}
+
 
 TableEditor::TableEditor(QWidget *parent)
     : QWidget(parent), isDarkTheme(false), relationshipsView(nullptr)
@@ -1074,6 +1200,30 @@ void TableEditor::showTableView(const QString &tableName)
                         tableViews.value(tableName)->setUniqueValidationResult(fieldName, hasDuplicates);
                     }
                 }, Qt::UniqueConnection);
+
+        {
+            QStringList fNames, fTypes, curFormats, milDecs, txtSizes, numKinds, dateFmts;
+            QString err;
+
+            const QString tablesDir = QString::fromStdString(m_mainWindow->tablesDir());
+            if (loadMetaToLists(tablesDir, tableName,
+                                &fNames, &fTypes, &curFormats, &milDecs, &txtSizes, &numKinds, &dateFmts, &err))
+            {
+                // Si no teníamos diseño cacheado o está vacío, aplica desde meta
+                const bool noCache = !tableDesigns.contains(tableName) || tableDesigns.value(tableName).fieldNames.isEmpty();
+                if (noCache) {
+                    // Guarda en tu cache
+                    TableDesignData &d = tableDesigns[tableName];
+                    d.fieldNames = fNames;
+                    d.fieldTypes = fTypes;
+
+                    // Aplica al diseñador (esto emite tableDesignChangedWithAllFormats y sincroniza TableData)
+                    view->applyDesignFromMeta(fNames, fTypes, curFormats, milDecs, txtSizes, numKinds, dateFmts);
+                }
+            } else {
+                qWarning() << "[showTableView] No se pudo cargar meta:" << err;
+            }
+        }
 
         tableViews.insert(tableName, view);
     }

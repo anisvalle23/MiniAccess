@@ -3838,3 +3838,36 @@ void TableView::setUniqueValidationResult(const QString &fieldName, bool hasDupl
         qDebug() << "DEBUG: Campo" << fieldName << "validado como único correctamente";
     }
 }
+
+void TableView::applyDesignFromMeta(const QStringList& fieldNames,
+                                    const QStringList& fieldTypes,
+                                    const QStringList& currencyFormats,
+                                    const QStringList& millaresDecimals,
+                                    const QStringList& textSizes,
+                                    const QStringList& numberTypes,
+                                    const QStringList& dateFormats)
+{
+    // Limpia el diseñador y vuelve a crear filas
+    tableWidget->clearContents();
+    tableWidget->setRowCount(fieldNames.size());
+
+    for (int i = 0; i < fieldNames.size(); ++i) {
+        // Col 0: nombre
+        auto *nameItem = new QTableWidgetItem(fieldNames[i]);
+        tableWidget->setItem(i, 0, nameItem);
+
+        // Col 1: tipo
+        auto *typeItem = new QTableWidgetItem(i < fieldTypes.size() ? fieldTypes[i] : "Texto");
+        tableWidget->setItem(i, 1, typeItem);
+
+        // Si tienes columnas ocultas/propiedades específicas, setéalas aquí
+        // (currencyFormats, millaresDecimals, textSizes, numberTypes, dateFormats)
+        // o guarda en miembros internos si tu UI usa combos.
+    }
+
+    // Emite la señal "grande" que ya consumes en TableEditor/TableData
+    emit tableDesignChangedWithAllFormats(fieldNames, fieldTypes,
+                                          currencyFormats, millaresDecimals,
+                                          numberTypes, dateFormats);
+}
+

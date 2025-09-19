@@ -1,6 +1,7 @@
 #include "TableData.h"
 #include "RelationshipsView.h"
 #include "TableEditor.h"
+#include "catalogbplustree.h"
 #include <QMessageBox>
 #include <QIntValidator>
 #include <QDoubleValidator>
@@ -13,6 +14,11 @@
 #include <QToolTip>
 #include <QApplication>
 #include <QScreen>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QJsonValue>
+#include <QByteArray>
 
 // Implementación del DataFieldDelegate
 QWidget *DataFieldDelegate::createEditor(QWidget *parent,
@@ -358,6 +364,17 @@ TableData::TableData(QWidget *parent) : QWidget(parent)
     
     createUI();
     setupTableForPersonData();
+
+    dataDebounceTimer = new QTimer(this);
+    dataDebounceTimer->setInterval(600);     // 600ms; ajusta si quieres
+    dataDebounceTimer->setSingleShot(true);
+    connect(dataDebounceTimer, &QTimer::timeout, this, [this](){
+        this->saveAllToMad();                // guarda TODO el .mad
+    });
+
+    // dispara el debounce cada vez que cambie una celda
+    connect(dataTable, &QTableWidget::itemChanged,
+            this, &TableData::onDataItemChanged);
 }
 
 TableData::~TableData()
@@ -764,19 +781,18 @@ void TableData::setupDataView(const QStringList &fieldNames, const QStringList &
     qDebug() << "DEBUG: Configurando vista de datos con campos:" << fieldNames;
     qDebug() << "DEBUG: Tipos de campos recibidos:" << fieldTypes;
     qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
-    
-    // Guardar el índice de Primary Key
+
+    // 0) Guardar PK
     primaryKeyColumnIndex = primaryKeyColumn;
-    
-    // Verificar que tengamos la misma cantidad de nombres y tipos
+
+    // 1) Normalizar tipos si hay mismatch
     if (fieldNames.size() != fieldTypes.size()) {
-        qDebug() << "WARNING: Mismatch between field names (" << fieldNames.size() << ") and field types (" << fieldTypes.size() << ")";
-        // Si hay más nombres que tipos, rellenar con "Texto corto (hasta N caracteres)"
+        qDebug() << "WARNING: Mismatch between field names (" << fieldNames.size()
+        << ") and field types (" << fieldTypes.size() << ")";
         QStringList adjustedTypes = fieldTypes;
         while (adjustedTypes.size() < fieldNames.size()) {
             adjustedTypes << "Texto corto (hasta N caracteres)";
         }
-        // Si hay más tipos que nombres, truncar los tipos
         while (adjustedTypes.size() > fieldNames.size()) {
             adjustedTypes.removeLast();
         }
@@ -784,156 +800,81 @@ void TableData::setupDataView(const QStringList &fieldNames, const QStringList &
     } else {
         savedFieldTypes = fieldTypes;
     }
-    
-    // Guardar datos existentes antes de reconfigurar
-    QList<QStringList> existingData;
-    QStringList oldFieldNames = savedFieldNames;
-    int oldRowCount = dataTable->rowCount();
-    int oldColumnCount = dataTable->columnCount();
-    
-    // Solo guardar datos si ya había columnas configuradas
-    if (oldColumnCount > 0 && oldRowCount > 0) {
-        for (int row = 0; row < oldRowCount; row++) {
-            // Verificar si esta fila es de ejemplo y saltarla
-            QTableWidgetItem *firstItem = dataTable->item(row, 0);
-            if (firstItem && firstItem->toolTip().contains("Ejemplo")) {
-                qDebug() << "DEBUG: Skipping example row" << row << "when saving existing data";
-                continue;
-            }
-            
-            QStringList rowData;
-            bool hasData = false;
-            
-            for (int col = 0; col < oldColumnCount; col++) {
-                QTableWidgetItem *item = dataTable->item(row, col);
-                QString cellText = item ? item->text().trimmed() : "";
-                rowData << cellText;
-                
-                if (!cellText.isEmpty()) {
-                    hasData = true;
-                }
-            }
-            
-            // Solo guardar filas que tengan datos
-            if (hasData) {
-                existingData << rowData;
-            }
-        }
-    }
-    
-    qDebug() << "DEBUG: Datos existentes guardados:" << existingData.size() << "filas";
-    
+
+    // 2) Guardar nombres y armar columnas
     savedFieldNames = fieldNames;
-    
-    // Configurar tabla con nuevos campos
+
+    dataTable->blockSignals(true);
+    dataTable->clearContents();                    // limpiamos contenido, mantenemos headers
     dataTable->setColumnCount(fieldNames.size());
     dataTable->setHorizontalHeaderLabels(fieldNames);
-    
-    // Actualizar combo de ordenamiento con nuevos campos
+    dataTable->setRowCount(0);
+    dataTable->blockSignals(false);
+
+    // 3) Actualizar combo de ordenamiento
     if (sortColumnCombo) {
         sortColumnCombo->blockSignals(true);
         sortColumnCombo->clear();
         for (const QString &fieldName : fieldNames) {
-            // Limpiar iconos de los nombres de campo para el combo
             QString cleanName = fieldName;
             cleanName = cleanName.remove("🔑🔗🔶")
-                                 .remove("🔑🔗")
-                                 .remove("🔑🔶")
-                                 .remove("🔗🔶")
-                                 .remove("🔑")
-                                 .remove("🔗")
-                                 .remove("🔶")
-                                 .trimmed();
+                            .remove("🔑🔗")
+                            .remove("🔑🔶")
+                            .remove("🔗🔶")
+                            .remove("🔑")
+                            .remove("🔗")
+                            .remove("🔶")
+                            .trimmed();
             sortColumnCombo->addItem(cleanName);
         }
         sortColumnCombo->blockSignals(false);
     }
-    
-    // Configurar el número inicial de filas - solo si hay datos existentes
-    int initialRows = existingData.isEmpty() ? 0 : existingData.size(); // Sin filas si no hay datos existentes
-    dataTable->setRowCount(initialRows);
-    
-    // Aplicar delegate a todas las columnas para estilo consistente
-    for (int col = 0; col < dataTable->columnCount(); col++) {
-        dataTable->setItemDelegateForColumn(col, dataFieldDelegate);
-    }
-    
-    // Configurar anchos de columnas
-    configureColumnWidths();
-    
-    // Configurar altura de filas después de configurar todo (igual que TableView)
-    dataTable->verticalHeader()->setDefaultSectionSize(50); // Filas más altas para mejor visibilidad
-    dataTable->verticalHeader()->setMinimumSectionSize(50);
-    
-    // Configurar ancho del header vertical (números de fila)
-    dataTable->verticalHeader()->setFixedWidth(50);
-    
-    // Restaurar datos existentes y crear celdas solo para las filas que tienen datos
-    for (int row = 0; row < initialRows; row++) {
-        for (int col = 0; col < dataTable->columnCount(); col++) {
-            QTableWidgetItem *item = new QTableWidgetItem("");
-            
-            // Configurar fuente más grande para mejor legibilidad
-            QFont itemFont = item->font();
-            itemFont.setPointSize(16); // Fuente más grande para consistencia con el editor
-            item->setFont(itemFont);
-            
-            // Todas las celdas son editables desde el inicio
-            item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
-            item->setBackground(QBrush(QColor(255, 255, 255))); // Fondo blanco para todas las celdas
-            
-            // Restaurar datos si existen
-            if (row < existingData.size() && !oldFieldNames.isEmpty()) {
-                QString newFieldName = fieldNames.at(col);
-                
-                // Buscar si este campo existía antes
-                int oldColIndex = oldFieldNames.indexOf(newFieldName);
-                if (oldColIndex >= 0 && oldColIndex < existingData.at(row).size()) {
-                    // Restaurar el dato existente
-                    item->setText(existingData.at(row).at(oldColIndex));
-                    qDebug() << "DEBUG: Restaurando dato en fila" << row << "columna" << col << ":" << item->text();
-                }
-                // Si es un campo nuevo, el item queda vacío
-            }
-            
-            dataTable->setItem(row, col, item);
+
+    // 4) Cargar datos desde .mad (en el orden de savedFieldNames)
+    loadDataFromMad();
+
+    // 5) Si no hay datos, fila de ejemplo + vacía
+    if (dataTable->rowCount() == 0) {
+        updateExampleData();
+        if (dataTable->rowCount() <= 1) {
+            addPersonRow();
         }
     }
-    
-    // Agregar fila de ejemplo en gris al principio solo si no hay datos existentes
-    if (existingData.isEmpty()) {
-        updateExampleData();
+
+    // 6) Delegates y estilos
+    for (int col = 0; col < dataTable->columnCount(); ++col) {
+        dataTable->setItemDelegateForColumn(col, dataFieldDelegate);
     }
-    
-    // Solo agregar una fila vacía para empezar a escribir si no hay datos existentes Y no hay fila de ejemplo
-    if (existingData.isEmpty() && dataTable->rowCount() <= 1) {
-        addPersonRow();
-    }
-    
-    // Reformatea celdas existentes de columnas moneda
+    configureColumnWidths();
+    dataTable->verticalHeader()->setDefaultSectionSize(50);
+    dataTable->verticalHeader()->setMinimumSectionSize(50);
+    dataTable->verticalHeader()->setFixedWidth(50);
+
+    // 7) Reformatear columnas de moneda (por si loadDataFromMad dejó números crudos)
     for (int col = 0; col < savedFieldTypes.size(); ++col) {
-        if (savedFieldTypes.at(col) == "moneda") {
+        if (savedFieldTypes.at(col).toLower() == "moneda") {
             dataTable->blockSignals(true);
             for (int row = 0; row < dataTable->rowCount(); ++row) {
                 QTableWidgetItem *it = dataTable->item(row, col);
                 if (!it) continue;
-                // saltar fila de ejemplo
                 QTableWidgetItem *first = dataTable->item(row, 0);
                 if (first && first->toolTip().contains("Ejemplo")) continue;
 
                 const QString t = it->text().trimmed();
                 if (!t.isEmpty()) {
-                    QString format = getCurrencyFormatForColumn(col);
-                    QString decimals = getMillaresDecimalsForColumn(col);
-                    it->setText(formatCurrencyWithFormatAndDecimals(t, format, decimals));
+                    const QString fmt = getCurrencyFormatForColumn(col);
+                    const QString dec = getMillaresDecimalsForColumn(col);
+                    it->setText(formatCurrencyWithFormatAndDecimals(t, fmt, dec));
                 }
             }
             dataTable->blockSignals(false);
         }
     }
 
-    qDebug() << "DEBUG: Vista de datos configurada exitosamente con" << dataTable->rowCount() << "filas y" << dataTable->columnCount() << "columnas";
+    qDebug() << "DEBUG: Vista de datos configurada con" << dataTable->rowCount()
+             << "filas y" << dataTable->columnCount() << "columnas";
 }
+
 
 void TableData::configureColumnWidths()
 {
@@ -3209,5 +3150,220 @@ void TableData::onForeignKeyRemoved(const QString &tableName, const QString &fie
     if (dataTable) {
         dataTable->viewport()->update();
         dataTable->repaint();
+    }
+}
+
+// --- util: limpia nombre (quita iconos)
+static inline QString cleanFieldNameUI(QString s) {
+    return s.replace("🔑","").replace("🔗","").replace("🔶","").trimmed();
+}
+
+// --- util: quita formato a números/moneda (deja [-]digits[.[digits]])
+static QString unformatNumeric(QString s) {
+    s = s.trimmed();
+    s.remove(QRegExp("[^0-9,.-]"));            // deja solo dígitos, coma, punto, signo
+    if (s.contains('.') && s.contains(',')) {  // si hay ambos, asume coma como millares
+        s.remove(',');
+    } else if (!s.contains('.') && s.contains(',')) {
+        s.replace(',', '.');                   // coma como decimal
+    }
+    return s;
+}
+
+// --- toma todas las filas (omite fila de ejemplo si la marcas en toolTip)
+static QList<QStringList> collectAllRowsFrom(QTableWidget* dataTable) {
+    QList<QStringList> out;
+    const int rows = dataTable->rowCount();
+    const int cols = dataTable->columnCount();
+
+    for (int r = 0; r < rows; ++r) {
+        QTableWidgetItem *first = dataTable->item(r, 0);
+        if (first && first->toolTip().contains("Ejemplo")) continue;
+
+        QStringList row; row.reserve(cols);
+        bool hasData = false;
+        for (int c = 0; c < cols; ++c) {
+            const QTableWidgetItem* it = dataTable->item(r, c);
+            const QString t = it ? it->text().trimmed() : QString();
+            row << t;
+            if (!t.isEmpty()) hasData = true;
+        }
+        if (hasData) out << row;
+    }
+    return out;
+}
+
+void TableData::onDataItemChanged(QTableWidgetItem* it)
+{
+    if (!it) return;
+
+    // Evita autoguardar si es la fila de ejemplo
+    QTableWidgetItem* first = dataTable->item(it->row(), 0);
+    if (first && first->toolTip().contains("Ejemplo")) return;
+
+    // Re-debounce: reinicia el temporizador
+    dataDebounceTimer->start();
+}
+
+void TableData::flushPendingDataSave()
+{
+    if (dataDebounceTimer && dataDebounceTimer->isActive()) {
+        dataDebounceTimer->stop();
+        saveAllToMad();
+    }
+}
+
+void TableData::saveAllToMad()
+{
+    if (!tableEditor) return;
+    MainWindow* mw = tableEditor->mainWindow();   // TableEditor debe exponer mainWindow()
+    if (!mw || !mw->catalog()) return;
+
+    // 1) nombres/tipos en orden de columnas actuales
+    QStringList uiFieldNames = savedFieldNames;
+    QStringList uiFieldTypes = savedFieldTypes;
+    for (QString& n : uiFieldNames) n = cleanFieldNameUI(n);
+
+    // 2) filas de la grilla
+    QList<QStringList> rows = collectAllRowsFrom(dataTable);
+
+    // 3) desformatear números/moneda
+    for (int c = 0; c < uiFieldTypes.size(); ++c) {
+        const QString t = uiFieldTypes[c].toLower();
+        const bool isMoney  = t.contains("moneda");
+        const bool isNumber = t.contains("entero") || t.contains("decimal");
+        if (!isMoney && !isNumber) continue;
+        for (QStringList& r : rows) {
+            if (c < r.size()) r[c] = unformatNumeric(r[c]);
+        }
+    }
+
+    // 4) nombre de la tabla
+    QString tname = property("tableName").toString();
+    if (tname.isEmpty()) tname = property("tableName").toString();
+
+    // 5) persistir
+    std::string err;
+    const bool ok = mw->catalog()->rewriteMadFromRows(
+        mw->tablesDir(),
+        tname.toStdString(),
+        uiFieldNames,
+        rows,
+        &err
+        );
+    if (!ok) {
+        qDebug() << "DEBUG: Error al guardar datos" << QString::fromStdString(err);
+    }
+}
+
+void TableData::loadDataFromMad()
+{
+    if (!tableEditor) return;
+    MainWindow* mw = tableEditor->mainWindow();
+    if (!mw || !mw->catalog()) return;
+
+    // Nombre de la tabla
+    QString tname = currentTableName;
+    if (tname.isEmpty()) tname = property("tableName").toString();
+    if (tname.isEmpty()) return;
+
+    // Orden y tipos de columnas como están en la vista de datos
+    QStringList fieldNames = savedFieldNames;
+    QStringList fieldTypes = savedFieldTypes;
+
+    for (QString& n : fieldNames) n = cleanFieldNameUI(n);
+
+    // Leer NDJSON del árbol (cada string es un objeto JSON compact)
+    std::string err;
+    std::vector<std::string> lines = mw->catalog()->readAllRecordsJson(
+        mw->tablesDir(), tname.toStdString(), &err
+        );
+    if (!err.empty()) {
+        tableEditor->showStyledMessageBox("Error al cargar datos", QString::fromStdString(err));
+        return;
+    }
+
+    // Vaciar la tabla (no borramos cabeceras ni configuraciones de columnas)
+    dataTable->blockSignals(true);
+    dataTable->clearContents();
+    dataTable->setRowCount(0);
+
+    // Convertir cada objeto JSON a una fila en el orden de fieldNames
+    const int cols = fieldNames.size();
+    int row = 0;
+    for (const std::string& s : lines) {
+        const QByteArray ba = QByteArray::fromStdString(s);
+        const QJsonDocument d = QJsonDocument::fromJson(ba);
+        if (!d.isObject()) continue;
+
+        const QJsonObject o = d.object();
+        dataTable->insertRow(row);
+
+        for (int c = 0; c < cols; ++c) {
+            const QString fname = fieldNames[c];
+            const QString ftype = (c < fieldTypes.size() ? fieldTypes[c].toLower() : QString());
+
+            QString cellText;
+
+            // Valor crudo del JSON
+            const QJsonValue v = o.value(fname);
+            if (v.isNull() || v.isUndefined()) {
+                cellText = "";
+            } else if (v.isDouble()) {
+                // números (incluye currency, que guardamos como número)
+                cellText = QString::number(v.toDouble(), 'f', 12);
+                // recortar ceros de más (estético)
+                cellText.remove(QRegExp("0+$"));
+                cellText.remove(QRegExp("\\.$"));
+            } else if (v.isBool()) {
+                cellText = v.toBool() ? "true" : "false";
+            } else {
+                // strings u otros
+                cellText = v.toString();
+            }
+
+            // Aplicar formato visual según tipo de la columna
+            if (ftype.contains("moneda")) {
+                QString fmt = getCurrencyFormatForColumn(c);     // p.ej. "HNL" / "USD"
+                QString dec = getMillaresDecimalsForColumn(c);   // p.ej. "2"
+                cellText = formatCurrencyWithFormatAndDecimals(cellText, fmt, dec);
+            } else if (ftype.contains("entero")) {
+                // entero visual
+                bool ok=false; qlonglong iv = cellText.toLongLong(&ok);
+                cellText = ok ? QString::number(iv) : cellText;
+            } else if (ftype.contains("decimal")) {
+                // decimal visual (respeta decimales de millares si quieres, aquí simple)
+                bool ok=false; double dv = cellText.toDouble(&ok);
+                if (ok) {
+                    QString dec = getMillaresDecimalsForColumn(c);
+                    bool dok=false; int nd = dec.toInt(&dok);
+                    cellText = QString::number(dv, 'f', dok ? nd : 2);
+                }
+            } else if (ftype.contains("fecha y hora")) {
+                // si quieres re-formatear a tu savedDateFormats[c], hazlo aquí
+                // (asumimos que ya está en el formato esperado porque lo validaste al guardar)
+            } else if (ftype.contains("fecha")) {
+                // idem
+            }
+
+            // Crear item y asignar
+            QTableWidgetItem* it = new QTableWidgetItem(cellText);
+            // estilo (igual que setupDataView)
+            QFont f = it->font(); f.setPointSize(16); it->setFont(f);
+            it->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+            it->setBackground(QBrush(QColor(255, 255, 255)));
+            dataTable->setItem(row, c, it);
+        }
+        ++row;
+    }
+
+    dataTable->blockSignals(false);
+
+    // Si no hay datos, asegúrate de tener fila de ejemplo / fila vacía como ya haces
+    if (row == 0) {
+        updateExampleData();
+        if (dataTable->rowCount() <= 1) {
+            addPersonRow();
+        }
     }
 }

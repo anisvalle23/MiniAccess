@@ -1,0 +1,15 @@
+{
+    "fields": [
+        {
+            "allowNull": true,
+            "desc": "",
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "name": "id",
+            "numberKind": "integer",
+            "type": "number"
+        }
+    ],
+    "tableName": "alumnos",
+    "version": 1
+}

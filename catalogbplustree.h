@@ -5,6 +5,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <QStringList>
+#include <QList>
 
 // Estructura de cada tabla
 struct TableMeta {
@@ -64,7 +66,28 @@ public:
                          bool migrateData,
                          std::string* err = nullptr);
 
+    bool rewriteMadFromRows(const std::string& tablesDir,
+                            const std::string& tableName,
+                            const QStringList& fieldNamesOrdered,
+                            const QList<QStringList>& rows, // cada QStringList = una fila en el mismo orden
+                            std::string* err = nullptr);
+
+    // Agrega filas al final de <tabla>.mad (NDJSON)
+    bool appendMadFromRows(const std::string& tablesDir,
+                           const std::string& tableName,
+                           const QStringList& fieldNamesOrdered,
+                           const QList<QStringList>& rows,
+                           std::string* err = nullptr);
+
     std::vector<std::string> readAllRecordsJson(const std::string& tablesDir, const std::string& tableName, std::string* err = nullptr);
+
+    bool upsertCatalogRecordShallow(const std::string& catalogMetaPath,
+                                    const TableMeta& tm,
+                                    std::string* err = nullptr);
+
+    bool deleteCatalogRecordByNameShallow(const std::string& catalogMetaPath,
+                                          const std::string& tableName,
+                                          std::string* err = nullptr);
 private:
     // --- Funciones internas ---
     void splitLeaf(CatalogNode* leaf);

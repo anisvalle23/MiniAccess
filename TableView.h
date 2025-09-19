@@ -103,6 +103,9 @@ public:
     // Método para recibir resultado de validación de duplicados
     void setUniqueValidationResult(const QString &fieldName, bool hasDuplicates);
 
+    void applyDesignFromMeta(const QStringList& fieldNames, const QStringList& fieldTypes,const QStringList& currencyFormats,const QStringList& millaresDecimals,
+                             const QStringList& textSizes,const QStringList& numberTypes, const QStringList& dateFormats);
+
 signals:
     void switchToDataView();
     void tableDesignChanged(const QStringList &fieldNames, const QStringList &fieldTypes);
