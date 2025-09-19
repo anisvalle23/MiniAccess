@@ -312,6 +312,7 @@ void MainWindow::createMainContent()
     
     // Create table editor view
     tableEditorView = new TableEditor();
+    tableEditorView->setMainWindow(this);
     
     // Create relationships view
     relationshipsView = new RelationshipsView();
@@ -341,7 +342,10 @@ void MainWindow::createMainContent()
             relationshipsView, &RelationshipsView::onForeignKeyRenamed);
     connect(tableEditorView, &TableEditor::primaryKeyRenamed,
             relationshipsView, &RelationshipsView::onPrimaryKeyRenamed);
-    
+    QObject::connect(tableEditorView, &TableEditor::tableCreated,
+                     this, &MainWindow::onTableCreated,
+                     Qt::UniqueConnection);
+
     // Add views to stacked widget
     stackedWidget->addWidget(homeView);     // Index 0
     stackedWidget->addWidget(tableEditorView); // Index 1
@@ -577,7 +581,6 @@ void MainWindow::setCatalog(CatalogBPlusTree* catalogPtr,
                             const std::string& catalogMetaPath,
                             bool takeOwnership)
 {
-    // Si ya había uno y éramos dueños, lo liberamos
     if (m_catalogOwner && m_catalog && m_catalog != catalogPtr) {
         delete m_catalog;
     }
@@ -587,9 +590,15 @@ void MainWindow::setCatalog(CatalogBPlusTree* catalogPtr,
     m_tablesDir = tablesDir;
     m_catalogMetaPath = catalogMetaPath;
 
-    // Aquí ya puedes usar m_catalog (listar, refrescar UI, etc.)
-    // Ejemplo: m_catalog->listAll();
+    // Si ya existe tableEditorView, conectar la señal aquí también por si setCatalog se llama después:
+    if (tableEditorView) {
+        QObject::connect(tableEditorView, &TableEditor::tableCreated,
+                         this, &MainWindow::onTableCreated,
+                         Qt::UniqueConnection);
+        tableEditorView->updateTableList();
+    }
 }
+
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
     if (obj == sidebarWidget) {
@@ -846,6 +855,25 @@ void MainWindow::switchToView(int viewIndex)
             stackedWidget->setCurrentIndex(0);
             break;
     }
+}
+
+void MainWindow::onTableCreated(const QString& tableName)
+{
+    if (!m_catalog) { qWarning() << "m_catalog nulo"; return; }
+    std::string fieldsJsonPretty = R"([
+        { "name":"id", "type":"number", "desc":"PK", "numberKind":"integer", "allowNull":false }
+    ])";
+
+    std::string err;
+    if (!m_catalog->createTableJson(m_tablesDir, m_catalogMetaPath,
+                                    tableName.toStdString(),
+                                    fieldsJsonPretty, &err))
+    {
+        qWarning() << "[createTableJson] error:" << QString::fromStdString(err);
+        return;
+    }
+
+    qDebug() << "Tabla creada y registrada en catálogo:" << tableName;
 }
 
 void MainWindow::updateSidebarSelection(int selectedIndex)

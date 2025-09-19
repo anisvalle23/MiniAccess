@@ -32,25 +32,25 @@ std::optional<ProjectPathsQt> ProjectStorageQt::create() {
 
     const QString repo = repoOpt.value();
     const QString projectRoot = QDir(repo).filePath(QStringLiteral("proyectos/%1").arg(m_projectName));
+    const QString tablesDir   = QDir(projectRoot).filePath("tables");
     const QString catalogFile = QDir(projectRoot).filePath("catalog.meta");
 
-    // Crear carpeta del proyecto
+    // Crear carpetas
     QDir().mkpath(projectRoot);
+    QDir().mkpath(tablesDir);
 
-    // Si no existe el archivo de catálogo, inicializarlo vacío
+    // Asegurar existencia del catalog.meta (vacío si no existe)
     if (!QFile::exists(catalogFile)) {
         QFile f(catalogFile);
-        if (f.open(QIODevice::WriteOnly)) {
-            f.close(); // archivo vacío, el árbol lo llenará después
-        }
+        if (f.open(QIODevice::WriteOnly)) f.close();
     }
 
     return ProjectPathsQt{
-        projectRoot,
-        catalogFile   // en vez de tables/indexes/logs devolvemos solo este
+        QFileInfo(projectRoot).absoluteFilePath(),
+        QFileInfo(catalogFile).absoluteFilePath(),
+        QFileInfo(tablesDir).absoluteFilePath()
     };
 }
-
 
 std::optional<QString> ProjectStorageQt::findRepoRoot() {
     const QString appDir  = QDir::cleanPath(QCoreApplication::applicationDirPath());

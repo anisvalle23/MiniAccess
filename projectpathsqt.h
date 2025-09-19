@@ -10,6 +10,7 @@
 struct ProjectPathsQt {
     QString root;
     QString catalogFile;  // archivo .meta con las tablas
+    QString tablesDir;
 };
 
 // Estructura para representar información de un proyecto existente

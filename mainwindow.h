@@ -35,6 +35,11 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     void setProjectName(const QString &projectName);
+
+    CatalogBPlusTree* catalog() const { return m_catalog; }
+    const std::string& tablesDir() const { return m_tablesDir; }
+    const std::string& catalogMetaPath() const { return m_catalogMetaPath; }
+
     void setCatalog(CatalogBPlusTree* catalogPtr,
                     const std::string& tablesDir,
                     const std::string& catalogMetaPath,
@@ -46,6 +51,7 @@ private slots:
     void onSettingsButtonHover();
     void onSettingsButtonLeave();
     void onSidebarItemClicked();
+    void onTableCreated(const QString& tableName);
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event) override;

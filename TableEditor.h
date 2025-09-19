@@ -30,8 +30,10 @@ class RelationshipsView;
 #include <QInputDialog>
 #include <QRegularExpression>
 #include <QToolButton>
+#include <QTimer>
 #include "TableView.h"
 #include "TableData.h"
+#include "mainwindow.h"
 
 // Structure to store table design data
 struct TableDesignData {
@@ -73,6 +75,7 @@ protected:
 signals:
     void tableClicked(const QString &tableName);
     void optionsClicked(const QString &tableName, const QPoint &pos);
+    void clicked(const QString& tableName);
 
 private:
     QString tableName;
@@ -86,7 +89,8 @@ class TableEditor : public QWidget
 public:
     explicit TableEditor(QWidget *parent = nullptr);
     void updateTheme(bool isDark);
-    
+    void setMainWindow(MainWindow* w) { m_mainWindow = w; }
+    void updateTableList();
     // Configurar referencia a RelationshipsView
     void setRelationshipsView(RelationshipsView *relationshipsView);
     
@@ -102,6 +106,9 @@ public:
     
     // Método para obtener datos de una tabla específica para validación FK
     QStringList getTableColumnData(const QString &tableName, const QString &fieldName) const;
+    void saveDesignForTable(const QString& tableName, bool migrate = true);
+    QTimer *designDebounceTimer = nullptr;
+    QString pendingTableForSave;
 
 signals:
     void tableCreated(const QString &tableName);
@@ -127,6 +134,8 @@ private slots:
     void renameTable(const QString &oldName, const QString &newName);
     void performTableSearch();
 
+    void onDesignDebounceTimeout();
+
 private:
     void setupUI();
     void createLeftPanel();
@@ -134,7 +143,6 @@ private:
     void createTableCreationPanel();
     void styleComponents();
     void addTableToSidebar(const QString &tableName);
-    void updateTableList();
     void createMainTableArea();
     void showWelcomeContent();
     void showCreateTablePanel();
@@ -155,6 +163,7 @@ private:
     void deleteTable(const QString &tableName);
     void showStyledMessageBox(const QString &title, const QString &message, QMessageBox::Icon icon = QMessageBox::Warning);
     bool isValidTableName(const QString &name);
+    void scheduleDesignAutosave(const QString& tableName);
     
     // UI Components
     QHBoxLayout *mainLayout;
@@ -207,6 +216,9 @@ private:
     QMap<QString, TableView*> tableViews;
     QMap<QString, TableData*> tableDatas;
     QString currentTableName;
+
+    MainWindow* m_mainWindow = nullptr;
+    bool autoSavingSchema = false;   // evita bucles/duplicados
 };
 
 #endif // TABLEEDITOR_H

@@ -10,12 +10,63 @@
 #include <QLabel>
 #include <QDialogButtonBox>
 #include <QPushButton>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+
+
+static QString buildFieldsArrayJsonFromTableView(TableView* view) {
+    QJsonArray fields;
+    const auto names = view->getCurrentFieldNames();
+    const auto types = view->getCurrentFieldTypes();
+
+    for (int i=0; i<names.size() && i<types.size(); ++i) {
+        QString cleanName = names[i];
+        cleanName.replace("🔑","").replace("🔗","").trimmed();
+
+        QJsonObject f;
+        f["name"] = cleanName;
+        f["desc"] = "";
+        f["allowNull"] = true;
+
+        const QString t = types[i].toLower();
+        if (t.contains("entero")) {
+            f["type"] = "number";
+            f["numberKind"] = "integer";
+            f["allowNull"] = false;
+        } else if (t.contains("decimal")) {
+            f["type"] = "number";
+            f["numberKind"] = "decimal";
+        } else if (t.contains("moneda")) {
+            f["type"] = "currency";
+            f["currencyCode"] = "HNL";
+        } else if (t.contains("fecha y hora")) {
+            f["type"] = "datetime";
+            f["dateFormat"] = "yyyy-MM-dd HH:mm:ss";
+        } else if (t.contains("fecha")) {
+            f["type"] = "date";
+            f["dateFormat"] = "yyyy-MM-dd";
+        } else {
+            f["type"] = "text";
+            f["textMax"] = 255;
+        }
+        fields.push_back(f);
+    }
+
+    QJsonDocument d(fields);
+    return QString::fromUtf8(d.toJson(QJsonDocument::Indented));
+}
 
 TableEditor::TableEditor(QWidget *parent)
     : QWidget(parent), isDarkTheme(false), relationshipsView(nullptr)
 {
     setupUI();
     styleComponents();
+    designDebounceTimer = new QTimer(this);
+    designDebounceTimer->setSingleShot(true);
+    designDebounceTimer->setInterval(500); // ms
+    connect(designDebounceTimer, &QTimer::timeout,
+            this, &TableEditor::onDesignDebounceTimeout);
 }
 
 void TableEditor::setupUI()
@@ -51,6 +102,35 @@ void TableEditor::setupUI()
     mainLayout->addWidget(mainSplitter);
 }
 
+void TableEditor::onDesignDebounceTimeout()
+{
+    if (pendingTableForSave.isEmpty()) return;
+    if (!m_mainWindow || !m_mainWindow->catalog()) return;
+
+    TableView* view = tableViews.value(pendingTableForSave, nullptr);
+    if (!view) return;
+
+    const QString fieldsArrayJson = buildFieldsArrayJsonFromTableView(view);
+
+    std::string err;
+    const bool migrate = false; // autosave: solo .meta, sin migrar .mad
+    const bool ok = m_mainWindow->catalog()->updateTableJson(
+        m_mainWindow->tablesDir(),
+        m_mainWindow->catalogMetaPath(),
+        pendingTableForSave.toStdString(),
+        fieldsArrayJson.toStdString(),
+        migrate,
+        &err
+        );
+
+    if (!ok) {
+        qWarning() << "[autosave meta] error:" << QString::fromStdString(err);
+    } else {
+        qDebug() << "[autosave meta] actualizado para" << pendingTableForSave;
+    }
+}
+
+
 void TableEditor::createLeftPanel()
 {
     leftPanel = new QWidget();
@@ -76,11 +156,16 @@ void TableEditor::createLeftPanel()
     connect(tableTree, &QTreeWidget::customContextMenuRequested,
             this, &TableEditor::showTableContextMenu);
 
+    designDebounceTimer = new QTimer(this);
+    designDebounceTimer->setSingleShot(true);
+    designDebounceTimer->setInterval(500); // 500 ms: ajusta a gusto
+    connect(designDebounceTimer, &QTimer::timeout,
+            this, &TableEditor::onDesignDebounceTimeout);
+
     leftPanelLayout->addStretch();
 
     connect(newTableBtn, &QPushButton::clicked, this, &TableEditor::onNewTableClicked);
 }
-
 
 void TableEditor::updateTableList()
 {
@@ -94,29 +179,29 @@ void TableEditor::updateTableList()
     QVBoxLayout *tableListLayout = new QVBoxLayout(tableListSection);
     tableListLayout->setContentsMargins(0, 0, 0, 0);
     tableListLayout->setSpacing(8);
-    
+
     // Search and filter header
     QWidget *searchHeader = new QWidget();
     QHBoxLayout *searchLayout = new QHBoxLayout(searchHeader);
     searchLayout->setContentsMargins(0, 0, 0, 0);
     searchLayout->setSpacing(8);
-    
+
     searchBox = new QLineEdit();
     searchBox->setPlaceholderText("Buscar tablas");
     searchBox->setFont(QFont("Inter", 12));
     searchBox->setStyleSheet(
         "QLineEdit {"
-            "background-color: #FFFFFF;"
-            "border: 1px solid #D1D5DB;"
-            "border-radius: 6px;"
-            "padding: 6px 10px;"
-            "font-size: 13px;"
-            "color: #111827;"
+        "background-color: #FFFFFF;"
+        "border: 1px solid #D1D5DB;"
+        "border-radius: 6px;"
+        "padding: 6px 10px;"
+        "font-size: 13px;"
+        "color: #111827;"
         "}"
         "QLineEdit::placeholder {"
-            "color: #9CA3AF;"
+        "color: #9CA3AF;"
         "}"
-    );
+        );
 
     searchBox->setClearButtonEnabled(true); // útil
     // Botón de lupa a la derecha
@@ -140,11 +225,10 @@ void TableEditor::updateTableList()
         "}"
         );
 
-    searchLayout->addWidget(searchBtn);
-    
-    searchLayout->addWidget(searchBox);
+    searchLayout->addWidget(searchBox, 1);
+    searchLayout->addWidget(searchBtn, 0);
     tableListLayout->addWidget(searchHeader);
-    
+
     // Tables tree
     tableTree = new QTreeWidget();
     tableTree->setHeaderHidden(true);
@@ -152,35 +236,74 @@ void TableEditor::updateTableList()
     tableTree->setContextMenuPolicy(Qt::CustomContextMenu);
     tableTree->setStyleSheet(
         "QTreeWidget {"
-            "background-color: transparent;"
-            "border: none;"
-            "outline: none;"
-            "font-family: 'Inter';"
-            "font-size: 13px;"
+        "background-color: transparent;"
+        "border: none;"
+        "outline: none;"
+        "font-family: 'Inter';"
+        "font-size: 13px;"
         "}"
         "QTreeWidget::item {"
-            "height: 32px;"
-            "padding: 4px 8px;"
-            "border-radius: 6px;"
-            "color: #374151;"
+        "height: 32px;"
+        "padding: 4px 8px;"
+        "border-radius: 6px;"
+        "color: #374151;"
         "}"
         "QTreeWidget::item:hover {"
-            "background-color: #F3F4F6;"
+        "background-color: #F3F4F6;"
         "}"
         "QTreeWidget::item:selected {"
-            "background-color: #EFF6FF;"
-            "color: #1D4ED8;"
+        "background-color: #EFF6FF;"
+        "color: #1D4ED8;"
         "}"
-    );
-    
+        );
+
     tableListLayout->addWidget(tableTree);
-    
+
+    // === Poblar con tablas existentes (mismo estilo que las nuevas) ===
+    if (m_mainWindow && m_mainWindow->catalog()) {
+        auto metas = m_mainWindow->catalog()->getAllTables();
+
+        std::sort(metas.begin(), metas.end(),
+                  [](const TableMeta& a, const TableMeta& b){
+                      return std::string(a.name) < std::string(b.name);
+                  });
+
+        for (const auto& tm : metas) {
+            const QString name = QString::fromLatin1(tm.name).trimmed();
+            if (name.isEmpty()) continue;
+
+            // 1) item "dummy" del árbol
+            auto *row = new QTreeWidgetItem(tableTree);
+            row->setSizeHint(0, QSize(0, 36)); // altura igual a tu widget
+
+            // 2) widget visual de la fila (mismo que usás al crear una tabla)
+            auto *w = new TableItemWidget(name, tableTree);
+            tableTree->setItemWidget(row, 0, w);
+
+            // 3) conexiones: abrir tabla al click, menú de opciones, etc.
+            connect(w, &TableItemWidget::clicked, this, [this](const QString& tname){
+                showTableView(tname);
+            });
+            connect(w, &TableItemWidget::optionsClicked, this,
+                    [this](const QString& tname, const QPoint& gp){
+                        // Reutiliza tu menú contextual existente
+                        QPoint localPos = tableTree->viewport()->mapFromGlobal(gp); // de global -> viewport
+                        showTableContextMenu(localPos);
+                    });
+
+            // (opcional) guardar punteros si llevás un mapa nombre->widget
+            // tableItemWidgets[name] = w;
+        }
+
+        tableTree->sortItems(0, Qt::AscendingOrder);
+    }
+
     // Connect context menu for this new tableTree instance
     connect(tableTree, &QTreeWidget::customContextMenuRequested,
             this, &TableEditor::showTableContextMenu);
     connect(searchBtn,  &QToolButton::clicked, this, &TableEditor::performTableSearch);
     connect(searchBox,  &QLineEdit::returnPressed, this, &TableEditor::performTableSearch);
-    
+
     leftPanelLayout->addWidget(tableListSection);
 }
 
@@ -809,6 +932,14 @@ void TableEditor::showTableView(const QString &tableName)
         connect(view, &TableView::switchToDataView, this, [this]() {
             switchToDataView();
         }, Qt::UniqueConnection);
+
+        // ya creaste 'view' y lo metiste en tableViews[tableName]
+        connect(view, &TableView::tableDesignChanged,
+                this, [this, tableName](const QStringList&, const QStringList&) {
+                    // Cada cambio reinicia el timer; se coalescen varios clics en 1 guardado
+                    pendingTableForSave = tableName;
+                    designDebounceTimer->start(); // reinicia
+                }, Qt::UniqueConnection);
 
         connect(view, &TableView::tableDesignChanged, this,
                 [this, tableName](const QStringList &fieldNames, const QStringList &fieldTypes) {
@@ -1805,6 +1936,7 @@ void TableItemWidget::mousePressEvent(QMouseEvent *event)
         
         if (!menuButtonRect.contains(clickPos)) {
             emit tableClicked(tableName);
+            emit clicked(tableName);
         }
     }
     QWidget::mousePressEvent(event);
@@ -1961,4 +2093,36 @@ bool TableEditor::isValidTableName(const QString &name)
     }
     
     return true;
+}
+
+void TableEditor::scheduleDesignAutosave(const QString& tableName)
+{
+    pendingTableForSave = tableName;
+    if (designDebounceTimer) designDebounceTimer->start();
+}
+
+void TableEditor::saveDesignForTable(const QString& tableName, bool migrate)
+{
+    if (!m_mainWindow || !m_mainWindow->catalog()) return;
+
+    TableView* view = tableViews.value(tableName, nullptr);
+    if (!view) return;
+
+    QString fieldsArrayJson = buildFieldsArrayJsonFromTableView(view);
+
+    std::string err;
+    if (!m_mainWindow->catalog()->updateTableJson(
+            m_mainWindow->tablesDir(),
+            m_mainWindow->catalogMetaPath(),
+            tableName.toStdString(),
+            fieldsArrayJson.toStdString(),
+            migrate,
+            &err))
+    {
+        showStyledMessageBox("Error al guardar formato", QString::fromStdString(err));
+        return;
+    }
+    showStyledMessageBox("Formato guardado",
+                         migrate ? "Esquema actualizado y datos migrados."
+                                 : "Esquema actualizado (sin migrar datos).");
 }

@@ -39,11 +39,32 @@ public:
     void insert(const TableMeta& tmeta);
     bool remove(const std::string& tableName);
     void listAll();
+    std::vector<TableMeta> getAllTables() const;
 
     // --- Persistencia ---
     void saveToFile(const std::string& filepath);
     void loadFromFile(const std::string& filepath);
 
+    bool createTableJson(const std::string& tablesDir,
+                         const std::string& catalogMetaPath,
+                         const std::string& tableName,
+                         const std::string& fieldsJsonPretty,  // JSON string con "fields":[...]
+                         std::string* err = nullptr);
+
+    // Append 1 registro (mapa llave-valor en JSON) a <tabla>.mad
+    bool appendRecordJson(const std::string& tablesDir,
+                          const std::string& tableName,
+                          const std::string& recordJsonLine,     // {"id":1,"nombre":"Juan",...}
+                          std::string* err = nullptr);
+
+    bool updateTableJson(const std::string& tablesDir,
+                         const std::string& catalogMetaPath,
+                         const std::string& tableName,
+                         const std::string& newFieldsJsonPretty, // array [ {...}, {...} ] o {"fields":[...]}
+                         bool migrateData,
+                         std::string* err = nullptr);
+
+    std::vector<std::string> readAllRecordsJson(const std::string& tablesDir, const std::string& tableName, std::string* err = nullptr);
 private:
     // --- Funciones internas ---
     void splitLeaf(CatalogNode* leaf);

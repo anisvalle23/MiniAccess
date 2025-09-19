@@ -984,46 +984,47 @@ void CreateProject::navigateToProjectView(const QString &projectName)
 {
     qDebug() << "Navegando a la vista del proyecto:" << projectName;
 
-    // Rutas ABSOLUTAS del proyecto (ajusta a tu estructura real)
-    const QString projectsRoot = QDir::homePath() + "/MiniAccessProjects";
-    const QString projectRootQ = projectsRoot + "/" + projectName;
-    const QString tablesDirQ   = projectRootQ + "/tables";
-    const QString catalogQ     = projectRootQ + "/catalog.meta";
+    ProjectStorageQt storage(projectName);
+    auto pathsOpt = storage.create();
+    if (!pathsOpt.has_value()) {
+        qWarning() << "[navigate] No se pudo resolver la raíz del repo. ¿Falta el marcador?";
+        QMessageBox::warning(this, "Proyecto",
+                             "No se pudo localizar la raíz del repositorio para crear el proyecto.");
+        return;
+    }
+    const ProjectPathsQt paths = pathsOpt.value();
 
-    QDir().mkpath(projectRootQ);
-    QDir().mkpath(tablesDirQ);
+    qDebug() << "[navigate] ProjectRoot:" << paths.root;
+    qDebug() << "[navigate] TablesDir  :" << paths.tablesDir  << "exists?" << QFileInfo::exists(paths.tablesDir);
+    qDebug() << "[navigate] CatalogMeta:" << paths.catalogFile << "exists?" << QFileInfo::exists(paths.catalogFile);
 
-    // Árbol del catálogo
+    // Árbol del catálogo (siempre la misma ruta que devuelve ProjectStorageQt)
     auto* catalog = new CatalogBPlusTree(3);
 
     // Cargar si existe
-    if (QFileInfo::exists(catalogQ)) {
-        qDebug() << "[navigate] Cargando catálogo desde:" << catalogQ;
-        catalog->loadFromFile(catalogQ.toStdString());
+    if (QFileInfo::exists(paths.catalogFile)) {
+        qDebug() << "[navigate] Cargando catálogo desde:" << paths.catalogFile;
+        catalog->loadFromFile(paths.catalogFile.toStdString());
     } else {
-        qDebug() << "[navigate] No existe catalog.meta aún, se creará al guardar.";
+        qDebug() << "[navigate] catalog.meta no existe aún; se inicializará en guardado.";
     }
 
     // Crear y mostrar MainWindow
     MainWindow *mainWindow = new MainWindow();
     mainWindow->setProjectName(projectName);
 
-    // Inyectar árbol y rutas
+    // Inyectar árbol y rutas (todas del mismo origen)
     mainWindow->setCatalog(
         catalog,
-        tablesDirQ.toStdString(),
-        catalogQ.toStdString(),
+        paths.tablesDir.toStdString(),
+        paths.catalogFile.toStdString(),
         /*takeOwnership=*/true
         );
-
-    // Verificación de existencia de rutas/archivos
-    qDebug() << "[navigate] ProjectRoot:" << projectRootQ;
-    qDebug() << "[navigate] TablesDir  :" << tablesDirQ << "exists?" << QFileInfo::exists(tablesDirQ);
-    qDebug() << "[navigate] CatalogMeta:" << catalogQ << "exists?" << QFileInfo::exists(catalogQ);
 
     mainWindow->show();
     this->close();
 }
+
 
 void CreateProject::onCreateProjectCancelled()
 {
