@@ -2568,7 +2568,6 @@ QString TableData::getReferencedTable(const QString &fieldName)
 {
     if (!relationshipsView || !tableEditor) return "";
     
-    // Limpiar el nombre del campo de iconos y espacios
     QString cleanFieldName = fieldName;
     cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
                                   .remove("🔑🔗")
@@ -2581,10 +2580,16 @@ QString TableData::getReferencedTable(const QString &fieldName)
     
     qDebug() << "DEBUG: getReferencedTable para campo" << fieldName << "-> limpio:" << cleanFieldName;
     
-    // Método mejorado: buscar en las relaciones creadas
-    // TODO: Implementar acceso real a las relaciones guardadas en RelationshipsView
+    // NUEVO: Usar el método específico de RelationshipsView
+    QString referencedTable = relationshipsView->getReferencedTableForField(currentTableName, cleanFieldName);
+    if (!referencedTable.isEmpty()) {
+        qDebug() << "DEBUG: Tabla referenciada encontrada vía RelationshipsView:" << referencedTable;
+        return referencedTable;
+    }
     
-    // Por ahora, aproximación simple basada en convenciones de nomenclatura
+    // Fallback: aproximación basada en convenciones de nomenclatura (método anterior)
+    qDebug() << "DEBUG: No se encontró referencia específica, usando método de fallback";
+    
     if (cleanFieldName.endsWith("_id")) {
         QString tableName = cleanFieldName;
         tableName.remove("_id");
@@ -2624,9 +2629,8 @@ QString TableData::getReferencedTable(const QString &fieldName)
 
 QString TableData::getReferencedField(const QString &fieldName)
 {
-    if (!tableEditor) return "Id";
+    if (!relationshipsView || !tableEditor) return "Id";
     
-    // Limpiar el nombre del campo de iconos y espacios
     QString cleanFieldName = fieldName;
     cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
                                   .remove("🔑🔗")
@@ -2636,6 +2640,18 @@ QString TableData::getReferencedField(const QString &fieldName)
                                   .remove("🔗")
                                   .remove("🔶")
                                   .trimmed();
+    
+    qDebug() << "DEBUG: getReferencedField para campo" << fieldName << "-> limpio:" << cleanFieldName;
+    
+    // NUEVO: Usar el método específico de RelationshipsView
+    QString referencedField = relationshipsView->getReferencedFieldForField(currentTableName, cleanFieldName);
+    if (!referencedField.isEmpty()) {
+        qDebug() << "DEBUG: Campo referenciado encontrado vía RelationshipsView:" << referencedField;
+        return referencedField;
+    }
+    
+    // Fallback: método anterior
+    qDebug() << "DEBUG: No se encontró referencia específica, usando método de fallback";
     
     // Obtener la tabla referenciada
     QString referencedTable = getReferencedTable(cleanFieldName);

@@ -26,6 +26,8 @@ QT_END_NAMESPACE
 
 class TableEditor;
 class RelationshipsView;
+class FormulariosView;
+class ReportesView;
 
 class MainWindow : public QMainWindow
 {
@@ -35,6 +37,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     void setProjectName(const QString &projectName);
+    QString getCurrentProjectName() const { return currentProjectName; }
 
     CatalogBPlusTree* catalog() const { return m_catalog; }
     const std::string& tablesDir() const { return m_tablesDir; }
@@ -120,6 +123,12 @@ private:
     
     // Relationships view
     RelationshipsView *relationshipsView;
+    
+    // Formularios view
+    FormulariosView *formulariosView;
+    
+    // Reportes view
+    ReportesView *reportesView;
     
     // Current view tracking
     int currentViewIndex;

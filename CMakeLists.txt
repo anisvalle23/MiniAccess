@@ -36,6 +36,10 @@ set(PROJECT_SOURCES
         TableData.h
         RelationshipsView.cpp
         RelationshipsView.h
+        FormulariosView.cpp
+        FormulariosView.h
+        ReportesView.cpp
+        ReportesView.h
         mainwindow.ui
 )
 

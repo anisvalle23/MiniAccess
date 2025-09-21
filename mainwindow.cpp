@@ -3,6 +3,8 @@
 #include "ThemeTokens.h"
 #include "TableEditor.h"
 #include "RelationshipsView.h"
+#include "FormulariosView.h"
+#include "ReportesView.h"
 #include "CreateProject.h"
 #include <QTimer>
 #include <QDebug>
@@ -183,8 +185,8 @@ void MainWindow::createSidebar()
     sidebarLayout->setSpacing(15); // Espaciado más amplio entre elementos
     
     // Sidebar items - MiniAccess Database Manager
-    QStringList sidebarIcons = {"🏠", "📋", "🔗", "🚪"};
-    QStringList sidebarLabels = {"Vista General", "Editor de Tablas", "Relaciones", "Salir"};
+    QStringList sidebarIcons = {"🏠", "📋", "🔗", "📝", "📊", "🚪"};
+    QStringList sidebarLabels = {"Vista General", "Editor de Tablas", "Relaciones", "Formularios", "Reportes", "Salir"};
     
     for (int i = 0; i < sidebarIcons.size(); ++i) {
         // Create container for each sidebar item
@@ -317,6 +319,12 @@ void MainWindow::createMainContent()
     // Create relationships view
     relationshipsView = new RelationshipsView();
     
+    // Create formularios view
+    formulariosView = new FormulariosView(this);
+    
+    // Create reportes view
+    reportesView = new ReportesView(this);
+    
     // Set table editor reference in relationships view
     relationshipsView->setTableEditor(tableEditorView);
     
@@ -342,6 +350,17 @@ void MainWindow::createMainContent()
             relationshipsView, &RelationshipsView::onForeignKeyRenamed);
     connect(tableEditorView, &TableEditor::primaryKeyRenamed,
             relationshipsView, &RelationshipsView::onPrimaryKeyRenamed);
+    
+    // Connect signals to auto-update formularios view when tables change
+    connect(tableEditorView, &TableEditor::tableCreated, 
+            formulariosView, &FormulariosView::onTableCreated);
+    connect(tableEditorView, &TableEditor::tableDeleted,
+            formulariosView, &FormulariosView::refreshView);
+    connect(tableEditorView, &TableEditor::tableFieldsChanged,
+            formulariosView, &FormulariosView::refreshView);
+    connect(tableEditorView, &TableEditor::tableRenamed,
+            formulariosView, &FormulariosView::refreshView);
+    
     QObject::connect(tableEditorView, &TableEditor::tableCreated,
                      this, &MainWindow::onTableCreated,
                      Qt::UniqueConnection);
@@ -350,6 +369,8 @@ void MainWindow::createMainContent()
     stackedWidget->addWidget(homeView);     // Index 0
     stackedWidget->addWidget(tableEditorView); // Index 1
     stackedWidget->addWidget(relationshipsView); // Index 2
+    stackedWidget->addWidget(formulariosView); // Index 3
+    stackedWidget->addWidget(reportesView); // Index 4
     
     // Set initial view
     stackedWidget->setCurrentIndex(0);
@@ -828,6 +849,18 @@ void MainWindow::switchToView(int viewIndex)
             relationshipsView->updateTheme(ThemeManager::instance().isDark());
             break;
         case 3:
+            // Formularios view
+            stackedWidget->setCurrentIndex(3);
+            // Update formularios view theme if needed
+            formulariosView->updateTheme();
+            break;
+        case 4:
+            // Reportes view
+            stackedWidget->setCurrentIndex(4);
+            // Update reportes view theme if needed
+            reportesView->updateTheme();
+            break;
+        case 5:
             // Salir - Volver a CreateProject
             {
                 qDebug() << "DEBUG: Salir clickeado - volviendo a CreateProject";

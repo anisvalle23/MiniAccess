@@ -9,18 +9,8 @@
             "name": "id",
             "numberKind": "integer",
             "type": "number"
-        },
-        {
-            "allowNull": true,
-            "desc": "",
-            "isForeignKey": false,
-            "isPrimaryKey": false,
-            "isUnique": false,
-            "name": "maetsro",
-            "textMax": 255,
-            "type": "text"
         }
     ],
-    "tableName": "estudiante",
+    "tableName": "estu",
     "version": 1
 }

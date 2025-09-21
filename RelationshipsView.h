@@ -36,6 +36,20 @@
 #include <QDropEvent>
 #include <QShowEvent>
 
+// Estructura para almacenar información completa de una relación
+struct RelationshipInfo {
+    QString sourceTable;
+    QString sourceField;
+    QString targetTable;
+    QString targetField;
+    QString type;
+    QString description;
+    
+    RelationshipInfo() = default;
+    RelationshipInfo(const QString &st, const QString &sf, const QString &tt, const QString &tf, const QString &t)
+        : sourceTable(st), sourceField(sf), targetTable(tt), targetField(tf), type(t) {}
+};
+
 class TableGraphicsItem;
 class RelationshipLine;
 class TableEditor;
@@ -69,6 +83,8 @@ public:
     void setTableEditor(TableEditor *tableEditor);
     void onTableRenamed(const QString &oldName, const QString &newName); // Nuevo método para renombrado
     bool hasRelationshipForField(const QString &tableName, const QString &fieldName); // Verificar si existe relación para un campo
+    QString getReferencedTableForField(const QString &tableName, const QString &fieldName); // Obtener tabla referenciada por un campo FK
+    QString getReferencedFieldForField(const QString &tableName, const QString &fieldName); // Obtener campo referenciado por un campo FK
     void refreshAvailableTablesFromStorage();
     void forceRefreshTables(); // Método para forzar refresh desde exterior
 
@@ -119,6 +135,8 @@ private:
     QString getProjectRelationshipsPath(); // Método para obtener la ruta del archivo de relaciones
     bool validateDataTypeCompatibility(const QString &sourceTable, const QString &targetTable, const QString &relationshipType);
     bool validateForeignKeyNaming(const QString &foreignKeyField, const QString &referencedTable, bool showErrorMessage = true);
+    QString getCleanFieldName(const QString &fieldName); // Método para limpiar nombres de campos de iconos
+    RelationshipInfo* findRelationshipForField(const QString &tableName, const QString &fieldName); // Buscar relación específica
     
     // UI Components
     QVBoxLayout *mainLayout;
@@ -193,6 +211,7 @@ private:
     QMap<QString, QStringList> tableFields;
     QList<TableGraphicsItem*> tableItems;
     QList<RelationshipLine*> relationshipLines;
+    QList<RelationshipInfo> relationships; // Nueva lista para almacenar información completa de relaciones
     TableEditor *tableEditor; // Reference to table editor
     
     // Theme
