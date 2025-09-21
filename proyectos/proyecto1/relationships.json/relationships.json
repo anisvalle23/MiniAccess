@@ -1,0 +1,23 @@
+{
+    "relationships": [
+        {
+            "description": "alumnos → maestros (1:1)",
+            "sourceTable": "alumnos",
+            "targetTable": "maestros",
+            "type": "1:1"
+        }
+    ],
+    "tables": [
+        {
+            "name": "alumnos",
+            "x": -100,
+            "y": -231
+        },
+        {
+            "name": "maestros",
+            "x": -117,
+            "y": -37
+        }
+    ],
+    "version": "1.0"
+}

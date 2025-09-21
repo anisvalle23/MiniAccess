@@ -82,7 +82,11 @@ class TableView : public QWidget
 public:
     explicit TableView(QWidget *parent = nullptr);
     void setTableName(const QString &tableName);
+    void setTableNameWithTablesDir(const QString &tableName, const QString &tablesDir); // Nueva función
     void updateTheme(bool isDark);
+    void loadKeysFromMetaFile(const QString &tableName); // Nueva función para cargar llaves
+    void loadKeysFromMetaFileWithDir(const QString &tableName, const QString &tablesDir); // Con directorio directo
+    void applyEmojisToInterface(); // Aplicar emojis después de cargar llaves
     
     // Obtener campos actuales del diseño
     QStringList getCurrentFieldNames() const;

@@ -34,6 +34,7 @@
 #include <QDragEnterEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
+#include <QShowEvent>
 
 class TableGraphicsItem;
 class RelationshipLine;
@@ -69,6 +70,7 @@ public:
     void onTableRenamed(const QString &oldName, const QString &newName); // Nuevo método para renombrado
     bool hasRelationshipForField(const QString &tableName, const QString &fieldName); // Verificar si existe relación para un campo
     void refreshAvailableTablesFromStorage();
+    void forceRefreshTables(); // Método para forzar refresh desde exterior
 
 public slots:
     void onTableFieldsChanged(const QString &tableName); // Slot público para actualización en tiempo real
@@ -77,6 +79,9 @@ public slots:
     void onPrimaryKeyRenamed(const QString &tableName, const QString &oldFieldName, const QString &newFieldName); // Slot para PK renombrada
     void applyTableRenameImmediate(const QString& oldName, const QString& newName);
     void onTableDeleted(const QString &tableName); // Slot para manejar tabla eliminada
+
+protected:
+    void showEvent(QShowEvent *event) override; // Para refrescar cuando la vista se vuelve visible
 
 private slots:
     void onNewRelationshipClicked();

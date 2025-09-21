@@ -89,7 +89,12 @@ class TableEditor : public QWidget
 public:
     explicit TableEditor(QWidget *parent = nullptr);
     void updateTheme(bool isDark);
-    void setMainWindow(MainWindow* w) { m_mainWindow = w; }
+    void setMainWindow(MainWindow* w) { 
+        m_mainWindow = w; 
+        if (w) {
+            this->setProperty("tablesDir", QString::fromStdString(w->tablesDir()));
+        }
+    }
     MainWindow* mainWindow() const { return m_mainWindow; }
     void updateTableList();
     // Configurar referencia a RelationshipsView
@@ -99,6 +104,7 @@ public:
     QStringList getCreatedTables() const;
     QStringList getTableFields(const QString &tableName) const;
     QStringList getTableFieldsWithKeys(const QString &tableName) const; // Nuevo método que incluye las llaves
+    QStringList readFieldsFromMetaWithKeys(const QString& tablesDir, const QString& tableName) const; // Leer llaves desde archivo
     QStringList getTableForeignKeys(const QString &tableName) const; // Método para obtener solo los Foreign Keys
     QStringList getTablePrimaryKeys(const QString &tableName) const; // Método para obtener solo los Primary Keys
     QStringList getTablePrimaryAndForeignKeys(const QString &tableName) const; // Método para obtener campos que son PK y FK

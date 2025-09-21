@@ -13,6 +13,9 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QDir>
+#include <QFile>
+#include <QSet>
 
 
 static QString buildFieldsArrayJsonFromTableView(TableView* view) {
@@ -28,8 +31,25 @@ static QString buildFieldsArrayJsonFromTableView(TableView* view) {
 
     const int pkIndex = view->getPrimaryKeyColumnIndex();
     const QList<int> uniqueIdxs = view->getUniqueKeyColumnIndexes();
+    
+    // NUEVO: Debug detallado de Foreign Keys
+    qDebug() << "DEBUG[buildFieldsArrayJson]: Antes de llamar getForeignKeyFieldNames()";
+    const QStringList foreignKeyNames = view->getForeignKeyFieldNames(); // NUEVO: Obtener Foreign Keys
+    qDebug() << "DEBUG[buildFieldsArrayJson]: Después de llamar getForeignKeyFieldNames(), resultado:" << foreignKeyNames;
+    
+    qDebug() << "DEBUG[buildFieldsArrayJson]: pkIndex =" << pkIndex;
+    qDebug() << "DEBUG[buildFieldsArrayJson]: uniqueIdxs =" << uniqueIdxs;
+    qDebug() << "DEBUG[buildFieldsArrayJson]: foreignKeyNames =" << foreignKeyNames;
+    qDebug() << "DEBUG[buildFieldsArrayJson]: nombres de campos =" << names;
 
     auto isUniqueAt = [&](int i)->bool { return uniqueIdxs.contains(i); };
+    auto isForeignKeyAt = [&](const QString& name)->bool { 
+        QString cleanName = name;
+        cleanName = cleanName.replace("🔑","").replace("🔗","").trimmed();
+        bool isFk = foreignKeyNames.contains(cleanName);
+        qDebug() << "DEBUG[buildFieldsArrayJson]: Verificando FK para" << name << "-> cleanName:" << cleanName << "-> isFk:" << isFk;
+        return isFk; 
+    };
 
     auto safeAt = [](const QStringList& L, int i) -> QString {
         return (i >= 0 && i < L.size()) ? L[i] : QString();
@@ -37,7 +57,7 @@ static QString buildFieldsArrayJsonFromTableView(TableView* view) {
 
     for (int i = 0; i < names.size() && i < types.size(); ++i) {
         QString cleanName = names[i];
-        cleanName.replace("🔑","").replace("🔗","").trimmed();
+        cleanName = cleanName.replace("🔑","").replace("🔗","").trimmed();
 
         const QString uiType     = types[i].trimmed().toLower();
         const QString currCode   = safeAt(currencyFormats,  i).trimmed();   // "USD"/"HNL"/""
@@ -51,7 +71,19 @@ static QString buildFieldsArrayJsonFromTableView(TableView* view) {
         f["desc"]      = "";
         f["allowNull"] = true;
         f["isPrimaryKey"] = (i == pkIndex);
+        f["isForeignKey"] = isForeignKeyAt(names[i]); // NUEVO: Guardar Foreign Key
         f["isUnique"]     = isUniqueAt(i);
+
+        // Debug para verificar que se están guardando las llaves
+        if (f["isPrimaryKey"].toBool()) {
+            qDebug() << "GUARDANDO PRIMARY KEY:" << cleanName;
+        }
+        if (f["isForeignKey"].toBool()) {
+            qDebug() << "GUARDANDO FOREIGN KEY:" << cleanName;
+        }
+        if (f["isUnique"].toBool()) {
+            qDebug() << "GUARDANDO UNIQUE KEY:" << cleanName;
+        }
 
         // Si es PK, no permitir nulos
         if (i == pkIndex) f["allowNull"] = false;
@@ -182,6 +214,47 @@ static bool loadMetaToLists(const QString& tablesDir,
     return true;
 }
 
+// Nueva función para leer Primary Keys, Foreign Keys y Unique Keys desde .meta
+static bool loadKeysFromMeta(const QString& tablesDir,
+                            const QString& tableName,
+                            QStringList* outPrimaryKeys,
+                            QStringList* outForeignKeys,
+                            QStringList* outUniqueKeys,
+                            QString* err = nullptr)
+{
+    const QString metaPath = tablesDir + "/" + tableName + ".meta";
+    QFile f(metaPath);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        if (err) *err = "No se pudo abrir meta: " + metaPath;
+        return false;
+    }
+    const auto doc = QJsonDocument::fromJson(f.readAll());
+    if (!doc.isObject()) {
+        if (err) *err = "META inválido: " + metaPath;
+        return false;
+    }
+    const QJsonObject root = doc.object();
+    const QJsonArray fields = root.value("fields").toArray();
+
+    outPrimaryKeys->clear();
+    outForeignKeys->clear();
+    outUniqueKeys->clear();
+
+    for (const auto& v : fields) {
+        const QJsonObject f = v.toObject();
+        const QString name = f.value("name").toString().trimmed();
+        const bool isPrimaryKey = f.value("isPrimaryKey").toBool(false);
+        const bool isForeignKey = f.value("isForeignKey").toBool(false);
+        const bool isUnique = f.value("isUnique").toBool(false);
+
+        if (name.isEmpty()) continue;
+
+        if (isPrimaryKey) outPrimaryKeys->append(name);
+        if (isForeignKey) outForeignKeys->append(name);
+        if (isUnique) outUniqueKeys->append(name);
+    }
+    return true;
+}
 
 TableEditor::TableEditor(QWidget *parent)
     : QWidget(parent), isDarkTheme(false), relationshipsView(nullptr)
@@ -236,6 +309,11 @@ void TableEditor::onDesignDebounceTimeout()
     TableView* view = tableViews.value(pendingTableForSave, nullptr);
     if (!view) return;
 
+    // DEBUG: Ver qué está activando autosave
+    qDebug() << "DEBUG[autosave]: Iniciando autosave para tabla:" << pendingTableForSave;
+    qDebug() << "DEBUG[autosave]: Primary keys:" << view->getPrimaryKeyFieldNames(); 
+    qDebug() << "DEBUG[autosave]: Foreign keys:" << view->getForeignKeyFieldNames();
+    
     const QString fieldsArrayJson = buildFieldsArrayJsonFromTableView(view);
 
     std::string err;
@@ -716,8 +794,8 @@ void TableEditor::createTableCreationPanel()
     bottomLayout->addWidget(saveBtn);
     createTablePanelLayout->addWidget(bottomButtons);
     
-    // Initially hide the panel
-    createTablePanel->setGeometry(width(), 0, 280, height());
+    // Initially hide the panel - usar posición relativa más robusta
+    createTablePanel->setGeometry(this->width() > 0 ? this->width() : 800, 0, 280, this->height() > 0 ? this->height() : 600);
     createTablePanel->hide();
     
     // Connect signals
@@ -999,11 +1077,18 @@ void TableEditor::showCreateTablePanel()
     animation->setDuration(400);
     animation->setEasingCurve(QEasingCurve::OutCubic);
     
-    QRect startRect = createTablePanel->geometry();
-    startRect.moveLeft(this->width());
+    // Obtener la altura real del widget padre
+    int parentHeight = this->height();
+    int parentWidth = this->width();
+    
+    // Asegurar que tengamos dimensiones válidas
+    if (parentHeight <= 0) parentHeight = 600; // Altura por defecto
+    if (parentWidth <= 0) parentWidth = 800;   // Ancho por defecto
+    
+    QRect startRect(parentWidth, 0, 280, parentHeight);
     createTablePanel->setGeometry(startRect);
     
-    QRect endRect(this->width() - 300, 0, 280, this->height()); // Posición más a la izquierda y más pequeño
+    QRect endRect(parentWidth - 300, 0, 280, parentHeight);
     animation->setStartValue(startRect);
     animation->setEndValue(endRect);
     
@@ -1050,7 +1135,8 @@ void TableEditor::showTableView(const QString &tableName)
         view = tableViews.value(tableName);
     } else {
         view = new TableView(this);
-        view->setTableName(tableName);
+        QString tablesDir = m_mainWindow ? QString::fromStdString(m_mainWindow->tablesDir()) : "";
+        view->setTableNameWithTablesDir(tableName, tablesDir);
         view->updateTheme(isDarkTheme);
         view->setProperty("tableName", tableName);
 
@@ -1061,8 +1147,10 @@ void TableEditor::showTableView(const QString &tableName)
 
         // ya creaste 'view' y lo metiste en tableViews[tableName]
         connect(view, &TableView::tableDesignChanged,
-                this, [this, tableName](const QStringList&, const QStringList&) {
+                this, [this, tableName](const QStringList& fieldNames, const QStringList& fieldTypes) {
                     // Cada cambio reinicia el timer; se coalescen varios clics en 1 guardado
+                    qDebug() << "DEBUG[autosave]: tableDesignChanged activado para tabla:" << tableName 
+                             << "con campos:" << fieldNames;
                     pendingTableForSave = tableName;
                     designDebounceTimer->start(); // reinicia
                 }, Qt::UniqueConnection);
@@ -1310,7 +1398,8 @@ void TableEditor::showTableDataView(const QString &tableName)
     // Asegura que existen en cache
     if (!tableViews.contains(tableName)) {
         tableViews.insert(tableName, new TableView(this));
-        tableViews[tableName]->setTableName(tableName);
+        QString tablesDir = m_mainWindow ? QString::fromStdString(m_mainWindow->tablesDir()) : "";
+        tableViews[tableName]->setTableNameWithTablesDir(tableName, tablesDir);
         tableViews[tableName]->updateTheme(isDarkTheme);
         connect(tableViews[tableName], &TableView::switchToDataView, this, [this]() {
             switchToDataView();
@@ -1502,8 +1591,66 @@ QStringList TableEditor::getTableFieldsWithKeys(const QString &tableName) const 
         }
     }
     
-    // Si no encontramos la TableView, retornar los campos sin llaves
+    // Si no encontramos la TableView, leer desde archivo con llaves reconstruidas
+    if (m_mainWindow) {
+        QString tablesDir = QString::fromStdString(m_mainWindow->tablesDir());
+        return readFieldsFromMetaWithKeys(tablesDir, tableName);
+    }
+    
+    // Fallback: retornar los campos sin llaves
     return getTableFields(tableName);
+}
+
+QStringList TableEditor::readFieldsFromMetaWithKeys(const QString& tablesDir, const QString& tableName) const {
+    QStringList out;
+
+    // Usar nuestra nueva función para leer llaves directamente del .meta
+    QStringList fieldNames, fieldTypes, currencyFormats, millaresDecimals, textSizes, numberTypes, dateFormats;
+    QStringList primaryKeys, foreignKeys, uniqueKeys;
+    
+    QString err;
+    bool loadSuccess = loadMetaToLists(tablesDir, tableName,
+                                      &fieldNames, &fieldTypes,
+                                      &currencyFormats, &millaresDecimals,
+                                      &textSizes, &numberTypes, &dateFormats,
+                                      &err);
+    
+    bool keysSuccess = loadKeysFromMeta(tablesDir, tableName,
+                                       &primaryKeys, &foreignKeys, &uniqueKeys,
+                                       &err);
+    
+    if (!loadSuccess || !keysSuccess) {
+        qDebug() << "ERROR leyendo meta o llaves para tabla:" << tableName << "Error:" << err;
+        return out;
+    }
+    
+    qDebug() << "LLAVES LEIDAS DESDE META - Tabla:" << tableName;
+    qDebug() << "Primary Keys:" << primaryKeys;
+    qDebug() << "Foreign Keys:" << foreignKeys; 
+    qDebug() << "Unique Keys:" << uniqueKeys;
+
+    // Combinar nombres con emojis según las llaves
+    for (const QString& fname : fieldNames) {
+        if (!fname.isEmpty()) {
+            QString displayName = fname;
+            bool isPk = primaryKeys.contains(fname);
+            bool isFk = foreignKeys.contains(fname);
+            bool isUnique = uniqueKeys.contains(fname);
+            
+            if (isPk && isFk) {
+                displayName = QStringLiteral("🔑🔗 ") + fname;
+            } else if (isPk) {
+                displayName = QStringLiteral("🔑 ") + fname;
+            } else if (isFk) {
+                displayName = QStringLiteral("🔗 ") + fname;
+            }
+            
+            out << displayName;
+            qDebug() << "Campo cargado:" << displayName << "(PK:" << isPk << "FK:" << isFk << "Unique:" << isUnique << ")";
+        }
+    }
+    
+    return out;
 }
 
 QStringList TableEditor::getTableForeignKeys(const QString &tableName) const {
@@ -2247,6 +2394,7 @@ bool TableEditor::isValidTableName(const QString &name)
 
 void TableEditor::scheduleDesignAutosave(const QString& tableName)
 {
+    qDebug() << "DEBUG[autosave]: scheduleDesignAutosave llamado para tabla:" << tableName;
     pendingTableForSave = tableName;
     if (designDebounceTimer) designDebounceTimer->start();
 }

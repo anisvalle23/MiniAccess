@@ -4,6 +4,7 @@
 #include "mainwindow.h"
 #include "catalogbplustree.h"
 #include <QApplication>
+#include <QCoreApplication>
 #include <QDir>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -36,13 +37,41 @@ static QStringList readFieldsFromMeta(const QString& tablesDir, const QString& t
     const QJsonObject o = d.object();
     const QJsonArray fields = o.value("fields").toArray();
 
+    // Leer relaciones para identificar foreign keys DEL PROYECTO ACTUAL
+    QSet<QString> foreignKeyFields;
+    const QString relationshipsPath = QDir(tablesDir).filePath("../relationships.json");
+    QFile relFile(relationshipsPath);
+    if (relFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        const QJsonDocument relDoc = QJsonDocument::fromJson(relFile.readAll());
+        if (relDoc.isObject()) {
+            const QJsonArray relationships = relDoc.object().value("relationships").toArray();
+            for (const auto& rel : relationships) {
+                const QJsonObject relObj = rel.toObject();
+                const QString targetTable = relObj.value("targetTable").toString();
+                const QString targetField = relObj.value("targetField").toString();
+                if (targetTable == tableName && !targetField.isEmpty()) {
+                    foreignKeyFields.insert(targetField);
+                }
+            }
+        }
+    }
+
     for (const auto& v : fields) {
         const QJsonObject fo = v.toObject();
         const QString fname  = fo.value("name").toString().trimmed();
         const bool isPk      = fo.value("isPrimaryKey").toBool(false);
-        // Si guardaste PK de otra forma, ajusta aquí (p.ej. por nombre "id")
+        const bool isFk      = foreignKeyFields.contains(fname);
+        
         if (!fname.isEmpty()) {
-            out << (isPk ? QStringLiteral("🔑 ") + fname : fname);
+            QString displayName = fname;
+            if (isPk && isFk) {
+                displayName = QStringLiteral("🔑🔗 ") + fname;
+            } else if (isPk) {
+                displayName = QStringLiteral("🔑 ") + fname;
+            } else if (isFk) {
+                displayName = QStringLiteral("🔗 ") + fname;
+            }
+            out << displayName;
         }
     }
     return out;
@@ -69,21 +98,23 @@ RelationshipsView::RelationshipsView(QWidget *parent)
                 updateTheme(theme == ThemeManager::Theme::Dark);
             });
     
-    // Load initial data
-    loadTables();
+    // NO cargar tablas aquí porque tableEditor aún es nullptr
+    // loadTables(); // Se llamará en setTableEditor()
     loadRelationships();
     
-    // *** NUEVO: Cargar estado guardado del diseñador ***
-    QTimer::singleShot(500, this, &RelationshipsView::loadDesignerState);
+    // *** NUEVO: Mostrar tablas automáticamente y cargar estado guardado del diseñador ***
+    // Esto también se moverá a setTableEditor()
 }
 
 void RelationshipsView::setTableEditor(TableEditor *editor)
 {
+    qDebug() << "DEBUG[setTableEditor]: =============CONFIGURANDO TABLE EDITOR=============";
     tableEditor = editor;
     
     // Reload tables when editor is set
 
     if (tableEditor) {
+        qDebug() << "DEBUG[setTableEditor]: TableEditor válido, configurando conexiones";
         // 🔹 Esto ya lo usas para refrescar campos cuando cambian
         connect(tableEditor, &TableEditor::tableFieldsChanged,
                 this, &RelationshipsView::onTableFieldsChanged, Qt::UniqueConnection);
@@ -95,10 +126,39 @@ void RelationshipsView::setTableEditor(TableEditor *editor)
         // 🔹 Nueva conexión para manejar tabla eliminada
         connect(tableEditor, &TableEditor::tableDeleted,
                 this, &RelationshipsView::onTableDeleted, Qt::UniqueConnection);
+    } else {
+        qDebug() << "DEBUG[setTableEditor]: TableEditor es null";
     }
 
-
+    // Cargar tablas ahora que tenemos el editor configurado
+    qDebug() << "DEBUG[setTableEditor]: Llamando loadTables()...";
     loadTables();
+    
+    // Mostrar tablas automáticamente y cargar estado guardado con más delay
+    qDebug() << "DEBUG[setTableEditor]: Programando loadDesignerState()...";
+    QTimer::singleShot(1000, this, [this]() { // Aumentado a 1 segundo
+        // NO mostrar automáticamente en diseñador - las tablas deben aparecer solo en la lista lateral
+        // qDebug() << "DEBUG[setTableEditor]: Ejecutando showAllTablesAndRelationships()...";
+        // showAllTablesAndRelationships();
+        qDebug() << "DEBUG[setTableEditor]: Ejecutando loadDesignerState()...";
+        loadDesignerState();
+    });
+    qDebug() << "DEBUG[setTableEditor]: =============FIN CONFIGURAR TABLE EDITOR=============";
+}
+
+void RelationshipsView::showEvent(QShowEvent *event)
+{
+    QWidget::showEvent(event);
+    
+    qDebug() << "DEBUG[showEvent]: RelationshipsView se volvió visible - refrescando tablas";
+    // Cuando la vista se vuelve visible, intentar cargar las tablas nuevamente
+    // Esto ayuda con problemas de timing
+    if (tableEditor) {
+        QTimer::singleShot(100, this, [this]() {
+            qDebug() << "DEBUG[showEvent]: Ejecutando loadTables() después de 100ms";
+            loadTables();
+        });
+    }
 }
 
 // En RelationshipsView.cpp
@@ -204,33 +264,44 @@ void RelationshipsView::refreshAvailableTablesFromStorage()
 {
     availableTables.clear();
 
-    // 1) Intentar árbol (más confiable)
+    qDebug() << "DEBUG[RefreshTables]: =============INICIANDO CARGA DE TABLAS=============";
+    qDebug() << "DEBUG[RefreshTables]: tableEditor =" << (tableEditor ? "válido" : "null");
+    
+    // USAR LA MISMA LÓGICA QUE TABLEEDITOR - SIMPLE Y DIRECTO
     if (tableEditor && tableEditor->mainWindow() && tableEditor->mainWindow()->catalog()) {
+        qDebug() << "DEBUG[RefreshTables]: Usando catálogo B+ (igual que TableEditor)";
         CatalogBPlusTree* cat = tableEditor->mainWindow()->catalog();
         const std::vector<TableMeta> metas = cat->getAllTables();
+        qDebug() << "DEBUG[RefreshTables]: Catálogo tiene" << metas.size() << "tablas";
+        
         for (const auto& tm : metas) {
-            QString name = QString::fromUtf8(tm.name).trimmed();
-            if (!name.isEmpty())
+            QString name = QString::fromLatin1(tm.name).trimmed();
+            if (!name.isEmpty()) {
                 availableTables << name;
+                qDebug() << "DEBUG[RefreshTables]: Agregada desde catálogo:" << name;
+            }
         }
+    } else {
+        qDebug() << "DEBUG[RefreshTables]: No se puede acceder al catálogo";
+        if (!tableEditor) qDebug() << "DEBUG[RefreshTables]: - tableEditor es null";
+        else if (!tableEditor->mainWindow()) qDebug() << "DEBUG[RefreshTables]: - mainWindow es null";
+        else if (!tableEditor->mainWindow()->catalog()) qDebug() << "DEBUG[RefreshTables]: - catalog es null";
     }
 
-    // 2) Fallback: escanear *.meta en tablesDir
-    if (availableTables.isEmpty() && tableEditor && tableEditor->mainWindow()) {
-        const QString tdir = QString::fromStdString(tableEditor->mainWindow()->tablesDir());
-        QDir dir(tdir);
-        const QStringList metas = dir.entryList(QStringList() << "*.meta", QDir::Files);
-        for (const QString& fn : metas) {
-            availableTables << QFileInfo(fn).completeBaseName(); // basename sin extensión
-        }
-    }
-
-    // Normalizar/ordenar
+    // Normalizar/ordenar (igual que TableEditor)
     availableTables.removeDuplicates();
     std::sort(availableTables.begin(), availableTables.end(),
               [](const QString& a, const QString& b){ return a.localeAwareCompare(b) < 0; });
 
-    qDebug() << "DEBUG[RelationshipsView]: tablas disponibles =" << availableTables;
+    qDebug() << "DEBUG[RelationshipsView]: ============RESULTADO FINAL============";
+    qDebug() << "DEBUG[RelationshipsView]: tablas disponibles FINAL =" << availableTables;
+    qDebug() << "DEBUG[RelationshipsView]: =====================================";
+}
+
+void RelationshipsView::forceRefreshTables()
+{
+    qDebug() << "DEBUG[forceRefreshTables]: Forzando refresh de tablas";
+    loadTables();
 }
 
 void RelationshipsView::showAllTablesInDesigner()
@@ -281,6 +352,9 @@ void RelationshipsView::showAllTablesInDesigner()
 
 void RelationshipsView::showAllTablesAndRelationships()
 {
+    // IMPORTANTE: refrescar desde storage primero
+    refreshAvailableTablesFromStorage();
+    
     // Mostrar TODAS las tablas disponibles en el diseñador visual
     int tableCount = availableTables.size();
     if (tableCount == 0) {
@@ -373,8 +447,13 @@ void RelationshipsView::showAllTablesAndRelationships()
 
 void RelationshipsView::saveDesignerState()
 {
+    qDebug() << "DEBUG[saveDesignerState]: ========== INICIANDO GUARDADO DE RELACIONES ==========";
     QString filePath = getProjectRelationshipsPath();
-    if (filePath.isEmpty()) return;
+    qDebug() << "DEBUG[saveDesignerState]: Ruta obtenida:" << filePath;
+    if (filePath.isEmpty()) {
+        qDebug() << "ERROR[saveDesignerState]: Ruta de relaciones está vacía";
+        return;
+    }
     
     QJsonObject designerState;
     QJsonArray tablesArray;
@@ -425,13 +504,28 @@ void RelationshipsView::saveDesignerState()
     // Escribir archivo
     QJsonDocument doc(designerState);
     QFile file(filePath);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(doc.toJson());
-        file.close();
-        qDebug() << "DEBUG: Estado del diseñador guardado en:" << filePath;
-    } else {
-        qWarning() << "ERROR: No se pudo guardar el estado del diseñador en:" << filePath;
+    
+    qDebug() << "DEBUG[saveDesignerState]: Intentando abrir archivo:" << filePath;
+    qDebug() << "DEBUG[saveDesignerState]: Directorio padre:" << QFileInfo(filePath).absolutePath();
+    
+    // Asegurar que el directorio existe
+    QDir dir = QFileInfo(filePath).absoluteDir();
+    if (!dir.exists()) {
+        qDebug() << "DEBUG[saveDesignerState]: Creando directorio:" << dir.absolutePath();
+        dir.mkpath(".");
     }
+    
+    if (file.open(QIODevice::WriteOnly)) {
+        qint64 bytesWritten = file.write(doc.toJson());
+        file.close();
+        qDebug() << "DEBUG[saveDesignerState]: ✅ Estado guardado exitosamente en:" << filePath;
+        qDebug() << "DEBUG[saveDesignerState]: Bytes escritos:" << bytesWritten;
+        qDebug() << "DEBUG[saveDesignerState]: Relaciones guardadas:" << relationshipsListWidget->count();
+    } else {
+        qWarning() << "ERROR[saveDesignerState]: ❌ No se pudo abrir archivo para escritura:" << filePath;
+        qWarning() << "ERROR[saveDesignerState]: Error:" << file.errorString();
+    }
+    qDebug() << "DEBUG[saveDesignerState]: ========== FIN GUARDADO DE RELACIONES ==========";
 }
 
 void RelationshipsView::loadDesignerState()
@@ -511,26 +605,27 @@ void RelationshipsView::loadDesignerState()
 
 QString RelationshipsView::getProjectRelationshipsPath()
 {
-    // Usar el directorio de proyectos actual
-    QString projectsDir = QDir::currentPath() + "/proyectos";
-    
-    if (!QDir(projectsDir).exists()) {
-        return QString(); // No hay directorio de proyectos
+    qDebug() << "DEBUG[getProjectRelationshipsPath]: ========== OBTENIENDO RUTA ==========";
+    // Usar el directorio de tablas del tableEditor activo para determinar el proyecto actual
+    if (!tableEditor) {
+        qDebug() << "WARNING[getProjectRelationshipsPath]: No hay tableEditor disponible";
+        return QString();
     }
     
-    // Buscar el proyecto activo (el más reciente o el que tiene metadata)
-    QDir dir(projectsDir);
-    QStringList projectDirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-    
-    if (projectDirs.isEmpty()) {
-        return QString(); // No hay proyectos
+    QString tablesDir = QString::fromStdString(tableEditor->mainWindow()->tablesDir());
+    qDebug() << "DEBUG[getProjectRelationshipsPath]: tablesDir obtenido:" << tablesDir;
+    if (tablesDir.isEmpty()) {
+        qDebug() << "WARNING[getProjectRelationshipsPath]: tablesDir está vacío";
+        return QString();
     }
     
-    // Usar el primer proyecto encontrado (o implementar lógica para proyecto activo)
-    QString activeProject = projectDirs.first();
-    QString relationshipsFile = projectsDir + "/" + activeProject + "/relationships.json";
+    // La ruta de relaciones está en el directorio padre del directorio de tablas
+    QString relationshipsFile = QDir(tablesDir).filePath("../relationships.json");
+    QString absolutePath = QDir(relationshipsFile).absolutePath() + "/relationships.json";
     
-    return relationshipsFile;
+    qDebug() << "DEBUG[getProjectRelationshipsPath]: Ruta calculada:" << absolutePath;
+    qDebug() << "DEBUG[getProjectRelationshipsPath]: ========== FIN OBTENER RUTA ==========";
+    return absolutePath;
 }
 
 void RelationshipsView::setupUI()
@@ -1065,6 +1160,9 @@ void RelationshipsView::updateTheme(bool isDark)
 
 void RelationshipsView::loadTables()
 {
+    qDebug() << "DEBUG[loadTables]: ============ INICIANDO loadTables() ============";
+    qDebug() << "DEBUG[loadTables]: tableEditor =" << (tableEditor ? "válido" : "null");
+    
     availableTables.clear();
     tableFields.clear();
     tablesListWidget->clear();
@@ -1073,37 +1171,18 @@ void RelationshipsView::loadTables()
     sourceFieldCombo->clear();
     targetFieldCombo->clear();
 
-    // 1) Candidatas: creadas en esta sesión (UI)
-    QStringList candidates;
-    if (tableEditor) {
-        candidates += tableEditor->getCreatedTables();
-    }
+    qDebug() << "DEBUG[loadTables]: Widgets limpiados, llamando refreshAvailableTablesFromStorage()";
 
-    // 2) Candidatas: árbol persistido
-    if (tableEditor && tableEditor->mainWindow() && tableEditor->mainWindow()->catalog()) {
-        const auto metas = tableEditor->mainWindow()->catalog()->getAllTables();
-        for (const auto& tm : metas) {
-            const QString name = QString::fromUtf8(tm.name).trimmed();
-            if (!name.isEmpty()) candidates << name;
-        }
-    }
+    // USAR LA MISMA LÓGICA QUE TABLEEDITOR - OBTENER DIRECTAMENTE DEL CATÁLOGO
+    refreshAvailableTablesFromStorage();
+    
+    qDebug() << "DEBUG[loadTables]: Después de refreshAvailableTablesFromStorage():";
+    qDebug() << "DEBUG[loadTables]: availableTables.size() =" << availableTables.size();
+    qDebug() << "DEBUG[loadTables]: availableTables contenido =" << availableTables;
 
-    // 3) Fallback: *.meta en disco
-    QString tablesDir;
-    if (tableEditor && tableEditor->mainWindow()) {
-        tablesDir = QString::fromStdString(tableEditor->mainWindow()->tablesDir());
-        QDir dir(tablesDir);
-        const QStringList metas = dir.entryList(QStringList() << "*.meta", QDir::Files);
-        for (const QString& fn : metas) {
-            candidates << QFileInfo(fn).completeBaseName();
-        }
-    }
-
-    // 4) Únicas y ordenadas
-    availableTables = dedupSorted(candidates);
-
-    // 5) Si no hay, mensaje amable
+    // Si no hay tablas, mostrar mensaje
     if (availableTables.isEmpty()) {
+        qDebug() << "DEBUG[loadTables]: NO HAY TABLAS - Mostrando mensaje 'No hay tablas creadas'";
         QListWidgetItem *item = new QListWidgetItem("📝 No hay tablas creadas");
         item->setFlags(Qt::NoItemFlags);
         item->setForeground(QColor("#999999"));
@@ -1111,43 +1190,51 @@ void RelationshipsView::loadTables()
         return;
     }
 
-    // 6) Poblar UI (lista y combos) y cargar campos (de TableEditor o meta)
+    qDebug() << "DEBUG[loadTables]: HAY TABLAS DISPONIBLES - Poblando lista lateral con:" << availableTables;
+
+    // Poblar UI (lista y combos) y cargar campos
+    QString tablesDir;
+    if (tableEditor && tableEditor->mainWindow()) {
+        tablesDir = QString::fromStdString(tableEditor->mainWindow()->tablesDir());
+    }
+    
     for (const QString& tableName : availableTables) {
-        // Lista arrastrable
+        qDebug() << "DEBUG[loadTables]: Procesando tabla:" << tableName;
+        
+        // Agregar a lista lateral
         auto *item = new QListWidgetItem(tableName);
         item->setData(Qt::UserRole, tableName);
         item->setFlags(item->flags() | Qt::ItemIsDragEnabled);
         tablesListWidget->addItem(item);
+        qDebug() << "DEBUG[loadTables]: Tabla agregada a tablesListWidget:" << tableName;
 
-        // Combos
+        // Agregar a combos
         sourceTableCombo->addItem(tableName);
         targetTableCombo->addItem(tableName);
 
-        // Campos (con llaves si se puede)
+        // Cargar campos (intentar del editor primero, luego del .meta)
         QStringList fieldsWithKeys;
         if (tableEditor) {
             fieldsWithKeys = tableEditor->getTableFieldsWithKeys(tableName);
         }
 
         if (fieldsWithKeys.isEmpty() && !tablesDir.isEmpty()) {
-            // Intentar leer del .meta si la tabla aún no está abierta en el editor
+            // Leer del .meta si no está disponible en el editor
             fieldsWithKeys = readFieldsFromMeta(tablesDir, tableName);
         }
 
-        // Limpia vacíos
+        // Limpiar campos vacíos
         QStringList validFields;
         for (QString f : fieldsWithKeys) {
             f = f.trimmed();
             if (!f.isEmpty()) validFields << f;
         }
 
-        tableFields[tableName] = validFields; // aunque quede vacío, lo guardamos
+        tableFields[tableName] = validFields;
+        qDebug() << "DEBUG[loadTables]: Campos cargados para" << tableName << ":" << validFields;
     }
-
-    // *** Nota ***
-    // Aquí NO añadimos automáticamente las tablas al diseñador visual.
-    // Se mantienen como antes: solo se agregan cuando el usuario pulsa el botón
-    // "Mostrar Todas las Tablas" (que llama showAllTablesInDesigner()).
+    
+    qDebug() << "DEBUG[loadTables]: loadTables() completado exitosamente";
 }
 
 void RelationshipsView::loadRelationships()
@@ -1539,9 +1626,14 @@ void RelationshipsView::onNewRelationshipClicked()
 
 void RelationshipsView::onCreateRelationship()
 {
+    qDebug() << "DEBUG[onCreateRelationship]: ======= INICIANDO CREACIÓN DE RELACIÓN =======";
     QString sourceTable = sourceTableCombo->currentText();
     QString targetTable = targetTableCombo->currentText();
     QString relationshipType = relationshipTypeCombo->currentText();
+    
+    qDebug() << "DEBUG[onCreateRelationship]: Tabla origen:" << sourceTable;
+    qDebug() << "DEBUG[onCreateRelationship]: Tabla destino:" << targetTable;
+    qDebug() << "DEBUG[onCreateRelationship]: Tipo:" << relationshipType;
     
     // Extract just the type part (1:1, 1:N, N:M)
     QString shortType;
@@ -2266,6 +2358,10 @@ void RelationshipsView::onCreateRelationship()
     // Add to relationships list
     QString relationshipDesc = QString("%1 → %2 (%3)").arg(sourceTable, targetTable, shortType);
     relationshipsListWidget->addItem(relationshipDesc);
+    
+    qDebug() << "DEBUG[CREAR RELACIÓN]: ✅ Relación agregada a la lista:" << relationshipDesc;
+    qDebug() << "DEBUG[CREAR RELACIÓN]: Total relaciones en lista:" << relationshipsListWidget->count();
+    qDebug() << "DEBUG[CREAR RELACIÓN]: Llamando saveDesignerState()...";
     
     // *** NUEVO: Guardar estado después de crear relación ***
     saveDesignerState();

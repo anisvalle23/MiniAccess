@@ -1,11 +1,22 @@
 {
     "fields": [
         {
-            "allowNull": true,
+            "allowNull": false,
             "desc": "",
-            "isPrimaryKey": false,
+            "isForeignKey": false,
+            "isPrimaryKey": true,
             "isUnique": false,
             "name": "id",
+            "numberKind": "integer",
+            "type": "number"
+        },
+        {
+            "allowNull": true,
+            "desc": "",
+            "isForeignKey": false,
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "name": "maestro",
             "numberKind": "integer",
             "type": "number"
         }

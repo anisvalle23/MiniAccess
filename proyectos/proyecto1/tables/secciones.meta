@@ -3,6 +3,7 @@
         {
             "allowNull": true,
             "desc": "",
+            "isForeignKey": false,
             "isPrimaryKey": false,
             "isUnique": false,
             "name": "id",
@@ -12,6 +13,7 @@
         {
             "allowNull": true,
             "desc": "",
+            "isForeignKey": false,
             "isPrimaryKey": false,
             "isUnique": false,
             "name": "id_maestros",
@@ -21,6 +23,7 @@
         {
             "allowNull": true,
             "desc": "",
+            "isForeignKey": false,
             "isPrimaryKey": false,
             "isUnique": false,
             "name": "id_alumnos",

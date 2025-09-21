@@ -1,10 +1,9 @@
 {
     "fields": [
         {
-            "allowNull": false,
+            "allowNull": true,
             "desc": "",
-            "isForeignKey": false,
-            "isPrimaryKey": true,
+            "isPrimaryKey": false,
             "isUnique": false,
             "name": "id",
             "numberKind": "integer",
@@ -13,14 +12,13 @@
         {
             "allowNull": true,
             "desc": "",
-            "isForeignKey": true,
             "isPrimaryKey": false,
             "isUnique": false,
-            "name": "id_alumno",
-            "numberKind": "integer",
-            "type": "number"
+            "name": "nombre",
+            "textMax": 255,
+            "type": "text"
         }
     ],
-    "tableName": "maestros",
+    "tableName": "estudiante",
     "version": 1
 }

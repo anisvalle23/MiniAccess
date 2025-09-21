@@ -3,6 +3,11 @@
 #include <QMessageBox>
 #include <QTimer>
 #include <QIntValidator>
+#include <QDir>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 
 // DataTypeDelegate Implementation
 DataTypeDelegate::DataTypeDelegate(QObject *parent) : QStyledItemDelegate(parent)
@@ -237,6 +242,8 @@ TableView::TableView(QWidget *parent) : QWidget(parent)
     primaryKeyRow = -1; // No hay llave primaria inicialmente
     foreignKeyRows.clear(); // No hay foreign keys inicialmente
     uniqueKeyRows.clear(); // No hay campos únicos inicialmente
+    qDebug() << "DEBUG[CONSTRUCTOR]: TableView inicializado - foreignKeyRows limpiado";
+    qDebug() << "DEBUG[CONSTRUCTOR]: Nuevo TableView creado en memoria:" << (void*)this;
     isDarkTheme = false;
     currentTableName = "Nueva Tabla";
     
@@ -1201,6 +1208,11 @@ void TableView::onRequiredChanged(bool required)
             tableWidget->blockSignals(false);
             
             qDebug() << "DEBUG: Campo marcado como llave primaria:" << cleanFieldName << "en fila:" << currentSelectedRow;
+            
+            // Notificar cambio de llaves para forzar autosave con delay
+            QTimer::singleShot(100, this, [this]() {
+                emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+            });
         }
         
     } else {
@@ -1255,6 +1267,11 @@ void TableView::onRequiredChanged(bool required)
                 tableWidget->blockSignals(false);
                 
                 qDebug() << "DEBUG: Llave primaria removida del campo:" << cleanFieldName;
+                
+                // Notificar cambio de llaves para forzar autosave con delay
+                QTimer::singleShot(100, this, [this]() {
+                    emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+                });
             }
         }
     }
@@ -1310,6 +1327,7 @@ void TableView::onForeignKeyChanged(bool isForeignKey)
         // Agregar a la lista de Foreign Keys si no está ya
         if (!foreignKeyRows.contains(currentSelectedRow)) {
             foreignKeyRows.append(currentSelectedRow);
+            qDebug() << "DEBUG[FK]: Agregado FK en fila" << currentSelectedRow << "- foreignKeyRows ahora:" << foreignKeyRows;
         }
         
         // Mostrar el icono apropiado
@@ -1342,9 +1360,15 @@ void TableView::onForeignKeyChanged(bool isForeignKey)
         
         qDebug() << "DEBUG: Campo marcado como Foreign Key:" << cleanFieldName << "en fila:" << currentSelectedRow;
         
+        // Notificar cambio de llaves para forzar autosave con delay
+        QTimer::singleShot(100, this, [this]() {
+            emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+        });
+        
     } else {
         // Remover de la lista de Foreign Keys
         foreignKeyRows.removeAll(currentSelectedRow);
+        qDebug() << "DEBUG[FK]: Removido FK de fila" << currentSelectedRow << "- foreignKeyRows ahora:" << foreignKeyRows;
         
         // Remover el icono de foreign key
         QString newText = cleanFieldName;
@@ -1372,6 +1396,11 @@ void TableView::onForeignKeyChanged(bool isForeignKey)
         tableWidget->blockSignals(false);
         
         qDebug() << "DEBUG: Foreign Key removida del campo:" << cleanFieldName;
+        
+        // Notificar cambio de llaves para forzar autosave con delay
+        QTimer::singleShot(100, this, [this]() {
+            emit tableDesignChanged(getCurrentFieldNames(), getCurrentFieldTypes());
+        });
         
         // Emitir señal para notificar que se eliminó una Foreign Key
         emit foreignKeyRemoved(currentTableName, cleanFieldName);
@@ -2101,8 +2130,11 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
                 toolTip = "Campo Unique - Valores únicos, no se permiten duplicados";
             }
             
+            // Block signals to prevent infinite loop
+            tableWidget->blockSignals(true);
             item->setText(newText);
             item->setToolTip(toolTip);
+            tableWidget->blockSignals(false);
         }
     }
     
@@ -2122,7 +2154,9 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
                 
                 // Establecer valores por defecto según la columna
                 if (col == 0 && nextItem->text().isEmpty()) {
+                    tableWidget->blockSignals(true);
                     nextItem->setText("Texto largo"); // <-- coincide con el combo
+                    tableWidget->blockSignals(false);
                 }
             }
         }
@@ -2137,7 +2171,9 @@ void TableView::onFieldItemChanged(QTableWidgetItem *item)
         for (int nextCol = col + 1; nextCol < tableWidget->columnCount(); nextCol++) {
             QTableWidgetItem *nextItem = tableWidget->item(row, nextCol);
             if (nextItem) {
+                tableWidget->blockSignals(true);
                 nextItem->setText(""); // Limpiar contenido
+                tableWidget->blockSignals(false);
                 nextItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
                 nextItem->setBackground(QBrush(QColor(245, 245, 245))); // Volver a gris
             }
@@ -2222,6 +2258,24 @@ void TableView::setTableName(const QString &tableName)
     if (tableNameLabel) {
         tableNameLabel->setText(tableName);
     }
+    
+    // Cargar llaves desde .meta cuando se establece el nombre de tabla
+    if (!tableName.isEmpty() && tableName != "Nueva Tabla") {
+        loadKeysFromMetaFile(tableName);
+    }
+}
+
+void TableView::setTableNameWithTablesDir(const QString &tableName, const QString &tablesDir)
+{
+    currentTableName = tableName;
+    if (tableNameLabel) {
+        tableNameLabel->setText(tableName);
+    }
+    
+    // Cargar llaves desde .meta cuando se establece el nombre de tabla
+    if (!tableName.isEmpty() && tableName != "Nueva Tabla" && !tablesDir.isEmpty()) {
+        loadKeysFromMetaFileWithDir(tableName, tablesDir);
+    }
 }
 
 void TableView::updateTheme(bool isDark)
@@ -2258,6 +2312,246 @@ void TableView::updateTheme(bool isDark)
         headerWidget->update();
         tableNameLabel->update();
     }
+}
+
+void TableView::loadKeysFromMetaFile(const QString &tableName)
+{
+    qDebug() << "DEBUG[loadKeysFromMetaFile]: Función básica llamada para tabla:" << tableName;
+    qDebug() << "DEBUG[loadKeysFromMetaFile]: Esta función requiere directorio. Use setTableNameWithTablesDir instead";
+}
+
+void TableView::loadKeysFromMetaFileWithDir(const QString &tableName, const QString &tablesDir)
+{
+    qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: Cargando llaves para tabla:" << tableName 
+             << "desde directorio:" << tablesDir;
+    
+    if (tablesDir.isEmpty()) {
+        qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: Directorio de tablas vacío";
+        return;
+    }
+    
+    QString metaPath = QDir(tablesDir).absoluteFilePath(tableName + ".meta");
+    if (!QFile::exists(metaPath)) {
+        qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: Archivo .meta no existe:" << metaPath;
+        return;
+    }
+    
+    // Leer el archivo .meta
+    QFile file(metaPath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: No se pudo abrir archivo:" << metaPath;
+        return;
+    }
+    
+    QByteArray data = file.readAll();
+    file.close();
+    
+    QJsonParseError error;
+    QJsonDocument doc = QJsonDocument::fromJson(data, &error);
+    if (error.error != QJsonParseError::NoError) {
+        qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: Error parsing JSON:" << error.errorString();
+        return;
+    }
+    
+    QJsonObject root = doc.object();
+    if (!root.contains("fields") || !root["fields"].isArray()) {
+        qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: No se encontró array 'fields' en .meta";
+        return;
+    }
+    
+    // Resetear arrays de llaves
+    primaryKeyRow = -1;
+    foreignKeyRows.clear();
+    uniqueKeyRows.clear();
+    qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: Arrays de llaves reseteados";
+    
+    QJsonArray fields = root["fields"].toArray();
+    qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: Procesando" << fields.size() << "campos";
+    
+    for (int i = 0; i < fields.size(); ++i) {
+        QJsonObject field = fields[i].toObject();
+        
+        bool isPrimaryKey = field.value("isPrimaryKey").toBool(false);
+        bool isForeignKey = field.value("isForeignKey").toBool(false);
+        bool isUnique = field.value("isUnique").toBool(false);
+        
+        if (isPrimaryKey) {
+            primaryKeyRow = i;
+            qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: Primary Key cargada en fila:" << i;
+        }
+        if (isForeignKey) {
+            foreignKeyRows.append(i);
+            qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: Foreign Key cargada en fila:" << i;
+        }
+        if (isUnique) {
+            uniqueKeyRows.append(i);
+            qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: Unique Key cargada en fila:" << i;
+        }
+    }
+    
+    qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: Llaves cargadas - PK:" << primaryKeyRow 
+             << "FK:" << foreignKeyRows << "Unique:" << uniqueKeyRows;
+    
+    // Aplicar emojis ahora que la tabla está lista
+    qDebug() << "DEBUG[loadKeysFromMetaFileWithDir]: Aplicando emojis";
+    applyEmojisToInterface();
+}
+
+void TableView::applyEmojisToInterface()
+{
+    if (!tableWidget) {
+        qDebug() << "DEBUG[applyEmojisToInterface]: tableWidget es null";
+        return;
+    }
+    
+    // Verificar que la tabla tenga al menos algún contenido
+    if (tableWidget->rowCount() == 0) {
+        qDebug() << "DEBUG[applyEmojisToInterface]: tabla vacía, saltando aplicación de emojis";
+        return;
+    }
+    
+    // Verificar que no haya llaves que aplicar
+    if (primaryKeyRow == -1 && foreignKeyRows.isEmpty() && uniqueKeyRows.isEmpty()) {
+        qDebug() << "DEBUG[applyEmojisToInterface]: no hay llaves que aplicar";
+        return;
+    }
+    
+    qDebug() << "DEBUG[applyEmojisToInterface]: Aplicando emojis a" << tableWidget->rowCount() << "filas";
+    qDebug() << "DEBUG[applyEmojisToInterface]: Estado actual - PK:" << primaryKeyRow << "FK:" << foreignKeyRows << "U:" << uniqueKeyRows;
+    
+    // VALIDAR que los índices de llaves están dentro del rango válido
+    if (primaryKeyRow >= tableWidget->rowCount()) {
+        qDebug() << "DEBUG[applyEmojisToInterface]: ERROR - primaryKeyRow fuera de rango:" << primaryKeyRow << ">=" << tableWidget->rowCount();
+        primaryKeyRow = -1; // Reset para evitar crash
+    }
+    
+    // Validar foreignKeyRows
+    QList<int> validForeignKeyRows;
+    for (int fkRow : foreignKeyRows) {
+        if (fkRow < tableWidget->rowCount()) {
+            validForeignKeyRows.append(fkRow);
+        } else {
+            qDebug() << "DEBUG[applyEmojisToInterface]: ERROR - FK row fuera de rango:" << fkRow << ">=" << tableWidget->rowCount();
+        }
+    }
+    foreignKeyRows = validForeignKeyRows;
+    
+    // Validar uniqueKeyRows
+    QList<int> validUniqueKeyRows;
+    for (int uniqueRow : uniqueKeyRows) {
+        if (uniqueRow < tableWidget->rowCount()) {
+            validUniqueKeyRows.append(uniqueRow);
+        } else {
+            qDebug() << "DEBUG[applyEmojisToInterface]: ERROR - Unique row fuera de rango:" << uniqueRow << ">=" << tableWidget->rowCount();
+        }
+    }
+    uniqueKeyRows = validUniqueKeyRows;
+    
+    qDebug() << "DEBUG[applyEmojisToInterface]: Estado después de validación - PK:" << primaryKeyRow << "FK:" << foreignKeyRows << "U:" << uniqueKeyRows;
+    
+    // TEMPORALMENTE SIN blockSignals para debug
+    // tableWidget->blockSignals(true);
+    
+    for (int row = 0; row < tableWidget->rowCount(); ++row) {
+        QTableWidgetItem *fieldNameItem = tableWidget->item(row, 0);
+        if (!fieldNameItem) {
+            qDebug() << "DEBUG[applyEmojisToInterface]: fieldNameItem es null en fila" << row;
+            continue;
+        }
+        
+        QString fieldName = fieldNameItem->text().trimmed();
+        qDebug() << "DEBUG[applyEmojisToInterface]: Procesando fila" << row << "con texto original:" << fieldName;
+        
+        // Obtener el nombre limpio del campo (sin iconos existentes)
+        QString cleanFieldName = fieldName;
+        cleanFieldName = cleanFieldName.remove("🔑🔗🔶");
+        cleanFieldName = cleanFieldName.remove("🔑🔗");
+        cleanFieldName = cleanFieldName.remove("🔑🔶");
+        cleanFieldName = cleanFieldName.remove("🔗🔶");
+        cleanFieldName = cleanFieldName.remove("🔑");  
+        cleanFieldName = cleanFieldName.remove("🔗");
+        cleanFieldName = cleanFieldName.remove("🔶");
+        cleanFieldName = cleanFieldName.trimmed();
+        
+        // SKIP campos vacíos para evitar crashes
+        if (cleanFieldName.isEmpty()) {
+            qDebug() << "DEBUG[applyEmojisToInterface]: Saltando campo vacío en fila" << row;
+            continue;
+        }
+        
+        qDebug() << "DEBUG[applyEmojisToInterface]: Campo limpio en fila" << row << ":" << cleanFieldName;
+        
+        // Determinar qué emojis aplicar
+        bool isPrimaryKey = (primaryKeyRow == row);
+        bool isForeignKey = foreignKeyRows.contains(row);
+        bool isUnique = uniqueKeyRows.contains(row);
+        
+        QString newText = cleanFieldName;
+        QString toolTip = "";
+        
+        if (isPrimaryKey && isForeignKey && isUnique) {
+            // PK + FK + Unique
+            newText = "🔑🔗🔶 " + cleanFieldName;
+            toolTip = "Campo Primary Key, Foreign Key y Unique";
+        } else if (isPrimaryKey && isForeignKey) {
+            // PK + FK
+            newText = "🔑🔗 " + cleanFieldName;
+            toolTip = "Campo Primary Key con Foreign Key";
+        } else if (isPrimaryKey && isUnique) {
+            // PK + Unique
+            newText = "🔑🔶 " + cleanFieldName;
+            toolTip = "Campo Primary Key y Unique";
+        } else if (isForeignKey && isUnique) {
+            // FK + Unique
+            newText = "🔗🔶 " + cleanFieldName;
+            toolTip = "Campo Foreign Key y Unique";
+        } else if (isPrimaryKey) {
+            // Solo Primary Key
+            newText = "🔑 " + cleanFieldName;
+            toolTip = "Campo Primary Key - Clave única e irrepetible";
+        } else if (isForeignKey) {
+            // Solo Foreign Key
+            newText = "🔗 " + cleanFieldName;
+            toolTip = "Campo Foreign Key - Referencia a otra tabla";
+        } else if (isUnique) {
+            // Solo Unique
+            newText = "🔶 " + cleanFieldName;
+            toolTip = "Campo Unique - Valor único";
+        } else {
+            // Sin llaves
+            toolTip = "Campo regular";
+        }
+        
+        qDebug() << "DEBUG[applyEmojisToInterface]: Aplicando texto final:" << newText << "a fila" << row;
+        
+        // Validar que el item sigue siendo válido antes de modificarlo
+        if (!fieldNameItem) {
+            qDebug() << "DEBUG[applyEmojisToInterface]: ERROR - fieldNameItem se volvió null";
+            continue;
+        }
+        
+        // Aplicar texto de manera segura bloqueando señales
+        try {
+            tableWidget->blockSignals(true);
+            fieldNameItem->setText(newText);
+            fieldNameItem->setToolTip(toolTip);
+            tableWidget->blockSignals(false);
+            qDebug() << "DEBUG[applyEmojisToInterface]: Texto aplicado exitosamente";
+        } catch (...) {
+            tableWidget->blockSignals(false);  // Asegurar que se desbloqueen las señales
+            qDebug() << "DEBUG[applyEmojisToInterface]: ERROR - Exception al aplicar texto";
+            continue;
+        }
+        
+        qDebug() << "DEBUG[applyEmojisToInterface]: Fila" << row << ":" << cleanFieldName 
+                 << "-> PK:" << isPrimaryKey << "FK:" << isForeignKey << "U:" << isUnique 
+                 << "-> Texto:" << newText;
+    }
+    
+    // TEMPORALMENTE SIN unblock para debug  
+    // tableWidget->blockSignals(false);
+    
+    qDebug() << "DEBUG[applyEmojisToInterface]: Emojis aplicados exitosamente";
 }
 
 // Style Methods
@@ -2368,14 +2662,20 @@ QStringList TableView::getCurrentFieldNames() const
         if (item && !item->text().trimmed().isEmpty()) {
             QString fieldName = item->text().trimmed();
             
-            // Remover el icono de llave si existe
-            if (fieldName.startsWith("🔑 ")) {
-                fieldName = fieldName.mid(3);
-            }
+            // Remover TODOS los iconos posibles de manera robusta
+            QString cleanFieldName = fieldName;
+            cleanFieldName = cleanFieldName.remove("🔑🔗🔶");
+            cleanFieldName = cleanFieldName.remove("🔑🔗");
+            cleanFieldName = cleanFieldName.remove("🔑🔶");
+            cleanFieldName = cleanFieldName.remove("🔗🔶");
+            cleanFieldName = cleanFieldName.remove("🔑");  
+            cleanFieldName = cleanFieldName.remove("🔗");
+            cleanFieldName = cleanFieldName.remove("🔶");
+            cleanFieldName = cleanFieldName.trimmed();
             
-            if (!fieldName.isEmpty()) {
-                fieldNames << fieldName;
-                qDebug() << "DEBUG: Added field name:" << fieldName;
+            if (!cleanFieldName.isEmpty()) {
+                fieldNames << cleanFieldName;
+                qDebug() << "DEBUG: Added field name:" << cleanFieldName;
             }
         }
     }
@@ -2444,7 +2744,10 @@ QStringList TableView::getForeignKeyFieldNames() const
 {
     QStringList foreignKeyFields;
     
-    qDebug() << "DEBUG: getForeignKeyFieldNames() - foreignKeyRows actual:" << foreignKeyRows;
+    qDebug() << "DEBUG: getForeignKeyFieldNames() INICIANDO";
+    qDebug() << "DEBUG: foreignKeyRows actual:" << foreignKeyRows;
+    qDebug() << "DEBUG: tableWidget existe:" << (tableWidget != nullptr);
+    qDebug() << "DEBUG: tableWidget->rowCount():" << (tableWidget ? tableWidget->rowCount() : -1);
     
     // Verificar que la tabla existe y tiene filas
     if (!tableWidget || tableWidget->rowCount() == 0) {
@@ -2454,6 +2757,7 @@ QStringList TableView::getForeignKeyFieldNames() const
     
     // Recorrer todas las filas marcadas como Foreign Key
     for (int row : foreignKeyRows) {
+        qDebug() << "DEBUG: Procesando foreignKeyRow:" << row;
         if (row >= 0 && row < tableWidget->rowCount()) {
             QTableWidgetItem *item = tableWidget->item(row, 0);
             if (item && !item->text().trimmed().isEmpty()) {
@@ -2461,19 +2765,25 @@ QStringList TableView::getForeignKeyFieldNames() const
                 
                 qDebug() << "DEBUG: Procesando fila FK" << row << "con texto original:" << fieldName;
                 
-                // Remover el icono de llave si existe para obtener el nombre limpio
-                if (fieldName.startsWith("🔗 ")) {
-                    fieldName = fieldName.mid(3);
-                } else if (fieldName.startsWith("🔑🔗 ")) {
-                    fieldName = fieldName.mid(5);
-                }
+                // Remover TODOS los iconos posibles de manera robusta
+                QString cleanFieldName = fieldName;
+                cleanFieldName = cleanFieldName.remove("🔑🔗🔶");
+                cleanFieldName = cleanFieldName.remove("🔑🔗");
+                cleanFieldName = cleanFieldName.remove("🔑🔶");
+                cleanFieldName = cleanFieldName.remove("🔗🔶");
+                cleanFieldName = cleanFieldName.remove("🔑");  
+                cleanFieldName = cleanFieldName.remove("🔗");
+                cleanFieldName = cleanFieldName.remove("🔶");
+                cleanFieldName = cleanFieldName.trimmed();
                 
-                qDebug() << "DEBUG: Nombre de campo FK limpio:" << fieldName;
+                qDebug() << "DEBUG: Nombre de campo FK limpio:" << cleanFieldName;
                 
-                if (!fieldName.isEmpty()) {
-                    foreignKeyFields << fieldName;
+                if (!cleanFieldName.isEmpty()) {
+                    foreignKeyFields << cleanFieldName;
                 }
             }
+        } else {
+            qDebug() << "DEBUG: Row" << row << "está fuera de rango";
         }
     }
     
