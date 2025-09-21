@@ -1,22 +1,22 @@
 {
     "relationships": [
         {
-            "description": "alumnos → maestros (1:1)",
-            "sourceTable": "alumnos",
-            "targetTable": "maestros",
+            "description": "maestros → alumnos (1:1)",
+            "sourceTable": "maestros",
+            "targetTable": "alumnos",
             "type": "1:1"
         }
     ],
     "tables": [
         {
             "name": "alumnos",
-            "x": -100,
-            "y": -231
+            "x": -182,
+            "y": -234
         },
         {
             "name": "maestros",
-            "x": -117,
-            "y": -37
+            "x": -137,
+            "y": -50
         }
     ],
     "version": "1.0"

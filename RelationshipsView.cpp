@@ -1842,28 +1842,67 @@ void RelationshipsView::onCreateRelationship()
         
         // VALIDACIÓN SEGÚN TIPO DE RELACIÓN
         if (shortType == "1:1") {
-            // Relación 1:1: PK puede ser también FK - ESTO ES VÁLIDO
-            bool sourceHasValidFK = !sourceForeignKeys.isEmpty();
-            bool targetHasValidFK = !targetForeignKeys.isEmpty();
+            // Relación 1:1: Debe ser de Primary Key a Primary Key
             
-            if (!sourceHasValidFK && !targetHasValidFK) {
+            // Obtener los campos seleccionados de los combos
+            QString selectedSourceField = sourceFieldCombo->currentText();
+            QString selectedTargetField = targetFieldCombo->currentText();
+            
+            // Verificar que no sea la misma tabla
+            if (sourceTable == targetTable) {
                 QMessageBox msgBox;
                 msgBox.setIcon(QMessageBox::Warning);
-                msgBox.setWindowTitle("🔗 Relación 1:1 - Foreign Key Requerida");
-                msgBox.setText("<h3>Foreign Key Requerida para Relación 1:1</h3>");
+                msgBox.setWindowTitle("🔗 Relación 1:1 - Tablas Diferentes Requeridas");
+                msgBox.setText("<h3>No se puede crear relación con la misma tabla</h3>");
                 msgBox.setInformativeText(
-                    QString("Para establecer una relación 1:1, una de las tablas debe contener una Foreign Key que apunte a la Primary Key de la otra.<br><br>"
-                           "⚠️ <b>Estado actual:</b><br>"
-                           "• Tabla <b>'%1'</b>: %2 Foreign Keys<br>"
-                           "• Tabla <b>'%3'</b>: %4 Foreign Keys<br><br>"
-                           "✅ <b>Nota:</b> En relaciones 1:1, un campo puede ser Primary Key y Foreign Key al mismo tiempo.<br><br>"
+                    QString("Las relaciones 1:1 deben conectar tablas diferentes.<br><br>"
+                           "⚠️ <b>Problema:</b><br>"
+                           "Está intentando crear una relación entre la tabla '%1' y ella misma.<br><br>"
                            "<b>Solución:</b><br>"
-                           "1. Vaya a la vista de diseño de una de las tablas<br>"
-                           "2. Seleccione el campo de referencia<br>"
-                           "3. Marque la casilla 'Foreign Key' en las propiedades<br>"
-                           "4. Regrese e intente crear la relación nuevamente")
-                           .arg(sourceTable).arg(sourceForeignKeys.size())
-                           .arg(targetTable).arg(targetForeignKeys.size())
+                           "Seleccione una tabla diferente para el campo 'A'.")
+                           .arg(sourceTable)
+                );
+                msgBox.setStandardButtons(QMessageBox::Ok);
+                msgBox.button(QMessageBox::Ok)->setText("Entendido");
+                msgBox.setStyleSheet(
+                    "QMessageBox { background-color: white; min-width: 400px; min-height: 250px; }"
+                    "QMessageBox QLabel { color: black; font-size: 14px; }"
+                    "QPushButton { background-color: #2196F3; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
+                    "QPushButton:hover { background-color: #1976D2; }"
+                );
+                msgBox.exec();
+                return;
+            }
+            
+            // Verificar que ambos campos sean Primary Keys (simplificado)
+            // Si el campo contiene 🔑 y (PK), entonces es Primary Key
+            bool sourceFieldIsPK = selectedSourceField.contains("🔑") && selectedSourceField.contains("(PK)");
+            bool targetFieldIsPK = selectedTargetField.contains("🔑") && selectedTargetField.contains("(PK)");
+            
+            qDebug() << "DEBUG 1:1 Validation (Simplified):";
+            qDebug() << "  - Source field:" << selectedSourceField << "-> isPK:" << sourceFieldIsPK;
+            qDebug() << "  - Target field:" << selectedTargetField << "-> isPK:" << targetFieldIsPK;
+            
+            if (!sourceFieldIsPK || !targetFieldIsPK) {
+                QMessageBox msgBox;
+                msgBox.setIcon(QMessageBox::Warning);
+                msgBox.setWindowTitle("🔗 Relación 1:1 - Primary Keys Requeridas");
+                msgBox.setText("<h3>Primary Keys Requeridas para Relación 1:1</h3>");
+                msgBox.setInformativeText(
+                    QString("Para establecer una relación 1:1, ambos campos deben ser Primary Keys de sus respectivas tablas.<br><br>"
+                           "⚠️ <b>Estado actual:</b><br>"
+                           "• Campo <b>'%1'</b> (en tabla '%2'): %3<br>"
+                           "• Campo <b>'%4'</b> (en tabla '%5'): %6<br><br>"
+                           "🔑 <b>Regla para relaciones 1:1:</b><br>"
+                           "Las relaciones uno a uno deben conectar las Primary Keys de ambas tablas, "
+                           "garantizando que cada registro se relacione únicamente con otro.<br><br>"
+                           "<b>Solución:</b><br>"
+                           "1. Seleccione el Primary Key de la tabla '%7'<br>"
+                           "2. Seleccione el Primary Key de la tabla '%8'<br>"
+                           "3. Intente crear la relación nuevamente")
+                           .arg(selectedSourceField, sourceTable, sourceFieldIsPK ? "✅ Primary Key" : "❌ No es Primary Key")
+                           .arg(selectedTargetField, targetTable, targetFieldIsPK ? "✅ Primary Key" : "❌ No es Primary Key")
+                           .arg(sourceTable, targetTable)
                 );
                 msgBox.setStandardButtons(QMessageBox::Ok);
                 msgBox.button(QMessageBox::Ok)->setText("Entendido");
@@ -1877,12 +1916,10 @@ void RelationshipsView::onCreateRelationship()
                 return;
             }
             
-            // Información adicional si hay campos PK+FK (esto es válido en 1:1)
-            if (!sourcePKandFK.isEmpty() || !targetPKandFK.isEmpty()) {
-                qDebug() << "DEBUG: Relación 1:1 válida - Se encontraron campos PK+FK en:" 
-                         << "Tabla" << sourceTable << ":" << sourcePKandFK 
-                         << "Tabla" << targetTable << ":" << targetPKandFK;
-            }
+            // Si llegamos aquí, ambos campos son Primary Keys - relación válida
+            qDebug() << "DEBUG: Relación 1:1 válida - Conectando PK a PK:" 
+                     << "Tabla" << sourceTable << "Campo:" << selectedSourceField
+                     << "Tabla" << targetTable << "Campo:" << selectedTargetField;
             
         } else if (shortType == "1:N") {
             // Relación 1:N: FK no puede ser PK en el lado muchos (target)
@@ -2141,8 +2178,9 @@ void RelationshipsView::onCreateRelationship()
         // *** VALIDACIÓN ESTRICTA DE NOMENCLATURA SEMÁNTICA ***
         // Solo validar que los Foreign Keys apunten a la tabla correcta
         bool namingValidationPassed = true;
-        if (shortType == "1:N" || shortType == "1:1") {
-            // SOLO VALIDAR FOREIGN KEYS - LAS PRIMARY KEYS NO NECESITAN VALIDACIÓN SEMÁNTICA
+        if (shortType == "1:N") {
+            // SOLO VALIDAR FOREIGN KEYS PARA RELACIONES 1:N
+            // Las relaciones 1:1 usan PK a PK, no requieren validación semántica de FK
             bool validRelationship = false;
             QString problematicFK = "";
             QString fkTable = "";
@@ -3043,6 +3081,7 @@ void RelationshipsView::updatePropertiesPanel(const QString &selectedItem)
     if (selectedItem.contains("1:1")) {
         description = "Relación Uno a Uno:\n\n"
                      "Cada registro en la tabla origen se relaciona con exactamente un registro en la tabla destino y viceversa.\n\n"
+                     "Implementación: Se conectan las Primary Keys de ambas tablas directamente, garantizando que cada registro se relacione únicamente con otro.\n\n"
                      "Ejemplo: Un empleado tiene una sola credencial y cada credencial pertenece a un solo empleado.";
     } else if (selectedItem.contains("1:N")) {
         description = "Relación Uno a Muchos:\n\n"
@@ -3120,7 +3159,7 @@ void RelationshipsView::onInfoButtonClicked()
         "<b>• N:M (Muchos a Muchos)</b> - Múltiples registros se relacionan con múltiples</p>"
         
         "<h4>🔑 <b>Validaciones por Tipo:</b></h4>"
-        "<p><b>📍 Relación 1:1:</b> Un campo puede ser PK y FK simultáneamente<br>"
+        "<p><b>📍 Relación 1:1:</b> Conecta Primary Key a Primary Key directamente<br>"
         "<b>📍 Relación 1:N:</b> FK en lado 'muchos', no puede ser PK<br>"
         "<b>📍 Relación N:M:</b> Requiere tabla intermedia</p>"
         
