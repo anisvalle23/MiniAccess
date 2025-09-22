@@ -585,6 +585,9 @@ void FormulariosView::generateFormForTable(const QString& tableName)
     saveRecordBtn->setEnabled(true);
 }
 
+
+
+
 QWidget* FormulariosView::createFieldWidget(const QJsonObject& fieldMeta)
 {
     QString fieldType = fieldMeta.value("type").toString().toLower();
