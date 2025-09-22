@@ -9,14 +9,6 @@
             "type": "1:N"
         },
         {
-            "description": "secciones → maestros (1:1)",
-            "sourceField": "id",
-            "sourceTable": "secciones",
-            "targetField": "id",
-            "targetTable": "maestros",
-            "type": "1:1"
-        },
-        {
             "description": "alumnos → secciones (1:N)",
             "sourceField": "id",
             "sourceTable": "alumnos",
@@ -31,18 +23,26 @@
             "targetField": "maestro_id",
             "targetTable": "matricula",
             "type": "N:M"
+        },
+        {
+            "description": "numeros → cancion (1:1)",
+            "sourceField": "id",
+            "sourceTable": "numeros",
+            "targetField": "id",
+            "targetTable": "cancion",
+            "type": "1:1"
         }
     ],
     "tables": [
         {
-            "name": "matricula",
-            "x": -162,
-            "y": -269
+            "name": "cancion",
+            "x": 0,
+            "y": 0
         },
         {
-            "name": "maestros",
-            "x": 25,
-            "y": -19
+            "name": "numeros",
+            "x": 0,
+            "y": 0
         }
     ],
     "version": "1.0"

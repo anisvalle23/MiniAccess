@@ -141,6 +141,11 @@ private:
     QString getReferencedTable(const QString &fieldName);
     QString getReferencedField(const QString &fieldName);
     bool valueExistsInReferencedTable(const QString &tableName, const QString &fieldName, const QString &value);
+    bool isOneToOnePrimaryKeyRelation(const QString &currentTable, const QString &currentField, 
+                                     const QString &referencedTable, const QString &referencedField);
+    bool validateOneToOneConstraint(const QString &currentTable, const QString &currentField,
+                                   const QString &referencedTable, const QString &referencedField, 
+                                   const QString &value);
     QStringList getTableData(const QString &tableName, const QString &fieldName);
     QStringList getTableDataDirectFromCatalog(const QString &tableName, const QString &fieldName);
 

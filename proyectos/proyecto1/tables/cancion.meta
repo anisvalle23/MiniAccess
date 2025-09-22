@@ -1,0 +1,26 @@
+{
+    "fields": [
+        {
+            "allowNull": false,
+            "desc": "",
+            "isForeignKey": false,
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "name": "id",
+            "numberKind": "integer",
+            "type": "number"
+        },
+        {
+            "allowNull": true,
+            "desc": "",
+            "isForeignKey": false,
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "name": "nombre",
+            "numberKind": "integer",
+            "type": "number"
+        }
+    ],
+    "tableName": "cancion",
+    "version": 1
+}

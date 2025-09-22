@@ -1434,7 +1434,29 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
 
                 qDebug() << "DEBUG: FK referencia" << referencedTable << "." << referencedField;
 
-                if (!valueExistsInReferencedTable(referencedTable, referencedField, newValue)) {
+                // NUEVA LÓGICA: Detectar relaciones 1:1 entre Primary Keys
+                bool isOneToOneRelation = isOneToOnePrimaryKeyRelation(currentTableName, fieldName, referencedTable, referencedField);
+                
+                if (isOneToOneRelation) {
+                    qDebug() << "DEBUG: Detectada relación 1:1 entre PKs - aplicando validación bidireccional";
+                    
+                    // Para relaciones 1:1 PK-PK, verificar que el valor sea único en ambas tablas
+                    if (!validateOneToOneConstraint(currentTableName, fieldName, referencedTable, referencedField, newValue)) {
+                        qDebug() << "DEBUG: Validación 1:1 falló para valor" << newValue;
+
+                        // Bloquear señales y restaurar valor anterior
+                        dataTable->blockSignals(true);
+                        item->setText(""); // Limpiar el campo
+                        dataTable->blockSignals(false);
+
+                        // Enfocar el campo para facilitar corrección
+                        QTimer::singleShot(100, this, [this, item]() {
+                            dataTable->setCurrentItem(item);
+                            dataTable->editItem(item);
+                        });
+                        return; // Salir sin procesar más
+                    }
+                } else if (!valueExistsInReferencedTable(referencedTable, referencedField, newValue)) {
                     qDebug() << "DEBUG: Valor" << newValue << "NO existe en" << referencedTable << "." << referencedField;
 
                     // Obtener valores válidos para mostrar al usuario
@@ -2768,6 +2790,267 @@ QString TableData::getReferencedField(const QString &fieldName)
     // Por defecto retornar "Id" (con mayúscula como en tu ejemplo)
     qDebug() << "DEBUG: Usando valor por defecto: Id";
     return "Id";
+}
+
+// Nueva función para detectar relaciones 1:1 entre Primary Keys
+bool TableData::isOneToOnePrimaryKeyRelation(const QString &currentTable, const QString &currentField, 
+                                            const QString &referencedTable, const QString &referencedField)
+{
+    if (!relationshipsView) return false;
+    
+    // Limpiar nombres de campos
+    QString cleanCurrentField = currentField;
+    cleanCurrentField = cleanCurrentField.remove("🔑🔗🔶")
+                         .remove("🔑🔗")
+                         .remove("🔑🔶")
+                         .remove("🔗🔶")
+                         .remove("🔑")
+                         .remove("🔗")
+                         .remove("🔶")
+                         .trimmed();
+    
+    QString cleanReferencedField = referencedField;
+    cleanReferencedField = cleanReferencedField.remove("🔑🔗🔶")
+                         .remove("🔑🔗")
+                         .remove("🔑🔶")
+                         .remove("🔗🔶")
+                         .remove("🔑")
+                         .remove("🔗")
+                         .remove("🔶")
+                         .trimmed();
+    
+    // Verificar que ambos campos sean Primary Keys
+    bool currentIsPK = false;
+    bool referencedIsPK = false;
+    
+    if (tableEditor) {
+        // Verificar si el campo actual es Primary Key
+        QStringList currentPKs = tableEditor->getTablePrimaryKeys(currentTable);
+        for (const QString &pk : currentPKs) {
+            QString cleanPK = pk;
+            cleanPK = cleanPK.remove("🔑🔗🔶")
+                     .remove("🔑🔗")
+                     .remove("🔑🔶")
+                     .remove("🔗🔶")
+                     .remove("🔑")
+                     .remove("🔗")
+                     .remove("🔶")
+                     .trimmed();
+            if (cleanPK == cleanCurrentField) {
+                currentIsPK = true;
+                break;
+            }
+        }
+        
+        // Verificar si el campo referenciado es Primary Key
+        QStringList referencedPKs = tableEditor->getTablePrimaryKeys(referencedTable);
+        for (const QString &pk : referencedPKs) {
+            QString cleanPK = pk;
+            cleanPK = cleanPK.remove("🔑🔗🔶")
+                     .remove("🔑🔗")
+                     .remove("🔑🔶")
+                     .remove("🔗🔶")
+                     .remove("🔑")
+                     .remove("🔗")
+                     .remove("🔶")
+                     .trimmed();
+            if (cleanPK == cleanReferencedField) {
+                referencedIsPK = true;
+                break;
+            }
+        }
+    }
+    
+    if (!currentIsPK || !referencedIsPK) {
+        qDebug() << "DEBUG: No es relación PK-PK:" << cleanCurrentField << "(PK:" << currentIsPK << ") ->" 
+                 << cleanReferencedField << "(PK:" << referencedIsPK << ")";
+        return false;
+    }
+    
+    // Verificar que sea relación 1:1
+    const QList<RelationshipInfo>& relationships = relationshipsView->getRelationships();
+    for (const auto &rel : relationships) {
+        if (rel.type == "1:1") {
+            QString cleanSourceField = rel.sourceField;
+            cleanSourceField = cleanSourceField.remove("🔑🔗🔶")
+                             .remove("🔑🔗")
+                             .remove("🔑🔶")
+                             .remove("🔗🔶")
+                             .remove("🔑")
+                             .remove("🔗")
+                             .remove("🔶")
+                             .trimmed();
+            
+            QString cleanTargetField = rel.targetField;
+            cleanTargetField = cleanTargetField.remove("🔑🔗🔶")
+                             .remove("🔑🔗")
+                             .remove("🔑🔶")
+                             .remove("🔗🔶")
+                             .remove("🔑")
+                             .remove("🔗")
+                             .remove("🔶")
+                             .trimmed();
+            
+            // Verificar si esta relación corresponde a nuestros campos
+            if ((rel.sourceTable == currentTable && cleanSourceField == cleanCurrentField &&
+                 rel.targetTable == referencedTable && cleanTargetField == cleanReferencedField) ||
+                (rel.targetTable == currentTable && cleanTargetField == cleanCurrentField &&
+                 rel.sourceTable == referencedTable && cleanSourceField == cleanReferencedField)) {
+                
+                qDebug() << "DEBUG: ✅ Detectada relación 1:1 PK-PK entre" << currentTable << "." << cleanCurrentField 
+                         << "y" << referencedTable << "." << cleanReferencedField;
+                return true;
+            }
+        }
+    }
+    
+    qDebug() << "DEBUG: No es relación 1:1 PK-PK";
+    return false;
+}
+
+// Nueva función para validar restricciones 1:1 bidireccionales
+bool TableData::validateOneToOneConstraint(const QString &currentTable, const QString &currentField,
+                                          const QString &referencedTable, const QString &referencedField, 
+                                          const QString &value)
+{
+    qDebug() << "DEBUG: ===== VALIDACIÓN 1:1 BIDIRECCIONAL =====";
+    qDebug() << "DEBUG: Validando valor" << value << "entre" << currentTable << "." << currentField 
+             << "y" << referencedTable << "." << referencedField;
+    
+    // Obtener directorio de tablas
+    QString tablesDir;
+    if (tableEditor && tableEditor->mainWindow()) {
+        tablesDir = QString::fromStdString(tableEditor->mainWindow()->tablesDir());
+    }
+    
+    if (tablesDir.isEmpty()) {
+        qDebug() << "DEBUG: ❌ No se pudo obtener tablesDir";
+        return false;
+    }
+    
+    // Verificar que el valor existe en la tabla referenciada
+    bool existsInReferenced = valueExistsInReferencedTable(referencedTable, referencedField, value);
+    
+    if (!existsInReferenced) {
+        // Si no existe en la tabla referenciada, permitir que se cree por primera vez
+        qDebug() << "DEBUG: Valor" << value << "no existe en" << referencedTable << "- permitiendo creación inicial";
+        
+        // Mostrar mensaje informativo
+        QTimer::singleShot(0, this, [this, value, currentTable, referencedTable]() {
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("Relación 1:1 - Creación Inicial");
+            msgBox.setIcon(QMessageBox::Information);
+            msgBox.setText(QString("Valor '%1' será el primer registro de la relación 1:1.\n\n"
+                                   "📝 Recordatorio:\n"
+                                   "• Este valor ahora vincula '%2' con '%3'\n"
+                                   "• Ambas tablas deberán mantener este mismo valor\n"
+                                   "• La validación bidireccional se aplicará automáticamente")
+                               .arg(value, currentTable, referencedTable));
+            msgBox.setStandardButtons(QMessageBox::Ok);
+            msgBox.setStyleSheet(
+                "QMessageBox {"
+                "background-color: white;"
+                "min-width: 450px;"
+                "min-height: 200px;"
+                "}"
+                "QMessageBox QLabel {"
+                "color: black;"
+                "font-size: 14px;"
+                "padding: 10px;"
+                "}"
+                "QPushButton {"
+                "background-color: #10B981;"
+                "color: white;"
+                "font-size: 14px;"
+                "font-weight: bold;"
+                "min-width: 100px;"
+                "min-height: 40px;"
+                "border: none;"
+                "border-radius: 6px;"
+                "padding: 8px;"
+                "}"
+                "QPushButton:hover {"
+                "background-color: #059669;"
+                "}"
+            );
+            msgBox.exec();
+        });
+        
+        return true; // Permitir la creación inicial
+    }
+    
+    // Si existe en la tabla referenciada, verificar que no esté ya usado en la tabla actual por otro registro
+    QString currentTableFile = QDir(tablesDir).filePath(currentTable + ".mad");
+    QFile file(currentTableFile);
+    
+    if (file.exists() && file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QTextStream in(&file);
+        while (!in.atEnd()) {
+            QString line = in.readLine().trimmed();
+            if (line.isEmpty()) continue;
+            
+            QJsonParseError error;
+            QJsonDocument doc = QJsonDocument::fromJson(line.toUtf8(), &error);
+            if (error.error != QJsonParseError::NoError) continue;
+            
+            QJsonObject obj = doc.object();
+            if (obj.contains(currentField)) {
+                QString existingValue = obj[currentField].toString();
+                if (existingValue == value) {
+                    qDebug() << "DEBUG: Valor" << value << "ya existe en" << currentTable << "- violación unicidad 1:1";
+                    
+                    // Mostrar error de unicidad
+                    QTimer::singleShot(0, this, [this, value, currentTable, referencedTable]() {
+                        QMessageBox msgBox(this);
+                        msgBox.setWindowTitle("Error - Violación de Unicidad 1:1");
+                        msgBox.setIcon(QMessageBox::Critical);
+                        msgBox.setText(QString("El valor '%1' ya existe en la tabla '%2'.\n\n"
+                                               "❌ Error de unicidad:\n"
+                                               "• Las relaciones 1:1 requieren valores únicos\n"
+                                               "• Cada valor solo puede existir una vez en cada tabla\n"
+                                               "• El valor ya está vinculado entre '%2' y '%3'\n\n"
+                                               "Por favor, use un valor diferente.")
+                                           .arg(value, currentTable, referencedTable));
+                        msgBox.setStandardButtons(QMessageBox::Ok);
+                        msgBox.setStyleSheet(
+                            "QMessageBox {"
+                            "background-color: white;"
+                            "min-width: 450px;"
+                            "min-height: 220px;"
+                            "}"
+                            "QMessageBox QLabel {"
+                            "color: black;"
+                            "font-size: 14px;"
+                            "padding: 10px;"
+                            "}"
+                            "QPushButton {"
+                            "background-color: #dc2626;"
+                            "color: white;"
+                            "font-size: 14px;"
+                            "font-weight: bold;"
+                            "min-width: 100px;"
+                            "min-height: 40px;"
+                            "border: none;"
+                            "border-radius: 6px;"
+                            "padding: 8px;"
+                            "}"
+                            "QPushButton:hover {"
+                            "background-color: #b91c1c;"
+                            "}"
+                        );
+                        msgBox.exec();
+                    });
+                    
+                    file.close();
+                    return false;
+                }
+            }
+        }
+        file.close();
+    }
+    
+    qDebug() << "DEBUG: ✅ Validación 1:1 exitosa para valor" << value;
+    return true;
 }
 
 bool TableData::valueExistsInReferencedTable(const QString &tableName, const QString &fieldName, const QString &value)
