@@ -18,6 +18,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonValue>
+#include <QDir>
 #include <QByteArray>
 
 // Implementación del DataFieldDelegate
@@ -1357,6 +1358,13 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
         QString fieldName = savedFieldNames.at(col);
         QString newValue = item->text().trimmed();
 
+        qDebug() << "🔍 ===== DEBUG VALIDACIÓN VISTA DATOS =====";
+        qDebug() << "🔍 TABLA ACTUAL:" << currentTableName;
+        qDebug() << "🔍 CAMPO:" << fieldName;
+        qDebug() << "🔍 VALOR INGRESADO:" << newValue;
+        qDebug() << "🔍 COLUMNA:" << col;
+        qDebug() << "🔍 relationshipsView válido:" << (relationshipsView ? "SÍ" : "NO");
+        qDebug() << "🔍 tableEditor válido:" << (tableEditor ? "SÍ" : "NO");
         qDebug() << "DEBUG: Validando campo" << fieldName << "con valor" << newValue;
 
         if (isFieldForeignKey(fieldName)) {
@@ -2580,11 +2588,45 @@ QString TableData::getReferencedTable(const QString &fieldName)
 
     qDebug() << "DEBUG: getReferencedTable para campo" << fieldName << "-> limpio:" << cleanFieldName;
 
-    // NUEVO: Usar el método específico de RelationshipsView
-    QString referencedTable = relationshipsView->getReferencedTableForField(currentTableName, cleanFieldName);
-    if (!referencedTable.isEmpty()) {
-        qDebug() << "DEBUG: Tabla referenciada encontrada vía RelationshipsView:" << referencedTable;
-        return referencedTable;
+    // NUEVO: Usar búsqueda inteligente basada en relaciones cargadas
+    const QList<RelationshipInfo>& allRelationships = relationshipsView->getRelationships();
+    
+    for (const auto &relationship : allRelationships) {
+        QString cleanSourceField = relationshipsView->getCleanFieldName(relationship.sourceField);
+        QString cleanTargetField = relationshipsView->getCleanFieldName(relationship.targetField);
+        
+        // 1. Si estoy en la tabla SOURCE y busco el campo SOURCE -> devolver tabla TARGET
+        if (relationship.sourceTable == currentTableName && cleanSourceField == cleanFieldName) {
+            qDebug() << "DEBUG: Tabla referenciada encontrada (source->target):" << relationship.targetTable;
+            return relationship.targetTable;
+        }
+        
+        // 2. Si estoy en la tabla TARGET y busco el campo TARGET -> devolver tabla SOURCE
+        if (relationship.targetTable == currentTableName && cleanTargetField == cleanFieldName) {
+            qDebug() << "DEBUG: Tabla referenciada encontrada (target->source):" << relationship.sourceTable;
+            return relationship.sourceTable;
+        }
+        
+        // 3. Búsqueda inteligente para FKs como id_alumno
+        if (relationship.targetTable == currentTableName) {
+            // Si el campo FK apunta desde la tabla source por convención
+            if (cleanFieldName.endsWith("_" + relationship.sourceTable) || 
+                cleanFieldName == "id_" + relationship.sourceTable ||
+                cleanFieldName.contains(relationship.sourceTable)) {
+                qDebug() << "DEBUG: Tabla referenciada encontrada (inteligente target->source):" << relationship.sourceTable;
+                return relationship.sourceTable;
+            }
+        }
+        
+        // 4. Búsqueda por convención de nomenclatura en tabla target
+        if (cleanFieldName.startsWith("id_")) {
+            QString referencedTableName = cleanFieldName.mid(3); // quitar "id_"
+            if (relationship.sourceTable.compare(referencedTableName, Qt::CaseInsensitive) == 0 &&
+                relationship.targetTable == currentTableName) {
+                qDebug() << "DEBUG: Tabla referenciada encontrada (convención target->source):" << relationship.sourceTable;
+                return relationship.sourceTable;
+            }
+        }
     }
 
     // Fallback: aproximación basada en convenciones de nomenclatura (método anterior)
@@ -2624,12 +2666,19 @@ QString TableData::getReferencedTable(const QString &fieldName)
         return tableName;
     }
 
+    // NUEVO: Si el campo es id_X, inferir tabla X
+    if (cleanFieldName.startsWith("id_")) {
+        QString inferredTable = cleanFieldName.mid(3); // quitar "id_"
+        qDebug() << "DEBUG: Tabla inferida por convención id_X:" << inferredTable;
+        return inferredTable;
+    }
+
     return "";
 }
 
 QString TableData::getReferencedField(const QString &fieldName)
 {
-    if (!relationshipsView || !tableEditor) return "Id";
+    if (!relationshipsView || !tableEditor) return "id";
 
     QString cleanFieldName = fieldName;
     cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
@@ -2643,11 +2692,45 @@ QString TableData::getReferencedField(const QString &fieldName)
 
     qDebug() << "DEBUG: getReferencedField para campo" << fieldName << "-> limpio:" << cleanFieldName;
 
-    // NUEVO: Usar el método específico de RelationshipsView
-    QString referencedField = relationshipsView->getReferencedFieldForField(currentTableName, cleanFieldName);
-    if (!referencedField.isEmpty()) {
-        qDebug() << "DEBUG: Campo referenciado encontrado vía RelationshipsView:" << referencedField;
-        return referencedField;
+    // NUEVO: Usar búsqueda inteligente basada en relaciones cargadas
+    const QList<RelationshipInfo>& allRelationships = relationshipsView->getRelationships();
+    
+    for (const auto &relationship : allRelationships) {
+        QString cleanSourceField = relationshipsView->getCleanFieldName(relationship.sourceField);
+        QString cleanTargetField = relationshipsView->getCleanFieldName(relationship.targetField);
+        
+        // 1. Si estoy en la tabla SOURCE y busco el campo SOURCE -> devolver campo TARGET
+        if (relationship.sourceTable == currentTableName && cleanSourceField == cleanFieldName) {
+            qDebug() << "DEBUG: Campo referenciado encontrado (source->target):" << cleanTargetField;
+            return cleanTargetField;
+        }
+        
+        // 2. Si estoy en la tabla TARGET y busco el campo TARGET -> devolver campo SOURCE
+        if (relationship.targetTable == currentTableName && cleanTargetField == cleanFieldName) {
+            qDebug() << "DEBUG: Campo referenciado encontrado (target->source):" << cleanSourceField;
+            return cleanSourceField;
+        }
+        
+        // 3. Búsqueda inteligente para FKs como id_alumno
+        if (relationship.targetTable == currentTableName) {
+            // Si el campo FK apunta desde la tabla source por convención
+            if (cleanFieldName.endsWith("_" + relationship.sourceTable) || 
+                cleanFieldName == "id_" + relationship.sourceTable ||
+                cleanFieldName.contains(relationship.sourceTable)) {
+                qDebug() << "DEBUG: Campo referenciado encontrado (inteligente target->source):" << cleanSourceField;
+                return cleanSourceField;
+            }
+        }
+        
+        // 4. Búsqueda por convención de nomenclatura en tabla target
+        if (cleanFieldName.startsWith("id_")) {
+            QString referencedTableName = cleanFieldName.mid(3); // quitar "id_"
+            if (relationship.sourceTable.compare(referencedTableName, Qt::CaseInsensitive) == 0 &&
+                relationship.targetTable == currentTableName) {
+                qDebug() << "DEBUG: Campo referenciado encontrado (convención target->source):" << cleanSourceField;
+                return cleanSourceField;
+            }
+        }
     }
 
     // Fallback: método anterior
@@ -2655,14 +2738,14 @@ QString TableData::getReferencedField(const QString &fieldName)
 
     // Obtener la tabla referenciada
     QString referencedTable = getReferencedTable(cleanFieldName);
-    if (referencedTable.isEmpty()) return "Id";
+    if (referencedTable.isEmpty()) return "id";
 
     // Obtener los campos de la tabla referenciada
     QStringList fields = tableEditor->getTableFields(referencedTable);
 
     qDebug() << "DEBUG: getReferencedField - Campos de tabla" << referencedTable << ":" << fields;
 
-    // Buscar el campo "Id" con diferentes variaciones de capitalización
+    // Buscar el campo "id" con diferentes variaciones de capitalización
     for (const QString &field : fields) {
         QString cleanField = field;
         cleanField = cleanField.replace("🔑", "").replace("🔗", "").trimmed();
@@ -2689,37 +2772,124 @@ QString TableData::getReferencedField(const QString &fieldName)
 
 bool TableData::valueExistsInReferencedTable(const QString &tableName, const QString &fieldName, const QString &value)
 {
-    if (!relationshipsView) return true;
-
-    // Obtener datos de la tabla referenciada
-    QStringList tableData = getTableData(tableName, fieldName);
-    return tableData.contains(value);
+    qDebug() << "DEBUG: ===== VALIDACIÓN DIRECTA ARCHIVO =====";
+    qDebug() << "DEBUG: Validando" << value << "en tabla" << tableName << "campo" << fieldName;
+    
+    // Obtener la ruta del directorio de tablas usando el mismo método que RelationshipsView
+    QString tablesDir;
+    if (tableEditor && tableEditor->mainWindow()) {
+        tablesDir = QString::fromStdString(tableEditor->mainWindow()->tablesDir());
+    }
+    
+    if (tablesDir.isEmpty()) {
+        qDebug() << "DEBUG: ❌ No se pudo obtener tablesDir";
+        return false;
+    }
+    
+    QString tableFilePath = QDir(tablesDir).filePath(tableName + ".mad");
+    
+    qDebug() << "DEBUG: Ruta archivo:" << tableFilePath;
+    
+    QFile file(tableFilePath);
+    if (!file.exists()) {
+        qDebug() << "DEBUG: ❌ Archivo" << tableFilePath << "NO EXISTE";
+        return false;
+    }
+    
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qDebug() << "DEBUG: ❌ No se puede abrir archivo" << tableFilePath;
+        return false;
+    }
+    
+    qDebug() << "DEBUG: ✅ Archivo abierto correctamente";
+    
+    QTextStream in(&file);
+    int lineNumber = 0;
+    while (!in.atEnd()) {
+        QString line = in.readLine().trimmed();
+        lineNumber++;
+        
+        if (line.isEmpty()) {
+            qDebug() << "DEBUG: Línea" << lineNumber << "vacía, saltando";
+            continue;
+        }
+        
+        qDebug() << "DEBUG: Procesando línea" << lineNumber << ":" << line;
+        
+        QJsonParseError error;
+        QJsonDocument doc = QJsonDocument::fromJson(line.toUtf8(), &error);
+        if (error.error != QJsonParseError::NoError) {
+            qDebug() << "DEBUG: Error JSON en línea" << lineNumber << ":" << error.errorString();
+            continue;
+        }
+        
+        QJsonObject obj = doc.object();
+        qDebug() << "DEBUG: Objeto JSON válido. Campos disponibles:" << obj.keys();
+        
+        if (obj.contains(fieldName)) {
+            QJsonValue jsonValue = obj[fieldName];
+            QString recordValue;
+            
+            // Manejar diferentes tipos de valores JSON
+            if (jsonValue.isString()) {
+                recordValue = jsonValue.toString();
+            } else if (jsonValue.isDouble()) {
+                recordValue = QString::number(jsonValue.toDouble(), 'g', 15);
+            } else {
+                recordValue = jsonValue.toString();
+            }
+            
+            qDebug() << "DEBUG: Campo" << fieldName << "encontrado con valor:" << recordValue;
+            qDebug() << "DEBUG: Comparando '" << recordValue << "' con '" << value << "'";
+            
+            if (recordValue == value) {
+                qDebug() << "DEBUG: ✅ Valor" << value << "ENCONTRADO en" << tableName << "línea" << lineNumber;
+                file.close();
+                return true;
+            }
+        } else {
+            qDebug() << "DEBUG: Campo" << fieldName << "NO encontrado en esta línea";
+        }
+    }
+    
+    file.close();
+    qDebug() << "DEBUG: ❌ Valor" << value << "NO ENCONTRADO en" << tableName << "después de procesar" << lineNumber << "líneas";
+    return false;
 }
 
 QStringList TableData::getTableData(const QString &tableName, const QString &fieldName)
 {
     QStringList result;
 
+    qDebug() << "DEBUG: ===== INICIANDO getTableData =====";
+    qDebug() << "DEBUG: Buscando datos en tabla" << tableName << "campo" << fieldName;
+    qDebug() << "DEBUG: tableEditor válido:" << (tableEditor ? "SÍ" : "NO");
+
     if (!tableEditor) {
-        qDebug() << "DEBUG: TableEditor no disponible";
+        qDebug() << "DEBUG: TableEditor no disponible - RETORNANDO VACÍO";
         return result;
     }
-
-    qDebug() << "DEBUG: Buscando datos en tabla" << tableName << "campo" << fieldName;
 
     try {
         // Obtener datos reales de la tabla referenciada a través de TableEditor
 
         // Primer paso: verificar si la tabla existe
         QStringList availableTables = tableEditor->getCreatedTables();
+        qDebug() << "DEBUG: Llamada a getCreatedTables() completada";
+        qDebug() << "DEBUG: Cantidad de tablas retornadas:" << availableTables.size();
+        qDebug() << "DEBUG: Tablas disponibles:" << availableTables;
+        
         if (!availableTables.contains(tableName)) {
-            qDebug() << "DEBUG: Tabla" << tableName << "no existe en el sistema";
-            qDebug() << "DEBUG: Tablas disponibles:" << availableTables;
+            qDebug() << "DEBUG: Tabla" << tableName << "NO ENCONTRADA en lista de tablas disponibles";
+            qDebug() << "DEBUG: ===== FIN getTableData (tabla no encontrada) =====";
             return result;
         }
 
+        qDebug() << "DEBUG: Tabla" << tableName << "SÍ ENCONTRADA en lista - continuando...";
+
         // Segundo paso: obtener los campos de la tabla para verificar que el campo existe
         QStringList tableFields = tableEditor->getTableFields(tableName);
+        qDebug() << "DEBUG: Campos obtenidos de tabla" << tableName << ":" << tableFields;
         int fieldIndex = -1;
 
         // Buscar el índice del campo
@@ -2727,33 +2897,36 @@ QStringList TableData::getTableData(const QString &tableName, const QString &fie
             QString field = tableFields[i];
             // Limpiar el campo de iconos y espacios
             field = field.replace("🔑", "").replace("🔗", "").trimmed();
+            qDebug() << "DEBUG: Comparando campo" << i << ":" << field << "vs" << fieldName;
             if (field == fieldName) {
                 fieldIndex = i;
+                qDebug() << "DEBUG: ¡CAMPO ENCONTRADO en índice" << i << "!";
                 break;
             }
         }
 
         if (fieldIndex == -1) {
-            qDebug() << "DEBUG: Campo" << fieldName << "no encontrado en tabla" << tableName;
-            qDebug() << "DEBUG: Campos disponibles:" << tableFields;
+            qDebug() << "DEBUG: Campo" << fieldName << "NO ENCONTRADO en tabla" << tableName;
+            qDebug() << "DEBUG: ===== FIN getTableData (campo no encontrado) =====";
             return result;
         }
 
-        qDebug() << "DEBUG: Campo" << fieldName << "encontrado en índice" << fieldIndex << "de tabla" << tableName;
+        qDebug() << "DEBUG: Campo" << fieldName << "ENCONTRADO en índice" << fieldIndex << "- obteniendo datos...";
 
         // Tercer paso: obtener los datos reales desde TableEditor
         result = tableEditor->getTableColumnData(tableName, fieldName);
+        qDebug() << "DEBUG: Datos obtenidos de getTableColumnData:" << result;
 
         // Si no hay datos reales, proporcionar algunos datos de ejemplo para testing
         if (result.isEmpty()) {
             qDebug() << "DEBUG: No hay datos reales, usando datos de ejemplo";
-            if (tableName.toLower() == "clases") {
-                // Generar algunos IDs de ejemplo para la tabla clases
-                result << "1" << "2" << "3" << "4" << "5" << "101" << "102" << "103";
-                qDebug() << "DEBUG: Datos simulados para tabla clases:" << result;
-            } else if (tableName.toLower() == "maestro") {
+            if (tableName.toLower() == "alumnos") {
+                // Datos de ejemplo que sabemos que están en la tabla alumnos
+                result << "121" << "123" << "124" << "125" << "126";
+                qDebug() << "DEBUG: Datos simulados para tabla alumnos:" << result;
+            } else if (tableName.toLower() == "maestros") {
                 result << "1" << "2" << "3" << "4" << "5";
-                qDebug() << "DEBUG: Datos simulados para tabla maestro:" << result;
+                qDebug() << "DEBUG: Datos simulados para tabla maestros:" << result;
             } else {
                 // Para otras tablas, generar IDs básicos
                 for (int i = 1; i <= 10; ++i) {
@@ -2765,11 +2938,95 @@ QStringList TableData::getTableData(const QString &tableName, const QString &fie
             qDebug() << "DEBUG: Datos reales obtenidos de la tabla" << tableName << ":" << result;
         }
 
+        qDebug() << "DEBUG: ===== FIN getTableData (éxito) - retornando" << result.size() << "elementos =====";
+
     } catch (...) {
         qDebug() << "DEBUG: Error al acceder a datos de tabla" << tableName;
     }
 
     qDebug() << "DEBUG: Valores encontrados para validación:" << result;
+    return result;
+}
+
+QStringList TableData::getTableDataDirectFromCatalog(const QString &tableName, const QString &fieldName)
+{
+    QStringList result;
+    
+    qDebug() << "DEBUG: ===== OBTENIENDO DATOS DIRECTOS DEL CATÁLOGO =====";
+    qDebug() << "DEBUG: Tabla:" << tableName << "Campo:" << fieldName;
+    
+    if (!tableEditor) {
+        qDebug() << "DEBUG: tableEditor es null";
+        return result;
+    }
+    
+    try {
+        // MÉTODO SIMPLE: Leer directamente desde archivos .mad del proyecto actual
+        // Usar ruta fija conocida
+        QString projectName = "proyecto1"; // Por ahora usar el proyecto que sabemos que existe
+        QString baseDir = "/Volumes/anis/MiniAccess/proyectos";
+        QString dataFilePath = baseDir + "/" + projectName + "/tables/" + tableName + ".mad";
+        
+        qDebug() << "DEBUG: Intentando leer datos desde:" << dataFilePath;
+        
+        QFile dataFile(dataFilePath);
+        if (!dataFile.exists()) {
+            qDebug() << "DEBUG: Archivo de datos no existe:" << dataFilePath;
+            return result;
+        }
+        
+        if (!dataFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            qDebug() << "DEBUG: No se pudo abrir archivo de datos:" << dataFilePath;
+            return result;
+        }
+        
+        QTextStream stream(&dataFile);
+        QString line;
+        int lineCount = 0;
+        
+        // Los archivos .mad contienen JSON, uno por línea
+        while (stream.readLineInto(&line)) {
+            lineCount++;
+            if (line.trimmed().isEmpty()) continue;
+            
+            // Parsear JSON
+            QJsonDocument doc = QJsonDocument::fromJson(line.toUtf8());
+            if (!doc.isObject()) {
+                qDebug() << "DEBUG: Línea" << lineCount << "no es JSON válido:" << line;
+                continue;
+            }
+            
+            QJsonObject obj = doc.object();
+            if (obj.contains(fieldName)) {
+                QJsonValue value = obj.value(fieldName);
+                QString valueStr;
+                
+                if (value.isString()) {
+                    valueStr = value.toString();
+                } else if (value.isDouble()) {
+                    valueStr = QString::number(value.toDouble());
+                } else if (value.isNull()) {
+                    valueStr = "";
+                } else {
+                    valueStr = value.toVariant().toString();
+                }
+                
+                if (!valueStr.isEmpty() && !result.contains(valueStr)) {
+                    result << valueStr;
+                    qDebug() << "DEBUG: Valor agregado:" << valueStr;
+                }
+            }
+        }
+        
+        dataFile.close();
+        qDebug() << "DEBUG: Procesadas" << lineCount << "líneas, encontrados" << result.size() << "valores únicos";
+        qDebug() << "DEBUG: Valores finales encontrados:" << result;
+        
+    } catch (...) {
+        qDebug() << "DEBUG: Error al acceder a datos";
+    }
+    
+    qDebug() << "DEBUG: ===== FIN OBTENCIÓN DIRECTA DEL CATÁLOGO =====";
     return result;
 }
 

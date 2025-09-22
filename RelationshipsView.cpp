@@ -300,8 +300,12 @@ void RelationshipsView::refreshAvailableTablesFromStorage()
 
 void RelationshipsView::forceRefreshTables()
 {
-    qDebug() << "DEBUG[forceRefreshTables]: Forzando refresh de tablas";
+    qDebug() << "DEBUG[forceRefreshTables]: Forzando refresh de tablas y relaciones";
     loadTables();
+    
+    // También forzar la carga de relaciones
+    qDebug() << "DEBUG[forceRefreshTables]: Cargando estado del diseñador y relaciones";
+    loadDesignerState();
 }
 
 void RelationshipsView::showAllTablesInDesigner()
@@ -520,8 +524,19 @@ void RelationshipsView::saveDesignerState()
 
 void RelationshipsView::loadDesignerState()
 {
+    qDebug() << "=== DEBUG loadDesignerState: INICIO ===";
     QString filePath = getProjectRelationshipsPath();
-    if (filePath.isEmpty() || !QFile::exists(filePath)) return;
+    qDebug() << "DEBUG: Intentando cargar relaciones desde:" << filePath;
+    
+    if (filePath.isEmpty()) {
+        qDebug() << "ERROR: Ruta de archivo de relaciones está vacía";
+        return;
+    }
+    
+    if (!QFile::exists(filePath)) {
+        qDebug() << "WARNING: Archivo de relaciones no existe:" << filePath;
+        return;
+    }
     
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -559,6 +574,10 @@ void RelationshipsView::loadDesignerState()
     
     // Cargar relaciones
     QJsonArray relationshipsArray = designerState["relationships"].toArray();
+    
+    qDebug() << "=== DEBUG loadDesignerState: CARGANDO RELACIONES ===";
+    qDebug() << "DEBUG: Archivo de relaciones:" << filePath;
+    qDebug() << "DEBUG: Relaciones encontradas en JSON:" << relationshipsArray.size();
     
     // Limpiar lista de relaciones actual
     relationshipsListWidget->clear();
@@ -655,10 +674,12 @@ void RelationshipsView::loadDesignerState()
             relationshipInfo.description = description;
             relationships.append(relationshipInfo);
             
-            qDebug() << "DEBUG[loadDesignerState]: Relación cargada/migrada:";
+            qDebug() << "DEBUG[loadDesignerState]: ✅ Relación cargada/migrada:";
+            qDebug() << "  - Description:" << description;
             qDebug() << "  - Source:" << sourceTable << "." << sourceField;
             qDebug() << "  - Target:" << targetTable << "." << targetField;
             qDebug() << "  - Type:" << type;
+            qDebug() << "  - Index en lista:" << (relationships.size() - 1);
             
             // Si fue migrada, guardar automáticamente para que no se pierda la migración
             if (needsMigration && !sourceField.isEmpty() && !targetField.isEmpty()) {
@@ -673,8 +694,24 @@ void RelationshipsView::loadDesignerState()
         }
     }
     
+    qDebug() << "=== RESUMEN loadDesignerState ===";
     qDebug() << "DEBUG: Estado del diseñador cargado desde:" << filePath;
     qDebug() << "DEBUG: Cargadas" << tablesArray.size() << "posiciones de tablas y" << relationshipsArray.size() << "relaciones";
+    qDebug() << "DEBUG: Total relaciones en memoria:" << relationships.size();
+    qDebug() << "DEBUG: Lista widget tiene" << relationshipsListWidget->count() << "elementos";
+    
+    // Mostrar todas las relaciones cargadas
+    for (int i = 0; i < relationships.size(); ++i) {
+        const RelationshipInfo& rel = relationships[i];
+        qDebug() << QString("DEBUG: Relación %1 en memoria: %2.%3 -> %4.%5 (%6)")
+                       .arg(i+1)
+                       .arg(rel.sourceTable)
+                       .arg(rel.sourceField)
+                       .arg(rel.targetTable)
+                       .arg(rel.targetField)
+                       .arg(rel.type);
+    }
+    qDebug() << "=== FIN RESUMEN loadDesignerState ===";
 }
 
 QString RelationshipsView::getProjectRelationshipsPath()
@@ -4169,31 +4206,74 @@ bool RelationshipsView::validateForeignKeyNaming(const QString &foreignKeyField,
 
 bool RelationshipsView::hasRelationshipForField(const QString &tableName, const QString &fieldName)
 {
-    qDebug() << "DEBUG RelationshipsView::hasRelationshipForField:" << tableName << fieldName;
+    qDebug() << "=== DEBUG RelationshipsView::hasRelationshipForField ===";
+    qDebug() << "DEBUG: Buscando relación para tabla:" << tableName << "campo:" << fieldName;
+    qDebug() << "DEBUG: Total relaciones en lista:" << relationships.size();
     
     QString cleanFieldName = getCleanFieldName(fieldName);
     qDebug() << "DEBUG: Campo limpio para verificación:" << cleanFieldName;
     
-    // NUEVO: Buscar en la lista de relaciones completas primero
+    // Mostrar todas las relaciones disponibles
+    for (int i = 0; i < relationships.size(); ++i) {
+        const auto &rel = relationships[i];
+        qDebug() << QString("DEBUG: Relación %1: %2.%3 -> %4.%5")
+                       .arg(i+1)
+                       .arg(rel.sourceTable)
+                       .arg(rel.sourceField)
+                       .arg(rel.targetTable)
+                       .arg(rel.targetField);
+    }
+    
+    // NUEVO: Buscar relaciones inteligentemente
     for (const auto &relationship : relationships) {
-        // Verificar si el campo está en la tabla de origen
-        if (relationship.sourceTable == tableName && 
-            getCleanFieldName(relationship.sourceField) == cleanFieldName) {
-            qDebug() << "DEBUG: ✅ Relación encontrada (source):" << tableName << "." << cleanFieldName 
+        QString cleanSourceField = getCleanFieldName(relationship.sourceField);
+        QString cleanTargetField = getCleanFieldName(relationship.targetField);
+        
+        qDebug() << QString("DEBUG: Comparando %1.%2 vs %3.%4")
+                       .arg(relationship.sourceTable).arg(cleanSourceField)
+                       .arg(tableName).arg(cleanFieldName);
+        
+        // 1. Búsqueda exacta: verificar si el campo está en la tabla de origen
+        if (relationship.sourceTable == tableName && cleanSourceField == cleanFieldName) {
+            qDebug() << "DEBUG: ✅ Relación encontrada (source exacta):" << tableName << "." << cleanFieldName 
                      << "→" << relationship.targetTable << "." << relationship.targetField;
             return true;
         }
         
-        // Verificar si el campo está en la tabla de destino
-        if (relationship.targetTable == tableName && 
-            getCleanFieldName(relationship.targetField) == cleanFieldName) {
-            qDebug() << "DEBUG: ✅ Relación encontrada (target):" << tableName << "." << cleanFieldName 
+        // 2. Búsqueda exacta: verificar si el campo está en la tabla de destino
+        if (relationship.targetTable == tableName && cleanTargetField == cleanFieldName) {
+            qDebug() << "DEBUG: ✅ Relación encontrada (target exacta):" << tableName << "." << cleanFieldName 
                      << "←" << relationship.sourceTable << "." << relationship.sourceField;
             return true;
         }
+        
+        // 3. BÚSQUEDA INTELIGENTE: Si estamos buscando maestros.id_alumno
+        // y hay una relación maestros.id -> alumnos.id, verificar si es la misma lógicamente
+        if (relationship.sourceTable == tableName) {
+            // Verificar si el campo FK que buscamos apunta a la tabla del target
+            if (cleanFieldName.endsWith("_" + relationship.targetTable) || 
+                cleanFieldName == "id_" + relationship.targetTable ||
+                cleanFieldName.contains(relationship.targetTable)) {
+                qDebug() << "DEBUG: ✅ Relación encontrada (inteligente FK):" << tableName << "." << cleanFieldName 
+                         << "→" << relationship.targetTable << " (basado en patrón)";
+                return true;
+            }
+        }
+        
+        // 4. BÚSQUEDA POR CONVENCIÓN: Si el campo es id_X, buscar relación hacia tabla X
+        if (cleanFieldName.startsWith("id_")) {
+            QString referencedTableName = cleanFieldName.mid(3); // quitar "id_"
+            if (relationship.targetTable.compare(referencedTableName, Qt::CaseInsensitive) == 0 &&
+                relationship.sourceTable == tableName) {
+                qDebug() << "DEBUG: ✅ Relación encontrada (convención):" << tableName << "." << cleanFieldName 
+                         << "→" << relationship.targetTable << " (por convención de nomenclatura)";
+                return true;
+            }
+        }
     }
     
-    qDebug() << "DEBUG: ❌ No se encontró relación específica para campo" << cleanFieldName << "en tabla" << tableName;
+    qDebug() << "DEBUG: ❌ No se encontró relación para campo" << cleanFieldName << "en tabla" << tableName;
+    qDebug() << "=== FIN DEBUG hasRelationshipForField ===";
     return false;
 }
 

@@ -15,6 +15,7 @@
 #include <QComboBox>
 #include <QRegExp>
 #include <QTimer>
+#include "projectpathsqt.h"
 
 // Forward declaration
 class RelationshipsView;
@@ -141,6 +142,7 @@ private:
     QString getReferencedField(const QString &fieldName);
     bool valueExistsInReferencedTable(const QString &tableName, const QString &fieldName, const QString &value);
     QStringList getTableData(const QString &tableName, const QString &fieldName);
+    QStringList getTableDataDirectFromCatalog(const QString &tableName, const QString &fieldName);
 
     // UI Components
     QVBoxLayout *mainLayout;

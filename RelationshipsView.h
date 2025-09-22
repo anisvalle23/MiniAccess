@@ -117,31 +117,34 @@ private slots:
     void onTableCloseRequested(TableGraphicsItem* table); // New slot for handling table close
     void onInfoButtonClicked(); // New slot for info button
 
+public:
+    QString getCleanFieldName(const QString &fieldName); // Método para limpiar nombres de campos de iconos
+
 private:
+    RelationshipInfo* findRelationshipForField(const QString &tableName, const QString &fieldName); // Buscar relación específica
+    
+    // Private methods used in implementation
     void setupUI();
+    void styleComponents();
+    void loadRelationships();
+    void loadTables();
+    void loadDesignerState();
+    void saveDesignerState();
+    void showAllTablesInDesigner();
+    void showAllTablesAndRelationships();
+    void createRelationshipBetweenTables(const QString &sourceTable, const QString &targetTable, const QString &type);
+    QString getProjectRelationshipsPath();
     void createToolbar();
     void createMainArea();
+    void createRelationshipsList();
     void createRelationshipDesigner();
     void createPropertiesPanel();
-    void createRelationshipsList();
-    void styleComponents();
-    void loadTables();
-    void loadRelationships();
     void updateSourceFields(const QString &tableName);
     void updateTargetFields(const QString &tableName);
-    void createRelationshipBetweenTables(const QString &table1, const QString &table2, 
-                                       const QString &relationship_type);
-    void updatePropertiesPanel(const QString &selectedItem);
-    void clearDesignerArea(); // Método para limpiar el área de diseño
-    void showAllTablesInDesigner(); // Método para mostrar todas las tablas en el diseñador
-    void showAllTablesAndRelationships(); // Método para mostrar todas las tablas y relaciones
-    void saveDesignerState(); // Método para guardar el estado del diseñador
-    void loadDesignerState(); // Método para cargar el estado del diseñador
-    QString getProjectRelationshipsPath(); // Método para obtener la ruta del archivo de relaciones
+    void clearDesignerArea();
+    void updatePropertiesPanel(const QString &relationshipName);
+    bool validateForeignKeyNaming(const QString &fieldName, const QString &tableName, bool exact);
     bool validateDataTypeCompatibility(const QString &sourceTable, const QString &targetTable, const QString &relationshipType);
-    bool validateForeignKeyNaming(const QString &foreignKeyField, const QString &referencedTable, bool showErrorMessage = true);
-    QString getCleanFieldName(const QString &fieldName); // Método para limpiar nombres de campos de iconos
-    RelationshipInfo* findRelationshipForField(const QString &tableName, const QString &fieldName); // Buscar relación específica
     
     // UI Components
     QVBoxLayout *mainLayout;
