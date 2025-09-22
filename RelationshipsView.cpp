@@ -1191,9 +1191,9 @@ void RelationshipsView::updateTheme(bool isDark)
     toolbarWidget->setStyleSheet(QString(
         "QWidget {"
             "background-color: %1;"
-            "border-bottom: 1px solid %3;"
+            "border-bottom: 1px solid %2;"
         "}"
-    ).arg(backgroundColor, textColor, borderColor));
+    ).arg(backgroundColor, borderColor));
     
     // Update title color for theme
     if (isDark) {

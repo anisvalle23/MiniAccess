@@ -73,6 +73,7 @@ private:
     void clearForm();
     void clearFormInputs();
     void showEmptyState();
+    void autoFillNextId(); // Nueva función para auto-llenar el siguiente ID
     QWidget* createFieldWidget(const QJsonObject& fieldMeta);
     QJsonObject getFormData();
     void populateFormWithRecord(const QJsonObject& record);

@@ -107,42 +107,48 @@ void FormulariosView::setupUI()
     
     // Crear TODOS los botones en una sola fila
     editRecordBtn = new QPushButton("🆕 Nuevo");
-    newRecordBtn = new QPushButton("✏️ Editar");
-    deleteRecordBtn = new QPushButton("�️ Eliminar");
+    newRecordBtn = new QPushButton("🖊️ Editar");
+    deleteRecordBtn = new QPushButton("🗑️ Eliminar");
     saveRecordBtn = new QPushButton("💾 Guardar");
-    firstRecordBtn = new QPushButton("⏮");
+    firstRecordBtn = new QPushButton("|<");
     prevRecordBtn = new QPushButton("◀");
     nextRecordBtn = new QPushButton("▶");
-    lastRecordBtn = new QPushButton("⏭");
+    lastRecordBtn = new QPushButton(">|");
     
-    // Estilo compacto para todos los botones
+    // Estilo moderno y atractivo para todos los botones
     QString compactButtonStyle = 
         "QPushButton {"
-        "background-color: #f8f9fa;"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #f8f9fa);"
         "color: #495057;"
-        "border: 2px solid #dee2e6;"
-        "border-radius: 6px;"
-        "padding: 8px 12px;"
-        "font-size: 13px;"
+        "border: 2px solid #e3f2fd;"
+        "border-radius: 8px;"
+        "padding: 10px 16px;"
+        "font-size: 14px;"
         "font-weight: 600;"
-        "min-width: 80px;" // Más pequeños
-        "max-height: 40px;"
+        "min-width: 90px;"
+        "max-height: 42px;"
+        "box-shadow: 0 2px 4px rgba(0,0,0,0.1);"
         "}"
         "QPushButton:hover {"
-        "background-color: #e9ecef;"
-        "border-color: #007bff;"
-        "color: #007bff;"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #e3f2fd, stop:1 #bbdefb);"
+        "border-color: #2196f3;"
+        "color: #1976d2;"
+        "transform: translateY(-1px);"
+        "box-shadow: 0 4px 8px rgba(33,150,243,0.2);"
         "}"
         "QPushButton:pressed {"
-        "background-color: #dee2e6;"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #bbdefb, stop:1 #90caf9);"
+        "transform: translateY(0px);"
+        "box-shadow: 0 2px 4px rgba(33,150,243,0.3);"
         "}"
         "QPushButton:disabled {"
-        "background-color: #e9ecef;"
-        "color: #6c757d;"
-        "border-color: #dee2e6;"
+        "background: #f5f5f5;"
+        "color: #bdbdbd;"
+        "border-color: #e0e0e0;"
+        "box-shadow: none;"
         "}";
     
-    // Estilo especial para botones de navegación (más pequeños y cuadrados)
+    // Estilo especial para botones de navegación (más simples como antes)
     QString navButtonStyle = 
         "QPushButton {"
         "background-color: #f8f9fa;"
@@ -215,43 +221,128 @@ void FormulariosView::setupUI()
     
     mainLayout->addWidget(buttonContainer);
     
-    // Contador de registros
+    // Contador de registros con diseño más atractivo
     recordCounterLabel = new QLabel("", this);
     recordCounterLabel->setAlignment(Qt::AlignCenter);
     recordCounterLabel->setStyleSheet(
-        "color: #6c757d; "
-        "font-size: 14px; "
-        "font-weight: 500; "
-        "padding: 8px; "
-        "background: transparent;"
+        "QLabel {"
+        "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #e3f2fd, stop:1 #f3e5f5);"
+        "color: #1976d2;"
+        "font-size: 16px;"
+        "font-weight: 600;"
+        "padding: 12px 24px;"
+        "border: 2px solid #bbdefb;"
+        "border-radius: 20px;"
+        "margin: 8px 100px;"
+        "}"
     );
     mainLayout->addWidget(recordCounterLabel);
     
-    // Crear área del formulario
+    // Crear área del formulario con diseño ESPECTACULAR - TEMA BURGUNDY MÁS ROJO
     formScrollArea = new QScrollArea();
     formScrollArea->setStyleSheet(
         "QScrollArea {"
-        "border: 1px solid #e0e0e0;"
-        "border-radius: 8px;"
-        "background-color: white;"
+        "border: none;"
+        "background: qlineargradient(x1:0, y1:0, x2:1, y2:1, "
+        "stop:0 rgba(139, 0, 0, 0.25), "
+        "stop:0.25 rgba(178, 34, 34, 0.22), "
+        "stop:0.5 rgba(220, 20, 60, 0.2), "
+        "stop:0.75 rgba(139, 69, 19, 0.18), "
+        "stop:1 rgba(128, 0, 0, 0.25));"
+        "border-radius: 20px;"
+        "min-height: 500px;"
         "}"
         "QScrollArea > QWidget > QWidget {"
         "background-color: transparent;"
         "}"
     );
+    
     formContentWidget = new QWidget();
+    formContentWidget->setStyleSheet(
+        "QWidget {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "stop:0 rgba(255, 240, 240, 0.98), "
+        "stop:0.5 rgba(250, 225, 225, 0.96), "
+        "stop:1 rgba(245, 210, 210, 0.98));"
+        "border: 2px solid rgba(139, 0, 0, 0.4);"
+        "border-radius: 16px;"
+        "margin: 10px 10px 30px 10px;"
+        "min-height: 450px;"
+        "}"
+    );
+    
     formLayout = new QFormLayout(formContentWidget);
-    formLayout->setSpacing(15);
+    formLayout->setSpacing(25);
     formLayout->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    formLayout->setContentsMargins(20, 20, 20, 20);
+    formLayout->setContentsMargins(30, 30, 30, 30);
+    
+    // 🎨 ESTILO ESPECTACULAR para las etiquetas del formulario - TEMA BURGUNDY
+    formContentWidget->setStyleSheet(
+        "QFormLayout QLabel {"
+        "font-size: 18px;"
+        "font-weight: 600;"
+        "color: #8B0000;"
+        "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+        "stop:0 rgba(139, 69, 19, 0.15), "
+        "stop:1 rgba(178, 34, 34, 0.12));"
+        "border: 2px solid transparent;"
+        "border-radius: 8px;"
+        "padding: 8px 12px;"
+        "margin-right: 15px;"
+        "min-width: 140px;"
+        "}"
+        "QFormLayout QLabel:hover {"
+        "background: qlineargradient(x1:0, y1:0, x2:1, y2:0, "
+        "stop:0 rgba(139, 69, 19, 0.25), "
+        "stop:1 rgba(178, 34, 34, 0.22));"
+        "border: 2px solid rgba(178, 34, 34, 0.4);"
+        "color: #B22222;"
+        "}"
+    );
+    
     formScrollArea->setWidget(formContentWidget);
     formScrollArea->setWidgetResizable(true);
     
-    // Crear dataTable oculto para compatibilidad (no se muestra en la interfaz)
-    dataTable = new QTableWidget(this);
-    dataTable->setVisible(false);
+    // Crear widget de estado vacío con diseño atractivo
+    emptyStateWidget = new QWidget();
+    emptyStateWidget->setStyleSheet(
+        "QWidget {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f8f9fa, stop:1 #e9ecef);"
+        "border: 3px dashed #bbdefb;"
+        "border-radius: 16px;"
+        "}"
+    );
+    QVBoxLayout *emptyStateLayout = new QVBoxLayout(emptyStateWidget);
+    emptyStateLayout->setContentsMargins(50, 50, 50, 50);
+    
+    QLabel *emptyStateLabel = new QLabel("📋 Selecciona una tabla");
+    emptyStateLabel->setAlignment(Qt::AlignCenter);
+    emptyStateLabel->setStyleSheet(
+        "font-size: 22px;"
+        "color: #1976d2;"
+        "font-weight: 700;"
+        "border: none;"
+        "background: transparent;"
+        "margin-bottom: 10px;"
+    );
+    
+    QLabel *emptyStateSubtitle = new QLabel("Elige una tabla del menú desplegable para comenzar a trabajar con los formularios de datos");
+    emptyStateSubtitle->setAlignment(Qt::AlignCenter);
+    emptyStateSubtitle->setWordWrap(true);
+    emptyStateSubtitle->setStyleSheet(
+        "font-size: 16px;"
+        "color: #64b5f6;"
+        "border: none;"
+        "background: transparent;"
+        "margin-top: 15px;"
+        "line-height: 1.4;"
+    );
+    
+    emptyStateLayout->addWidget(emptyStateLabel);
+    emptyStateLayout->addWidget(emptyStateSubtitle);
     
     mainLayout->addWidget(formScrollArea);
+    mainLayout->addWidget(emptyStateWidget);
     mainLayout->addStretch();
     
     // Conectar señales
@@ -261,6 +352,7 @@ void FormulariosView::setupUI()
     connect(editRecordBtn, &QPushButton::clicked, this, &FormulariosView::onEditRecordClicked);
     connect(deleteRecordBtn, &QPushButton::clicked, this, &FormulariosView::onDeleteRecordClicked);
     connect(saveRecordBtn, &QPushButton::clicked, this, &FormulariosView::onSaveRecordClicked);
+    // TEMPORALMENTE COMENTADO: connect(dataTable, &QTableWidget::itemSelectionChanged, this, &FormulariosView::onRecordSelected);
     
     // Conectar señales de navegación
     connect(firstRecordBtn, &QPushButton::clicked, this, &FormulariosView::onFirstRecordClicked);
@@ -271,45 +363,74 @@ void FormulariosView::setupUI()
     // Cargar tablas
     qDebug() << "FormulariosView: Llamando loadAvailableTables() desde setupUI()";
     loadAvailableTables();
+    
+    // Mostrar estado vacío inicialmente
+    formScrollArea->hide();
+    emptyStateWidget->show();
 }
 
 void FormulariosView::loadAvailableTables()
 {
     qDebug() << "FormulariosView: loadAvailableTables() iniciado";
     
+    qDebug() << "FormulariosView: Punto 1 - Antes de clear()";
+    
+    // Bloquear señales temporalmente para evitar que se dispare onTableSelected
+    tableComboBox->blockSignals(true);
+    
     tableComboBox->clear();
+    qDebug() << "FormulariosView: Punto 2 - Después de clear()";
+    
     tableComboBox->addItem("-- Seleccionar tabla --");
+    qDebug() << "FormulariosView: Punto 3 - Después de addItem()";
+    
+    // Desbloquear señales
+    tableComboBox->blockSignals(false);
+    qDebug() << "FormulariosView: Punto 3.5 - Señales desbloqueadas";
     
     if (!m_mainWindow) {
         qDebug() << "FormulariosView: MainWindow no disponible";
         return;
     }
+    qDebug() << "FormulariosView: Punto 4 - MainWindow OK";
     
     // Obtener información del proyecto actual
     QString currentProject = m_mainWindow->getCurrentProjectName();
-    qDebug() << "FormulariosView: Proyecto actual:" << currentProject;
+    qDebug() << "FormulariosView: Punto 5 - Proyecto actual:" << currentProject;
     
     // Usar la ruta correcta del directorio de tablas desde MainWindow
     QString tablesPath = QString::fromStdString(m_mainWindow->tablesDir());
+    qDebug() << "FormulariosView: Punto 6 - tablesPath obtenido:" << tablesPath;
+    
     QDir tablesDir(tablesPath);
+    qDebug() << "FormulariosView: Punto 7 - QDir creado";
     
     qDebug() << "FormulariosView: Buscando tablas en:" << tablesPath;
     qDebug() << "FormulariosView: Directorio existe:" << tablesDir.exists();
     
     if (!tablesDir.exists()) {
         qDebug() << "FormulariosView: Directorio de tablas no existe:" << tablesPath;
+        tableComboBox->blockSignals(false); // Desbloquear antes de return
         return;
     }
+    qDebug() << "FormulariosView: Punto 8 - Directorio existe";
     
     QStringList metaFiles = tablesDir.entryList(QStringList() << "*.meta", QDir::Files);
+    qDebug() << "FormulariosView: Punto 9 - entryList obtenido";
     qDebug() << "FormulariosView: Archivos .meta encontrados:" << metaFiles;
     
     for (const QString &metaFile : metaFiles) {
+        qDebug() << "FormulariosView: Punto 10 - Procesando archivo:" << metaFile;
         QString tableName = metaFile;
         tableName.remove(".meta");
+        qDebug() << "FormulariosView: Punto 11 - Nombre tabla:" << tableName;
         tableComboBox->addItem(tableName);
-        qDebug() << "FormulariosView: Tabla agregada al combobox:" << tableName;
+        qDebug() << "FormulariosView: Punto 12 - Tabla agregada al combobox:" << tableName;
     }
+    
+    // Desbloquear señales al final
+    tableComboBox->blockSignals(false);
+    qDebug() << "FormulariosView: Punto 12.5 - Señales finalmente desbloqueadas";
     
     if (metaFiles.isEmpty()) {
         qDebug() << "FormulariosView: No se encontraron tablas en" << tablesPath;
@@ -317,48 +438,82 @@ void FormulariosView::loadAvailableTables()
         qDebug() << "FormulariosView: Se encontraron" << metaFiles.size() << "tablas";
         qDebug() << "FormulariosView: Items en combobox:" << tableComboBox->count();
     }
+    qDebug() << "FormulariosView: Punto 13 - loadAvailableTables() TERMINADO";
 }
 
 void FormulariosView::onTableSelected()
 {
+    qDebug() << "FormulariosView: onTableSelected() INICIADO";
+    
     QString selectedTable = tableComboBox->currentText();
+    qDebug() << "FormulariosView: Tabla seleccionada:" << selectedTable;
     
     if (selectedTable == "-- Seleccionar tabla --" || selectedTable.isEmpty()) {
+        qDebug() << "FormulariosView: Mostrando estado vacío";
         showEmptyState();
+        qDebug() << "FormulariosView: Estado vacío mostrado, retornando";
         return;
     }
     
+    qDebug() << "FormulariosView: Asignando currentTableName";
     currentTableName = selectedTable;
+    
+    qDebug() << "FormulariosView: Llamando generateFormForTable";
     generateFormForTable(selectedTable);
+    
+    qDebug() << "FormulariosView: Llamando loadDataFromJson";
     loadDataFromJson();  // Cargar datos existentes desde JSON
+    
+    qDebug() << "FormulariosView: onTableSelected() TERMINADO";
 }
 
 void FormulariosView::showEmptyState()
 {
-    formScrollArea->hide();
-    emptyStateWidget->show();
-    dataTable->clear();
-    dataTable->setRowCount(0);
-    dataTable->setColumnCount(0);
+    qDebug() << "FormulariosView: showEmptyState() INICIADO";
     
+    qDebug() << "FormulariosView: Ocultando formScrollArea";
+    formScrollArea->hide();
+    
+    qDebug() << "FormulariosView: Mostrando emptyStateWidget";
+    emptyStateWidget->show();
+    
+    // TEMPORALMENTE COMENTADO: dataTable->clear();
+    // TEMPORALMENTE COMENTADO: dataTable->setRowCount(0);
+    // TEMPORALMENTE COMENTADO: dataTable->setColumnCount(0);
+    
+    qDebug() << "FormulariosView: Deshabilitando botones";
     editRecordBtn->setEnabled(false);
     deleteRecordBtn->setEnabled(false);
     saveRecordBtn->setEnabled(false);
+    
+    qDebug() << "FormulariosView: showEmptyState() TERMINADO";
 }
 
 void FormulariosView::generateFormForTable(const QString& tableName)
 {
-    if (tableName.isEmpty()) return;
+    qDebug() << "FormulariosView: generateFormForTable() INICIADO para tabla:" << tableName;
     
+    if (tableName.isEmpty()) {
+        qDebug() << "FormulariosView: tableName está vacío, retornando";
+        return;
+    }
+    
+    qDebug() << "FormulariosView: Ocultando emptyStateWidget";
     // Ocultar estado vacío y mostrar formulario
     emptyStateWidget->hide();
+    
+    qDebug() << "FormulariosView: Mostrando formScrollArea";
     formScrollArea->show();
     
+    qDebug() << "FormulariosView: Llamando clearForm()";
     // Limpiar formulario anterior
     clearForm();
     
+    qDebug() << "FormulariosView: Preparando ruta del archivo meta";
     // Cargar metadatos de la tabla usando la ruta correcta
     QString metaPath = QString::fromStdString(m_mainWindow->tablesDir()) + "/" + tableName + ".meta";
+    qDebug() << "FormulariosView: Ruta meta:" << metaPath;
+    
     QFile metaFile(metaPath);
     
     if (!metaFile.open(QIODevice::ReadOnly)) {
@@ -437,41 +592,65 @@ QWidget* FormulariosView::createFieldWidget(const QJsonObject& fieldMeta)
     bool isPrimaryKey = fieldMeta.value("isPrimaryKey").toBool(false);
     bool allowNull = fieldMeta.value("allowNull").toBool(true);
     
-    // Estilo común para inputs
+    // Estilo ESPECTACULAR para inputs del formulario - TEMA BURGUNDY - SUPER REDONDOS
     QString inputStyle = 
         "QLineEdit, QSpinBox, QDoubleSpinBox, QDateEdit {"
-        "border: 2px solid #e9ecef;"
-        "border-radius: 6px;"
-        "padding: 8px 12px;"
-        "font-size: 14px;"
-        "background-color: white;"
-        "color: #495057;"
+        "border: 3px solid transparent;"
+        "border-radius: 20px;"
+        "padding: 15px 20px;"
+        "font-size: 16px;"
+        "font-weight: 500;"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "stop:0 rgba(255, 250, 250, 0.95), "
+        "stop:1 rgba(248, 240, 240, 0.9));"
+        "color: #8B0000;"
+        "selection-background-color: #B22222;"
+        "min-height: 20px;"
         "}"
         "QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QDateEdit:focus {"
-        "border-color: #007bff;"
-        "outline: none;"
-        "background-color: #ffffff;"
+        "border: 3px solid #B22222;"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "stop:0 rgba(255, 245, 245, 1.0), "
+        "stop:1 rgba(255, 235, 235, 1.0));"
+        "color: #8B0000;"
+        "}"
+        "QLineEdit:hover, QSpinBox:hover, QDoubleSpinBox:hover, QDateEdit:hover {"
+        "border: 3px solid #CD5C5C;"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "stop:0 rgba(255, 248, 248, 0.98), "
+        "stop:1 rgba(250, 235, 235, 0.95));"
         "}"
         "QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QDateEdit:disabled {"
-        "background-color: #f8f9fa;"
-        "color: #6c757d;"
-        "border-color: #dee2e6;"
+        "background: rgba(245, 245, 245, 0.7);"
+        "color: #9e9e9e;"
+        "border: 3px solid #e0e0e0;"
         "}"
         "QCheckBox {"
-        "font-size: 14px;"
-        "color: #495057;"
+        "font-size: 16px;"
+        "font-weight: 500;"
+        "color: #8B0000;"
         "}"
         "QCheckBox::indicator {"
-        "width: 18px;"
-        "height: 18px;"
-        "border: 2px solid #dee2e6;"
-        "border-radius: 3px;"
-        "background-color: white;"
+        "width: 24px;"
+        "height: 24px;"
+        "border: 3px solid #CD5C5C;"
+        "border-radius: 6px;"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "stop:0 rgba(255, 250, 250, 0.9), "
+        "stop:1 rgba(248, 240, 240, 0.9));"
         "}"
         "QCheckBox::indicator:checked {"
-        "background-color: #007bff;"
-        "border-color: #007bff;"
-        "image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iOSIgdmlld0JveD0iMCAwIDEyIDkiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxwYXRoIGQ9Ik0xMC42IDEuNEw0LjMgNy43TDEuNCA0LjgiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+);"
+        "border: 3px solid #B22222;"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "stop:0 rgba(178, 34, 34, 0.2), "
+        "stop:1 rgba(139, 0, 0, 0.3));"
+        "image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTMuNSA4LjVMNi41IDExLjVMMTIuNSA0LjUiIHN0cm9rZT0iI0IyMjIyMiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+Cg==);"
+        "}"
+        "QCheckBox::indicator:hover {"
+        "border: 3px solid #DC143C;"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "stop:0 rgba(255, 245, 245, 1.0), "
+        "stop:1 rgba(255, 235, 235, 1.0));"
         "}";
     
     if (fieldType == "text") {
@@ -560,8 +739,7 @@ void FormulariosView::loadDataFromJson()
     
     qDebug() << "FormulariosView: Cargados" << allRecords.size() << "registros";
     
-    // Actualizar tabla de datos
-    updateDataTable();
+    // TEMPORALMENTE COMENTADO: updateDataTable();
     
     // Si hay registros, mostrar el primero
     if (!allRecords.isEmpty()) {
@@ -640,9 +818,9 @@ void FormulariosView::onNewRecordClicked()
     updateButtonStates();
     
     // Deseleccionar fila en tabla
-    dataTable->blockSignals(true);
-    dataTable->clearSelection();
-    dataTable->blockSignals(false);
+    // TEMPORALMENTE COMENTADO: dataTable->blockSignals(true);
+    // TEMPORALMENTE COMENTADO: dataTable->clearSelection();
+    // TEMPORALMENTE COMENTADO: dataTable->blockSignals(false);
 }
 
 void FormulariosView::onEditRecordClicked()
@@ -652,8 +830,14 @@ void FormulariosView::onEditRecordClicked()
     currentRecordIndex = -1; // Indicar que estamos creando un nuevo registro
     isEditMode = true;
     
-    // Actualizar contador para indicar "Nuevo registro"
-    recordCounterLabel->setText("Nuevo registro");
+    // Calcular el siguiente número de registro
+    int nextRecordNumber = allRecords.size() + 1;
+    
+    // Actualizar contador para mostrar el próximo registro a crear
+    recordCounterLabel->setText(QString("🆕 Creando registro %1").arg(nextRecordNumber));
+    
+    // Si hay un campo 'id' en el formulario, pre-llenarlo con el siguiente número
+    autoFillNextId();
     
     updateButtonStates();
 }
@@ -669,7 +853,7 @@ void FormulariosView::onDeleteRecordClicked()
     if (reply == QMessageBox::Yes) {
         allRecords.removeAt(currentRecordIndex);
         saveDataToJson();
-        updateDataTable();
+        // TEMPORALMENTE COMENTADO: updateDataTable();
         
         // Ajustar índice actual
         if (currentRecordIndex >= allRecords.size()) {
@@ -725,14 +909,15 @@ void FormulariosView::onSaveRecordClicked()
     }
     
     // Actualizar tabla y botones
-    updateDataTable();
+    // TEMPORALMENTE COMENTADO: updateDataTable();
     updateNavigationState();
     hasUnsavedChanges = false;
 }
 
 void FormulariosView::onRecordSelected()
 {
-    int row = dataTable->currentRow();
+    // TEMPORALMENTE COMENTADO: int row = dataTable->currentRow();
+    int row = -1; // Temporal
     
     if (row < 0 || row >= allRecords.size()) {
         currentRecordIndex = -1;
@@ -777,7 +962,7 @@ void FormulariosView::updateButtonStates()
     bool hasSelection = currentRecordIndex >= 0 && currentRecordIndex < allRecords.size();
     
     newRecordBtn->setEnabled(hasTable);
-    editRecordBtn->setEnabled(false);  // Ya no necesario - formulario siempre editable
+    editRecordBtn->setEnabled(hasTable);  // Habilitar botón "Nuevo" cuando hay tabla
     deleteRecordBtn->setEnabled(hasTable && hasSelection);
     saveRecordBtn->setEnabled(hasTable);  // Siempre habilitado si hay tabla
 }
@@ -1029,9 +1214,9 @@ void FormulariosView::goToRecord(int index)
     populateFormWithRecord(index);
     
     // Sincronizar selección en tabla
-    dataTable->blockSignals(true);
-    dataTable->selectRow(index);
-    dataTable->blockSignals(false);
+    // TEMPORALMENTE COMENTADO: dataTable->blockSignals(true);
+    // TEMPORALMENTE COMENTADO: dataTable->selectRow(index);
+    // TEMPORALMENTE COMENTADO: dataTable->blockSignals(false);
     
     updateNavigationState();
 }
@@ -1320,6 +1505,47 @@ void FormulariosView::onNextRecordClicked()
 {
     if (currentRecordIndex < allRecords.size() - 1) {
         goToRecord(currentRecordIndex + 1);
+    }
+}
+
+void FormulariosView::autoFillNextId()
+{
+    if (formWidgets.isEmpty() || fieldNames.isEmpty()) return;
+    
+    // Buscar si hay un campo que se llame 'id' o similar
+    for (int i = 0; i < fieldNames.size(); ++i) {
+        QString fieldName = fieldNames[i].toLower();
+        
+        // Si es un campo de ID, auto-llenar con el siguiente número
+        if (fieldName.contains("id") || fieldName == "numero" || fieldName == "codigo") {
+            QWidget* widget = formWidgets[i];
+            
+            // Calcular el siguiente ID basado en los registros existentes
+            int nextId = 1;
+            if (!allRecords.isEmpty()) {
+                // Buscar el ID más alto existente
+                int maxId = 0;
+                for (const QJsonObject &record : allRecords) {
+                    QString cleanFieldName = cleanFieldNameUI(fieldNames[i]);
+                    QJsonValue value = record.value(cleanFieldName);
+                    int currentId = value.toString().toInt();
+                    if (currentId > maxId) {
+                        maxId = currentId;
+                    }
+                }
+                nextId = maxId + 1;
+            }
+            
+            // Llenar el widget con el siguiente ID
+            if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(widget)) {
+                lineEdit->setText(QString::number(nextId));
+            }
+            else if (QSpinBox* spinBox = qobject_cast<QSpinBox*>(widget)) {
+                spinBox->setValue(nextId);
+            }
+            
+            break; // Solo llenar el primer campo ID encontrado
+        }
     }
 }
 
