@@ -1,9 +1,10 @@
 {
     "fields": [
         {
-            "allowNull": true,
+            "allowNull": false,
             "desc": "",
-            "isPrimaryKey": false,
+            "isForeignKey": false,
+            "isPrimaryKey": true,
             "isUnique": false,
             "name": "id",
             "numberKind": "integer",
@@ -12,11 +13,22 @@
         {
             "allowNull": true,
             "desc": "",
+            "isForeignKey": false,
             "isPrimaryKey": false,
             "isUnique": false,
             "name": "nombre",
             "textMax": 255,
             "type": "text"
+        },
+        {
+            "allowNull": true,
+            "desc": "",
+            "isForeignKey": false,
+            "isPrimaryKey": false,
+            "isUnique": false,
+            "name": "edad",
+            "numberKind": "integer",
+            "type": "number"
         }
     ],
     "tableName": "estudiante",

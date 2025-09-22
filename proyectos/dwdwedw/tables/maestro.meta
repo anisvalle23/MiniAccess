@@ -9,16 +9,6 @@
             "name": "id",
             "numberKind": "integer",
             "type": "number"
-        },
-        {
-            "allowNull": false,
-            "desc": "",
-            "isForeignKey": false,
-            "isPrimaryKey": true,
-            "isUnique": false,
-            "name": "id_alumno",
-            "textMax": 255,
-            "type": "text"
         }
     ],
     "tableName": "maestro",

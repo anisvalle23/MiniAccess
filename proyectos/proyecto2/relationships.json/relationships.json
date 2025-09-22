@@ -1,0 +1,25 @@
+{
+    "relationships": [
+        {
+            "description": "estudiante → maestro (1:1)",
+            "sourceField": "id",
+            "sourceTable": "estudiante",
+            "targetField": "id_alumno",
+            "targetTable": "maestro",
+            "type": "1:1"
+        }
+    ],
+    "tables": [
+        {
+            "name": "estudiante",
+            "x": 0,
+            "y": -1
+        },
+        {
+            "name": "maestro",
+            "x": 0,
+            "y": 0
+        }
+    ],
+    "version": "1.0"
+}
