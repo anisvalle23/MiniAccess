@@ -1,12 +1,22 @@
 {
     "fields": [
         {
+            "allowNull": false,
+            "desc": "",
+            "isForeignKey": false,
+            "isPrimaryKey": true,
+            "isUnique": false,
+            "name": "id",
+            "numberKind": "integer",
+            "type": "number"
+        },
+        {
             "allowNull": true,
             "desc": "",
             "isForeignKey": false,
             "isPrimaryKey": false,
             "isUnique": false,
-            "name": "id",
+            "name": "seciones_id",
             "numberKind": "integer",
             "type": "number"
         }

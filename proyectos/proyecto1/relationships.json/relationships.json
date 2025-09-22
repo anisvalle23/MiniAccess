@@ -7,18 +7,42 @@
             "targetField": "id_alumno",
             "targetTable": "maestros",
             "type": "1:N"
+        },
+        {
+            "description": "secciones → maestros (1:1)",
+            "sourceField": "id",
+            "sourceTable": "secciones",
+            "targetField": "id",
+            "targetTable": "maestros",
+            "type": "1:1"
+        },
+        {
+            "description": "alumnos → secciones (1:N)",
+            "sourceField": "id",
+            "sourceTable": "alumnos",
+            "targetField": "id_alumnos",
+            "targetTable": "secciones",
+            "type": "1:N"
+        },
+        {
+            "description": "maestros → matricula (N:M)",
+            "sourceField": "id",
+            "sourceTable": "maestros",
+            "targetField": "maestro_id",
+            "targetTable": "matricula",
+            "type": "N:M"
         }
     ],
     "tables": [
         {
-            "name": "alumnos",
-            "x": -205,
-            "y": -329
+            "name": "matricula",
+            "x": -162,
+            "y": -269
         },
         {
             "name": "maestros",
-            "x": 67,
-            "y": -36
+            "x": 25,
+            "y": -19
         }
     ],
     "version": "1.0"

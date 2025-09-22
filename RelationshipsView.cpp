@@ -2098,170 +2098,8 @@ void RelationshipsView::onCreateRelationship()
             }
             
         } else if (shortType == "N:M") {
-            // Relación N:M: Se requiere una tabla intermedia con dos Foreign Keys específicos
-            QStringList allTables = tableEditor->getCreatedTables();
-            bool foundIntermediateTable = false;
-            QString intermediateTableName;
-            
-            // Buscar una tabla intermedia que tenga FK a ambas tablas específicas
-            for (const QString &tableName : allTables) {
-                if (tableName == sourceTable || tableName == targetTable) continue;
-                
-                QStringList tableFKs = tableEditor->getTableForeignKeys(tableName);
-                
-                // Verificar si tiene FK que refieran a nuestras tablas específicas
-                bool hasSourceFK = false;
-                bool hasTargetFK = false;
-                
-                for (const QString &fk : tableFKs) {
-                    QString fkLower = fk.toLower();
-                    QString sourceLower = sourceTable.toLower();
-                    QString targetLower = targetTable.toLower();
-                    
-                    // Limpiar el FK de emojis y etiquetas
-                    QString cleanFK = fk;
-                    cleanFK = cleanFK.remove(QRegExp("^[🔑🔗]\\s*")).remove(QRegExp("\\s*\\(PK\\)$")).remove(QRegExp("\\s*\\(FK\\)$")).trimmed();
-                    
-                    // Verificar si el FK podría referenciar a sourceTable (VALIDACIÓN SEMÁNTICA ESTRICTA)
-                    if (validateForeignKeyNaming(cleanFK, sourceTable, false)) {
-                        hasSourceFK = true;
-                        qDebug() << "DEBUG N:M: ✅ FK" << cleanFK << "en tabla intermedia" << tableName << "SÍ referencia semánticamente a" << sourceTable;
-                    }
-                    
-                    // Verificar si el FK podría referenciar a targetTable (VALIDACIÓN SEMÁNTICA ESTRICTA)
-                    if (validateForeignKeyNaming(cleanFK, targetTable, false)) {
-                        hasTargetFK = true;
-                        qDebug() << "DEBUG N:M: ✅ FK" << cleanFK << "en tabla intermedia" << tableName << "SÍ referencia semánticamente a" << targetTable;
-                    }
-                }
-                
-                // Si encontramos una tabla con FKs a ambas tablas objetivo
-                if (hasSourceFK && hasTargetFK && tableFKs.size() >= 2) {
-                    foundIntermediateTable = true;
-                    intermediateTableName = tableName;
-                    break;
-                }
-            }
-            
-            if (!foundIntermediateTable) {
-                QMessageBox msgBox;
-                msgBox.setIcon(QMessageBox::Warning);
-                msgBox.setWindowTitle("🔗 Relación N:M - Tabla Intermedia Requerida");
-                msgBox.setText("<h3>Tabla Intermedia Específica Requerida para Relación N:M</h3>");
-                msgBox.setInformativeText(
-                    QString("Para establecer una relación N:M entre <b>'%1'</b> y <b>'%2'</b>, se requiere una tabla intermedia con Foreign Keys específicos que apunten a ambas tablas.<br><br>"
-                           "⚠️ <b>Problema:</b><br>"
-                           "• Tabla origen: <b>'%3'</b><br>"
-                           "• Tabla destino: <b>'%4'</b><br>"
-                           "• <b>Tabla intermedia específica</b>: ❌ No encontrada<br><br>"
-                           "✅ <b>Requisitos para la tabla intermedia:</b><br>"
-                           "• Debe tener al menos 2 Foreign Keys<br>"
-                           "• Un FK debe referenciar a '%5' (ej: %6_id, id_%7)<br>"
-                           "• Otro FK debe referenciar a '%8' (ej: %9_id, id_%10)<br><br>"
-                           "<b>Solución:</b><br>"
-                           "1. Cree una nueva tabla intermedia (ej: '%11_%12' o '%13_%14')<br>"
-                           "2. Agregue un campo Foreign Key que referencie a '%15'<br>"
-                           "3. Agregue otro campo Foreign Key que referencie a '%16'<br>"
-                           "4. Marque ambos campos como 'Foreign Key' en las propiedades<br>"
-                           "5. Regrese e intente crear la relación nuevamente")
-                           .arg(sourceTable, targetTable, sourceTable, targetTable, sourceTable, sourceTable, sourceTable, 
-                                targetTable, targetTable, targetTable, sourceTable, targetTable, targetTable, sourceTable,
-                                sourceTable, targetTable)
-                );
-                msgBox.setStandardButtons(QMessageBox::Ok);
-                msgBox.button(QMessageBox::Ok)->setText("Entendido");
-                msgBox.setStyleSheet(
-                    "QMessageBox { background-color: white; min-width: 550px; min-height: 350px; }"
-                    "QMessageBox QLabel { color: black; font-size: 14px; }"
-                    "QPushButton { background-color: #9C27B0; color: white; font-size: 14px; font-weight: bold; min-width: 100px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
-                    "QPushButton:hover { background-color: #7B1FA2; }"
-                );
-                msgBox.exec();
-                return;
-            } else {
-                qDebug() << "DEBUG: Tabla intermedia encontrada:" << intermediateTableName << "con Foreign Keys válidas";
-                
-                // *** NUEVA VALIDACIÓN para N:M: FKs pueden ser PK compuesta en la tabla intermedia ***
-                QStringList intermediatePKandFK = tableEditor->getTablePrimaryAndForeignKeys(intermediateTableName);
-                QStringList intermediateFKs = tableEditor->getTableForeignKeys(intermediateTableName);
-                QStringList intermediatePKs = tableEditor->getTablePrimaryKeys(intermediateTableName);
-                
-                // Verificar que los Foreign Keys en la tabla intermedia puedan formar una Primary Key compuesta válida
-                bool validNMConfiguration = true;
-                QString validationMessage = "";
-                
-                if (intermediateFKs.size() >= 2) {
-                    // Caso ideal: Los FKs pueden ser parte de una PK compuesta
-                    qDebug() << "DEBUG: Tabla intermedia" << intermediateTableName << "tiene" << intermediateFKs.size() << "Foreign Keys";
-                    qDebug() << "DEBUG: Primary Keys en tabla intermedia:" << intermediatePKs;
-                    qDebug() << "DEBUG: Campos PK+FK en tabla intermedia:" << intermediatePKandFK;
-                    
-                    // Verificar que al menos algunos de los FKs sean también PKs (para Primary Key compuesta)
-                    if (intermediatePKs.size() >= 2) {
-                        // Verificar que los PKs incluyan los FKs necesarios
-                        int fksAsPks = 0;
-                        for (const QString &fk : intermediateFKs) {
-                            if (intermediatePKs.contains(fk)) {
-                                fksAsPks++;
-                            }
-                        }
-                        
-                        if (fksAsPks >= 2) {
-                            qDebug() << "DEBUG: ✅ Configuración N:M válida - Primary Key compuesta formada por Foreign Keys";
-                        } else {
-                            validationMessage = QString("La tabla intermedia '%1' debe tener los Foreign Keys como parte de una Primary Key compuesta para garantizar la unicidad en relaciones N:M.").arg(intermediateTableName);
-                        }
-                    } else if (intermediatePKs.size() == 1 && !intermediatePKandFK.isEmpty()) {
-                        qDebug() << "DEBUG: ✅ Configuración N:M válida - Primary Key simple que también es Foreign Key";
-                    } else {
-                        validationMessage = QString("La tabla intermedia '%1' necesita una Primary Key compuesta formada por los Foreign Keys para garantizar la integridad de la relación N:M.").arg(intermediateTableName);
-                    }
-                }
-                
-                // Mostrar advertencia informativa si la configuración no es ideal (pero permitir continuar)
-                if (!validationMessage.isEmpty()) {
-                    QMessageBox msgBox;
-                    msgBox.setIcon(QMessageBox::Information);
-                    msgBox.setWindowTitle("💡 Relación N:M - Recomendación de Diseño");
-                    msgBox.setText("<h3>Configuración de Tabla Intermedia</h3>");
-                    msgBox.setInformativeText(
-                        QString("La tabla intermedia '%1' fue encontrada y tiene Foreign Keys suficientes.<br><br>"
-                               "💡 <b>Recomendación:</b><br>"
-                               "%2<br><br>"
-                               "✅ <b>Configuración actual encontrada:</b><br>"
-                               "• Tabla intermedia: <b>%3</b><br>"
-                               "• Foreign Keys: %4<br>"
-                               "• Primary Keys: %5<br><br>"
-                               "📘 <b>Mejores prácticas para N:M:</b><br>"
-                               "• Los Foreign Keys deberían formar una Primary Key compuesta<br>"
-                               "• Esto garantiza que no haya relaciones duplicadas<br><br>"
-                               "<b>¿Desea continuar creando la relación?</b>")
-                               .arg(intermediateTableName)
-                               .arg(validationMessage)
-                               .arg(intermediateTableName)
-                               .arg(intermediateFKs.join(", "))
-                               .arg(intermediatePKs.join(", "))
-                    );
-                    msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-                    msgBox.button(QMessageBox::Yes)->setText("Sí, continuar");
-                    msgBox.button(QMessageBox::No)->setText("No, revisar diseño");
-                    msgBox.setDefaultButton(QMessageBox::Yes);
-                    msgBox.setStyleSheet(
-                        "QMessageBox { background-color: white; min-width: 600px; min-height: 400px; }"
-                        "QMessageBox QLabel { color: black; font-size: 14px; }"
-                        "QPushButton { font-size: 14px; font-weight: bold; min-width: 120px; min-height: 40px; border: none; border-radius: 6px; padding: 8px; }"
-                        "QPushButton:default { background-color: #10B981; color: white; }"
-                        "QPushButton:default:hover { background-color: #059669; }"
-                        "QPushButton:!default { background-color: #6B7280; color: white; }"
-                        "QPushButton:!default:hover { background-color: #4B5563; }"
-                    );
-                    
-                    int result = msgBox.exec();
-                    if (result == QMessageBox::No) {
-                        return; // Usuario decidió no continuar
-                    }
-                }
-            }
+            // Relación N:M: Funciona igual que 1:N - sin requerir tabla intermedia
+            qDebug() << "DEBUG N:M: Creando relación muchos-a-muchos simple entre" << sourceTable << "y" << targetTable;
         }
         
         // *** NUEVA VALIDACIÓN: TIPOS DE DATOS COMPATIBLES ***
@@ -4216,57 +4054,73 @@ bool RelationshipsView::hasRelationshipForField(const QString &tableName, const 
     // Mostrar todas las relaciones disponibles
     for (int i = 0; i < relationships.size(); ++i) {
         const auto &rel = relationships[i];
-        qDebug() << QString("DEBUG: Relación %1: %2.%3 -> %4.%5")
+        qDebug() << QString("DEBUG: Relación %1: %2.%3 -> %4.%5 (%6)")
                        .arg(i+1)
                        .arg(rel.sourceTable)
                        .arg(rel.sourceField)
                        .arg(rel.targetTable)
-                       .arg(rel.targetField);
+                       .arg(rel.targetField)
+                       .arg(rel.type);
     }
     
-    // NUEVO: Buscar relaciones inteligentemente
+    // LÓGICA UNIFICADA: Tratar N:M igual que 1:N
     for (const auto &relationship : relationships) {
         QString cleanSourceField = getCleanFieldName(relationship.sourceField);
         QString cleanTargetField = getCleanFieldName(relationship.targetField);
         
-        qDebug() << QString("DEBUG: Comparando %1.%2 vs %3.%4")
+        qDebug() << QString("DEBUG: Comparando %1.%2 vs %3.%4 (tipo: %5)")
                        .arg(relationship.sourceTable).arg(cleanSourceField)
-                       .arg(tableName).arg(cleanFieldName);
+                       .arg(tableName).arg(cleanFieldName)
+                       .arg(relationship.type);
         
         // 1. Búsqueda exacta: verificar si el campo está en la tabla de origen
         if (relationship.sourceTable == tableName && cleanSourceField == cleanFieldName) {
             qDebug() << "DEBUG: ✅ Relación encontrada (source exacta):" << tableName << "." << cleanFieldName 
-                     << "→" << relationship.targetTable << "." << relationship.targetField;
+                     << "→" << relationship.targetTable << "." << relationship.targetField << "(" << relationship.type << ")";
             return true;
         }
         
         // 2. Búsqueda exacta: verificar si el campo está en la tabla de destino
         if (relationship.targetTable == tableName && cleanTargetField == cleanFieldName) {
             qDebug() << "DEBUG: ✅ Relación encontrada (target exacta):" << tableName << "." << cleanFieldName 
-                     << "←" << relationship.sourceTable << "." << relationship.sourceField;
+                     << "←" << relationship.sourceTable << "." << relationship.sourceField << "(" << relationship.type << ")";
             return true;
         }
         
-        // 3. BÚSQUEDA INTELIGENTE: Si estamos buscando maestros.id_alumno
-        // y hay una relación maestros.id -> alumnos.id, verificar si es la misma lógicamente
+        // 3. BÚSQUEDA INTELIGENTE UNIFICADA: Para 1:N y N:M por igual
+        // Si estamos buscando maestros.id_alumno y hay una relación alumnos.id -> maestros.id_alumno
         if (relationship.sourceTable == tableName) {
             // Verificar si el campo FK que buscamos apunta a la tabla del target
             if (cleanFieldName.endsWith("_" + relationship.targetTable) || 
                 cleanFieldName == "id_" + relationship.targetTable ||
                 cleanFieldName.contains(relationship.targetTable)) {
                 qDebug() << "DEBUG: ✅ Relación encontrada (inteligente FK):" << tableName << "." << cleanFieldName 
-                         << "→" << relationship.targetTable << " (basado en patrón)";
+                         << "→" << relationship.targetTable << " (basado en patrón, tipo:" << relationship.type << ")";
                 return true;
             }
         }
         
-        // 4. BÚSQUEDA POR CONVENCIÓN: Si el campo es id_X, buscar relación hacia tabla X
+        // 4. BÚSQUEDA POR CONVENCIÓN UNIFICADA: Para 1:N y N:M por igual
+        // Si el campo es id_X, buscar relación hacia tabla X
         if (cleanFieldName.startsWith("id_")) {
             QString referencedTableName = cleanFieldName.mid(3); // quitar "id_"
             if (relationship.targetTable.compare(referencedTableName, Qt::CaseInsensitive) == 0 &&
                 relationship.sourceTable == tableName) {
                 qDebug() << "DEBUG: ✅ Relación encontrada (convención):" << tableName << "." << cleanFieldName 
-                         << "→" << relationship.targetTable << " (por convención de nomenclatura)";
+                         << "→" << relationship.targetTable << " (por convención, tipo:" << relationship.type << ")";
+                return true;
+            }
+        }
+        
+        // 5. BÚSQUEDA BIDIRECCIONAL UNIFICADA: Para 1:N y N:M por igual
+        // Si el campo es parte de la relación en cualquier dirección
+        if (relationship.targetTable == tableName) {
+            // Verificar si el campo FK que buscamos viene de la tabla source
+            if (cleanFieldName.endsWith("_" + relationship.sourceTable) || 
+                cleanFieldName == "id_" + relationship.sourceTable ||
+                cleanFieldName.contains(relationship.sourceTable)) {
+                qDebug() << "DEBUG: ✅ Relación encontrada (bidireccional):" << tableName << "." << cleanFieldName 
+                         << "←" << relationship.sourceTable << " (basado en patrón inverso, tipo:" << relationship.type << ")";
                 return true;
             }
         }
@@ -4319,13 +4173,13 @@ QString RelationshipsView::getReferencedTableForField(const QString &tableName, 
 {
     QString cleanFieldName = getCleanFieldName(fieldName);
     
-    // Buscar en la lista de relaciones completas
+    // LÓGICA UNIFICADA: Tratar N:M igual que 1:N en la búsqueda de tabla referenciada
     for (const auto &relationship : relationships) {
         // Si el campo está en la tabla de origen, devolver la tabla de destino
         if (relationship.sourceTable == tableName && 
             getCleanFieldName(relationship.sourceField) == cleanFieldName) {
             qDebug() << "DEBUG: Campo" << cleanFieldName << "en tabla" << tableName 
-                     << "referencia tabla" << relationship.targetTable;
+                     << "referencia tabla" << relationship.targetTable << "(" << relationship.type << ")";
             return relationship.targetTable;
         }
         
@@ -4333,8 +4187,30 @@ QString RelationshipsView::getReferencedTableForField(const QString &tableName, 
         if (relationship.targetTable == tableName && 
             getCleanFieldName(relationship.targetField) == cleanFieldName) {
             qDebug() << "DEBUG: Campo" << cleanFieldName << "en tabla" << tableName 
-                     << "referencia tabla" << relationship.sourceTable;
+                     << "referencia tabla" << relationship.sourceTable << "(" << relationship.type << ")";
             return relationship.sourceTable;
+        }
+        
+        // BÚSQUEDA INTELIGENTE UNIFICADA: Para 1:N y N:M por igual
+        if (relationship.sourceTable == tableName) {
+            if (cleanFieldName.endsWith("_" + relationship.targetTable) || 
+                cleanFieldName == "id_" + relationship.targetTable ||
+                cleanFieldName.contains(relationship.targetTable)) {
+                qDebug() << "DEBUG: Campo" << cleanFieldName << "en tabla" << tableName 
+                         << "referencia tabla" << relationship.targetTable << "(patrón, tipo:" << relationship.type << ")";
+                return relationship.targetTable;
+            }
+        }
+        
+        // BÚSQUEDA BIDIRECCIONAL UNIFICADA: Para 1:N y N:M por igual
+        if (relationship.targetTable == tableName) {
+            if (cleanFieldName.endsWith("_" + relationship.sourceTable) || 
+                cleanFieldName == "id_" + relationship.sourceTable ||
+                cleanFieldName.contains(relationship.sourceTable)) {
+                qDebug() << "DEBUG: Campo" << cleanFieldName << "en tabla" << tableName 
+                         << "referencia tabla" << relationship.sourceTable << "(patrón inverso, tipo:" << relationship.type << ")";
+                return relationship.sourceTable;
+            }
         }
     }
     
@@ -4347,13 +4223,13 @@ QString RelationshipsView::getReferencedFieldForField(const QString &tableName, 
 {
     QString cleanFieldName = getCleanFieldName(fieldName);
     
-    // Buscar en la lista de relaciones completas
+    // LÓGICA UNIFICADA: Tratar N:M igual que 1:N en la búsqueda de campo referenciado
     for (const auto &relationship : relationships) {
         // Si el campo está en la tabla de origen, devolver el campo de destino
         if (relationship.sourceTable == tableName && 
             getCleanFieldName(relationship.sourceField) == cleanFieldName) {
             qDebug() << "DEBUG: Campo" << cleanFieldName << "en tabla" << tableName 
-                     << "referencia campo" << relationship.targetField;
+                     << "referencia campo" << relationship.targetField << "(" << relationship.type << ")";
             return relationship.targetField;
         }
         
@@ -4361,8 +4237,30 @@ QString RelationshipsView::getReferencedFieldForField(const QString &tableName, 
         if (relationship.targetTable == tableName && 
             getCleanFieldName(relationship.targetField) == cleanFieldName) {
             qDebug() << "DEBUG: Campo" << cleanFieldName << "en tabla" << tableName 
-                     << "referencia campo" << relationship.sourceField;
+                     << "referencia campo" << relationship.sourceField << "(" << relationship.type << ")";
             return relationship.sourceField;
+        }
+        
+        // BÚSQUEDA INTELIGENTE UNIFICADA: Para 1:N y N:M por igual
+        if (relationship.sourceTable == tableName) {
+            if (cleanFieldName.endsWith("_" + relationship.targetTable) || 
+                cleanFieldName == "id_" + relationship.targetTable ||
+                cleanFieldName.contains(relationship.targetTable)) {
+                qDebug() << "DEBUG: Campo" << cleanFieldName << "en tabla" << tableName 
+                         << "referencia campo" << relationship.targetField << "(patrón, tipo:" << relationship.type << ")";
+                return relationship.targetField;
+            }
+        }
+        
+        // BÚSQUEDA BIDIRECCIONAL UNIFICADA: Para 1:N y N:M por igual
+        if (relationship.targetTable == tableName) {
+            if (cleanFieldName.endsWith("_" + relationship.sourceTable) || 
+                cleanFieldName == "id_" + relationship.sourceTable ||
+                cleanFieldName.contains(relationship.sourceTable)) {
+                qDebug() << "DEBUG: Campo" << cleanFieldName << "en tabla" << tableName 
+                         << "referencia campo" << relationship.sourceField << "(patrón inverso, tipo:" << relationship.type << ")";
+                return relationship.sourceField;
+            }
         }
     }
     
