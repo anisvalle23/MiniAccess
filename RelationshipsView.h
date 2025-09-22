@@ -87,6 +87,11 @@ public:
     QString getReferencedFieldForField(const QString &tableName, const QString &fieldName); // Obtener campo referenciado por un campo FK
     void refreshAvailableTablesFromStorage();
     void forceRefreshTables(); // Método para forzar refresh desde exterior
+    const QList<RelationshipInfo>& getRelationships() const { return relationships; }
+
+signals:
+    void relationshipCreated(const RelationshipInfo& info);
+    void relationshipsChanged(const QList<RelationshipInfo>& all);
 
 public slots:
     void onTableFieldsChanged(const QString &tableName); // Slot público para actualización en tiempo real

@@ -2478,6 +2478,8 @@ void RelationshipsView::onCreateRelationship()
     RelationshipInfo newRelationship(sourceTable, sourceField, targetTable, targetField, shortType);
     newRelationship.description = relationshipDesc;
     relationships.append(newRelationship);
+    emit relationshipCreated(newRelationship);
+    emit relationshipsChanged(relationships);
     
     qDebug() << "DEBUG[CREAR RELACIÓN]: ✅ Relación completa guardada:";
     qDebug() << "  - Source:" << sourceTable << "." << sourceField;

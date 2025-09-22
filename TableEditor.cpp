@@ -406,8 +406,9 @@ void TableEditor::updateTableList()
         "color: #9CA3AF;"
         "}"
         );
+    searchBox->setClearButtonEnabled(true);
+    searchHeader->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
-    searchBox->setClearButtonEnabled(true); // útil
     // Botón de lupa a la derecha
     searchBtn = new QToolButton(searchHeader);
     searchBtn->setText(QString::fromUtf8("🔎"));
@@ -460,10 +461,11 @@ void TableEditor::updateTableList()
         "color: #1D4ED8;"
         "}"
         );
+    tableTree->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     tableListLayout->addWidget(tableTree);
 
-    // === Poblar con tablas existentes (mismo estilo que las nuevas) ===
+    // === Poblar con tablas existentes ===
     if (m_mainWindow && m_mainWindow->catalog()) {
         auto metas = m_mainWindow->catalog()->getAllTables();
 
@@ -476,39 +478,36 @@ void TableEditor::updateTableList()
             const QString name = QString::fromLatin1(tm.name).trimmed();
             if (name.isEmpty()) continue;
 
-            // 1) item "dummy" del árbol
             auto *row = new QTreeWidgetItem(tableTree);
-            row->setSizeHint(0, QSize(0, 36)); // altura igual a tu widget
+            row->setSizeHint(0, QSize(0, 36));
 
-            // 2) widget visual de la fila (mismo que usás al crear una tabla)
             auto *w = new TableItemWidget(name, tableTree);
             tableTree->setItemWidget(row, 0, w);
 
-            // 3) conexiones: abrir tabla al click, menú de opciones, etc.
             connect(w, &TableItemWidget::clicked, this, [this](const QString& tname){
                 showTableView(tname);
             });
             connect(w, &TableItemWidget::optionsClicked, this,
                     [this](const QString& tname, const QPoint& gp){
-                        // Reutiliza tu menú contextual existente
-                        QPoint localPos = tableTree->viewport()->mapFromGlobal(gp); // de global -> viewport
+                        QPoint localPos = tableTree->viewport()->mapFromGlobal(gp);
                         showTableContextMenu(localPos);
                     });
-
-            // (opcional) guardar punteros si llevás un mapa nombre->widget
-            // tableItemWidgets[name] = w;
         }
 
         tableTree->sortItems(0, Qt::AscendingOrder);
     }
 
-    // Connect context menu for this new tableTree instance
+    // Conexiones
     connect(tableTree, &QTreeWidget::customContextMenuRequested,
             this, &TableEditor::showTableContextMenu);
     connect(searchBtn,  &QToolButton::clicked, this, &TableEditor::performTableSearch);
     connect(searchBox,  &QLineEdit::returnPressed, this, &TableEditor::performTableSearch);
 
-    leftPanelLayout->addWidget(tableListSection);
+    // ⚡ Aquí el truco: insertarlo arriba en el panel, no al final
+    leftPanelLayout->insertWidget(1, tableListSection);
+
+    // Para que el contenedor crezca bien
+    tableListSection->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 }
 
 void TableEditor::performTableSearch()
@@ -556,7 +555,6 @@ void TableEditor::performTableSearch()
                          QString("No se encontró ninguna tabla con el nombre '%1'.").arg(query),
                          QMessageBox::Information);
 }
-
 
 void TableEditor::createRightPanel()
 {
@@ -825,7 +823,7 @@ void TableEditor::updateTheme(bool isDark)
 void TableEditor::setRelationshipsView(RelationshipsView *relationshipsView)
 {
     this->relationshipsView = relationshipsView;
-    
+
     // Configurar RelationshipsView y TableEditor en todos los TableData existentes
     for (auto it = tableDatas.begin(); it != tableDatas.end(); ++it) {
         if (it.value()) {

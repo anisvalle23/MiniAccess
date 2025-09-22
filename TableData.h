@@ -26,12 +26,12 @@ class DataFieldDelegate : public QStyledItemDelegate
     Q_OBJECT
 public:
     explicit DataFieldDelegate(QObject *parent = nullptr) : QStyledItemDelegate(parent) {}
-    
+
     QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option,
-                         const QModelIndex &index) const override;
+                          const QModelIndex &index) const override;
     void setEditorData(QWidget *editor, const QModelIndex &index) const override;
     void setModelData(QWidget *editor, QAbstractItemModel *model,
-                     const QModelIndex &index) const override;
+                      const QModelIndex &index) const override;
     void updateEditorGeometry(QWidget*, const QStyleOptionViewItem&, const QModelIndex&) const override;
     void initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const override;
 };
@@ -54,19 +54,19 @@ public:
 
     // Configurar nombre de tabla
     void setTableName(const QString &tableName);
-    
+
     // Configurar referencia a RelationshipsView para validaciones FK
     void setRelationshipsView(RelationshipsView *relationshipsView);
-    
+
     // Configurar referencia a TableEditor para acceso a datos
     void setTableEditor(TableEditor *tableEditor);
-    
+
     // Obtener datos ingresados
     QList<QStringList> getAllPersonData() const;
-    
+
     // Verificar duplicados en una columna específica
     bool hasColumnDuplicates(int columnIndex) const;
-    
+
     // Limpiar todos los datos
     void clearAllData();
     QString fieldTypeForColumn(int col) const;
@@ -82,17 +82,17 @@ public:
     QString getDateFormatForColumn(int column) const; // Obtener formato de fecha para columna específica
     QString getMillaresDecimalsForColumn(int column) const; // Obtener decimales para columna específica
     QString getTextSizeForColumn(int column) const; // Obtener tamaño de texto para columna específica
-    
+
     // Métodos para filtros y búsqueda
     void createFilterControls();
     void applyFilters();
     void clearFilters();
     void sortByColumn(int column, Qt::SortOrder order);
     void sortDataRowsOnly(int column, bool ascending); // Nueva función para ordenar solo filas con datos
-    
+
     // Actualizar tema
     void updateTheme(bool isDark);
-    
+
     // Acceso a formatos guardados
     QStringList getSavedDateFormats() const { return savedDateFormats; }
     QString formatDateWithTextMonth(const QDate &date, const QString &format) const; // Convertir fecha a formato con mes en texto
@@ -132,7 +132,7 @@ private:
     void applyCurrencyFormats(); // Aplicar formatos de moneda específicos
     void applyNumberFormats(); // Aplicar formatos de números específicos
     void applyDateFormats(); // Aplicar formatos de fecha específicos
-    
+
     // Métodos para validación de llaves foráneas
     bool validateForeignKeyConstraints(int row);
     bool isFieldForeignKey(const QString &fieldName);
@@ -141,14 +141,14 @@ private:
     QString getReferencedField(const QString &fieldName);
     bool valueExistsInReferencedTable(const QString &tableName, const QString &fieldName, const QString &value);
     QStringList getTableData(const QString &tableName, const QString &fieldName);
-    
+
     // UI Components
     QVBoxLayout *mainLayout;
     QWidget *headerWidget;
     QLabel *tableNameLabel;
     QPushButton *designViewBtn;
     QTableWidget *dataTable;
-    
+
     // Data storage
     QStringList savedFieldNames;
     QStringList savedFieldTypes;
@@ -161,13 +161,13 @@ private:
     QString currentTableName;
     int nextPersonId;
     int primaryKeyColumnIndex; // Índice de la columna Primary Key (-1 si no hay)
-    
+
     // Delegates para estilo consistente con TableView
     DataFieldDelegate *dataFieldDelegate;
-    
+
     // Referencia a RelationshipsView para validaciones FK
     RelationshipsView *relationshipsView;
-    
+
     // Referencia a TableEditor para acceso a datos
     TableEditor *tableEditor;
 

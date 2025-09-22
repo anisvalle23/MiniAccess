@@ -38,7 +38,7 @@ QWidget *DataFieldDelegate::createEditor(QWidget *parent,
         dateEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
         dateEdit->setCalendarPopup(true);
-        
+
         // Obtener el formato de fecha para esta columna
         QString dateFormat = "dd-MM-yyyy"; // formato por defecto
         if (owner && index.column() < owner->getSavedDateFormats().size()) {
@@ -48,12 +48,12 @@ QWidget *DataFieldDelegate::createEditor(QWidget *parent,
             } else if (savedFormat == "DD/MM/YY") {
                 dateFormat = "dd/MM/yy";
             } else if (savedFormat == "DD/MESTEXTO/YYYY") {
-                // Para el editor, usamos formato numérico normal, 
+                // Para el editor, usamos formato numérico normal,
                 // la conversión a texto se hace al mostrar
                 dateFormat = "dd/MM/yyyy";
             }
         }
-        
+
         dateEdit->setDisplayFormat(dateFormat);
         dateEdit->setDate(QDate::currentDate());
         dateEdit->setMinimumDate(QDate(1900,1,1));
@@ -227,11 +227,11 @@ void DataFieldDelegate::setEditorData(QWidget *editor, const QModelIndex &index)
 
     if (auto *line = qobject_cast<QLineEdit*>(editor)) {
         QString currentText = index.model()->data(index, Qt::EditRole).toString();
-        
+
         // Si es un campo de moneda, extraer solo el número para edición
         const TableData *owner = qobject_cast<const TableData*>(this->parent());
         const QString type = owner ? owner->fieldTypeForColumn(index.column()) : QString();
-        
+
         if (type == "moneda" && !currentText.isEmpty()) {
             // Extraer solo el número del texto formateado (quitar prefijos como "Lps ", "$", etc.)
             QString cleanText = currentText;
@@ -251,7 +251,7 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
     if (auto *dateEdit = qobject_cast<QDateEdit*>(editor)) {
         const QDate d = dateEdit->date();
         const TableData *owner = qobject_cast<const TableData*>(this->parent());
-        
+
         // Usar el formato específico de la columna
         QString formattedDate;
         if (owner && index.column() < owner->getSavedDateFormats().size()) {
@@ -260,7 +260,7 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
         } else {
             formattedDate = d.toString("dd-MM-yyyy");
         }
-        
+
         model->setData(index, formattedDate, Qt::EditRole);
         if (owner)
             const_cast<TableData*>(owner)->clearCellError(index.row(), index.column());
@@ -288,7 +288,7 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
         };
 
         if (type == "Entero" || type == "Byte") {
-            bool ok=false; 
+            bool ok=false;
             int intVal = newText.toInt(&ok);
             if (!ok) return softReject("Este campo es Entero.");
             if (type == "Byte" && (intVal < 0 || intVal > 255)) {
@@ -320,7 +320,7 @@ void DataFieldDelegate::setModelData(QWidget *editor, QAbstractItemModel *model,
                                         ? QString("dd%1MM%1yyyy").arg(sep)
                                         : QString("dd%1MM%1yy").arg(sep);
                 const QDate d = QDate::fromString(newText, fmt);
-                
+
                 // Aplicar el formato específico de esta columna
                 if (owner && index.column() < owner->getSavedDateFormats().size()) {
                     QString savedFormat = owner->getSavedDateFormats().at(index.column());
@@ -358,10 +358,10 @@ TableData::TableData(QWidget *parent) : QWidget(parent)
     primaryKeyColumnIndex = -1; // No Primary Key por defecto
     relationshipsView = nullptr; // Inicializar como nullptr
     tableEditor = nullptr; // Inicializar como nullptr
-    
+
     // Crear delegate para estilo consistente
     dataFieldDelegate = new DataFieldDelegate(this);
-    
+
     createUI();
     setupTableForPersonData();
 
@@ -387,41 +387,41 @@ void TableData::createUI()
     mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(0);
-    
+
     // Crear header
     createHeader();
-    
+
     // Crear controles de filtro
     createFilterControls();
-    
+
     // Crear área de tabla con contenido
     QWidget *contentWidget = new QWidget();
     QVBoxLayout *contentLayout = new QVBoxLayout(contentWidget);
     contentLayout->setContentsMargins(10, 10, 10, 10);
     contentLayout->setSpacing(10);
-    
+
     // Crear tabla de datos
     dataTable = new QTableWidget();
     dataTable->setStyleSheet(getTableStyle());
-    
+
     // Configurar comportamiento de la tabla (igual que TableView)
     dataTable->setSelectionBehavior(QAbstractItemView::SelectRows); // Cambiar a filas completas como TableView
     dataTable->setSelectionMode(QAbstractItemView::SingleSelection);
     dataTable->setAlternatingRowColors(true);
-    
+
     // Configurar altura de filas (igual que TableView)
     dataTable->verticalHeader()->setDefaultSectionSize(50); // Filas más altas para mejor visibilidad del texto
     dataTable->verticalHeader()->setMinimumSectionSize(50);
     dataTable->verticalHeader()->show(); // Mostrar números de fila para mejor organización
-    
+
     // Mejorar el comportamiento de edición
-    dataTable->setEditTriggers(QAbstractItemView::DoubleClicked | 
-                              QAbstractItemView::SelectedClicked | 
-                              QAbstractItemView::AnyKeyPressed);
-    
+    dataTable->setEditTriggers(QAbstractItemView::DoubleClicked |
+                               QAbstractItemView::SelectedClicked |
+                               QAbstractItemView::AnyKeyPressed);
+
     // Conectar señales
     connect(dataTable, &QTableWidget::itemChanged, this, &TableData::onPersonDataChanged);
-    
+
     contentLayout->addWidget(dataTable);
     mainLayout->addWidget(contentWidget);
 }
@@ -435,29 +435,29 @@ void TableData::createHeader()
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #f8fafc, stop:1 #e2e8f0);"
         "border-bottom: 2px solid #cbd5e1;"
         "}"
-    );
-    
+        );
+
     QHBoxLayout *headerLayout = new QHBoxLayout(headerWidget);
     headerLayout->setContentsMargins(30, 15, 25, 15);
     headerLayout->setSpacing(20);
-    
+
     // Título de la tabla (solo el nombre)
     tableNameLabel = new QLabel(currentTableName);
     tableNameLabel->setFont(QFont("Inter", 18, QFont::Bold));
     tableNameLabel->setStyleSheet(
         "QLabel { "
-            "color: #1e293b; "
-            "padding: 2px 0px; "
-            "min-width: 150px; "
+        "color: #1e293b; "
+        "padding: 2px 0px; "
+        "min-width: 150px; "
         "}"
-    );
+        );
     tableNameLabel->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
     tableNameLabel->setWordWrap(false);
     tableNameLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    
+
     headerLayout->addWidget(tableNameLabel);
     headerLayout->addStretch();
-    
+
     // Contenedor para los botones de vista
     QWidget *buttonContainer = new QWidget();
     buttonContainer->setStyleSheet(
@@ -466,11 +466,11 @@ void TableData::createHeader()
         "border: 1px solid #cbd5e1;"
         "border-radius: 8px;"
         "}"
-    );
+        );
     QHBoxLayout *buttonLayout = new QHBoxLayout(buttonContainer);
     buttonLayout->setContentsMargins(0, 0, 0, 0);
     buttonLayout->setSpacing(0);
-    
+
     // Botón Vista Diseño (inactivo)
     designViewBtn = new QPushButton("🎨 Vista Diseño");
     designViewBtn->setFixedSize(135, 38);
@@ -496,8 +496,8 @@ void TableData::createHeader()
         "QPushButton:pressed {"
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #d1d5db, stop:1 #9ca3af);"
         "}"
-    );
-    
+        );
+
     // Botón Vista Datos (activo)
     QPushButton *dataViewBtn = new QPushButton("📊 Vista Datos");
     dataViewBtn->setFixedSize(135, 38);
@@ -519,31 +519,31 @@ void TableData::createHeader()
         "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #2563eb, stop:1 #1d4ed8);"
         "box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);"
         "}"
-    );
-    
+        );
+
     // Agregar botones al contenedor
     buttonLayout->addWidget(designViewBtn);
     buttonLayout->addWidget(dataViewBtn);
-    
+
     // Conectar señales para ambos botones
     connect(designViewBtn, &QPushButton::clicked, this, &TableData::onDesignViewClicked);
-    
+
     headerLayout->addWidget(buttonContainer);
-    
+
     // Agregar espacio entre botones de vista y botones de fila
     headerLayout->addSpacing(30);
-    
+
     // Contenedor para botones de agregar/eliminar fila
     QWidget *rowButtonContainer = new QWidget();
     rowButtonContainer->setStyleSheet(
         "QWidget {"
         "background: transparent;"
         "}"
-    );
+        );
     QHBoxLayout *rowButtonLayout = new QHBoxLayout(rowButtonContainer);
     rowButtonLayout->setContentsMargins(0, 0, 0, 0);
     rowButtonLayout->setSpacing(10);
-    
+
     // Botón Agregar Fila
     QPushButton *addRowBtn = new QPushButton("➕ Agregar Fila");
     addRowBtn->setFixedSize(130, 38);
@@ -570,9 +570,9 @@ void TableData::createHeader()
         "transform: translateY(1px);"
         "box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);"
         "}"
-    );
+        );
     addRowBtn->setToolTip("Agregar una nueva fila después de la seleccionada");
-    
+
     // Botón Eliminar Fila
     QPushButton *deleteRowBtn = new QPushButton("🗑️ Eliminar Fila");
     deleteRowBtn->setFixedSize(130, 38);
@@ -599,19 +599,19 @@ void TableData::createHeader()
         "transform: translateY(1px);"
         "box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);"
         "}"
-    );
+        );
     deleteRowBtn->setToolTip("Eliminar la fila seleccionada");
-    
+
     // Agregar botones al contenedor
     rowButtonLayout->addWidget(addRowBtn);
     rowButtonLayout->addWidget(deleteRowBtn);
-    
+
     // Conectar señales
     connect(addRowBtn, &QPushButton::clicked, this, &TableData::addNewRow);
     connect(deleteRowBtn, &QPushButton::clicked, this, &TableData::deleteSelectedRow);
-    
+
     headerLayout->addWidget(rowButtonContainer);
-    
+
     mainLayout->addWidget(headerWidget);
 }
 
@@ -625,17 +625,17 @@ void TableData::createFilterControls()
         "background-color: #f8f9fa;"
         "border-bottom: 1px solid #dee2e6;"
         "}"
-    );
-    
+        );
+
     QHBoxLayout *filterLayout = new QHBoxLayout(filterWidget);
     filterLayout->setContentsMargins(20, 8, 20, 8);
     filterLayout->setSpacing(15);
-    
+
     // Etiqueta de búsqueda
     QLabel *searchLabel = new QLabel("🔍 Buscar:");
     searchLabel->setFont(QFont("Inter", 12, QFont::Medium));
     searchLabel->setStyleSheet("QLabel { color: #374151; }");
-    
+
     // Campo de búsqueda
     searchField = new QLineEdit();
     searchField->setPlaceholderText("Escribe para filtrar datos...");
@@ -652,13 +652,13 @@ void TableData::createFilterControls()
         "border-color: #3b82f6;"
         "outline: none;"
         "}"
-    );
-    
+        );
+
     // Filtro numérico
     QLabel *numberLabel = new QLabel("🔢 Números:");
     numberLabel->setFont(QFont("Inter", 12, QFont::Medium));
     numberLabel->setStyleSheet("QLabel { color: #374151; }");
-    
+
     numberCondition = new QComboBox();
     numberCondition->addItems({"Sin filtro", "Mayor que", "Menor que", "Igual a", "Entre"});
     numberCondition->setMaximumWidth(100);
@@ -670,24 +670,24 @@ void TableData::createFilterControls()
         "padding: 4px 8px;"
         "font-size: 11px;"
         "}"
-    );
-    
+        );
+
     numberValue1 = new QLineEdit();
     numberValue1->setPlaceholderText("Valor");
     numberValue1->setMaximumWidth(70);
     numberValue1->setStyleSheet(searchField->styleSheet());
-    
+
     numberValue2 = new QLineEdit();
     numberValue2->setPlaceholderText("Hasta");
     numberValue2->setMaximumWidth(70);
     numberValue2->setStyleSheet(searchField->styleSheet());
     numberValue2->setVisible(false); // Solo visible para "Entre"
-    
+
     // Etiqueta de ordenamiento
     QLabel *sortLabel = new QLabel("📊 Ordenar por:");
     sortLabel->setFont(QFont("Inter", 12, QFont::Medium));
     sortLabel->setStyleSheet("QLabel { color: #374151; }");
-    
+
     // Combo de columnas
     sortColumnCombo = new QComboBox();
     sortColumnCombo->setMaximumWidth(120);
@@ -699,8 +699,8 @@ void TableData::createFilterControls()
         "padding: 4px 8px;"
         "font-size: 12px;"
         "}"
-    );
-    
+        );
+
     // Combo de orden
     sortOrderCombo = new QComboBox();
     sortOrderCombo->addItems({"↑ Ascendente", "↓ Descendente"});
@@ -713,8 +713,8 @@ void TableData::createFilterControls()
         "padding: 4px 8px;"
         "font-size: 12px;"
         "}"
-    );
-    
+        );
+
     // Botón limpiar filtros
     clearFiltersBtn = new QPushButton("🗑️ Limpiar");
     clearFiltersBtn->setMaximumWidth(80);
@@ -734,8 +734,8 @@ void TableData::createFilterControls()
         "QPushButton:pressed {"
         "background-color: #374151;"
         "}"
-    );
-    
+        );
+
     // Agregar widgets al layout
     filterLayout->addWidget(searchLabel);
     filterLayout->addWidget(searchField);
@@ -751,7 +751,7 @@ void TableData::createFilterControls()
     filterLayout->addSpacing(10);
     filterLayout->addWidget(clearFiltersBtn);
     filterLayout->addStretch();
-    
+
     // Conectar señales
     connect(searchField, &QLineEdit::textChanged, this, &TableData::applyFilters);
     connect(numberCondition, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
@@ -763,7 +763,7 @@ void TableData::createFilterControls()
     connect(sortColumnCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &TableData::applyFilters);
     connect(sortOrderCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &TableData::applyFilters);
     connect(clearFiltersBtn, &QPushButton::clicked, this, &TableData::clearFilters);
-    
+
     mainLayout->addWidget(filterWidget);
 }
 
@@ -772,7 +772,7 @@ void TableData::setupTableForPersonData()
     // Configuración para entrada de datos reales - empezar solo con Id
     QStringList defaultFields = {"Id"};
     QStringList defaultTypes = {"Entero"};
-    
+
     setupDataView(defaultFields, defaultTypes);
 }
 
@@ -882,7 +882,7 @@ void TableData::configureColumnWidths()
     for (int col = 0; col < dataTable->columnCount(); col++) {
         if (col < savedFieldNames.size()) {
             QString fieldName = savedFieldNames.at(col).toLower();
-            
+
             if (fieldName == "id") {
                 dataTable->setColumnWidth(col, 80);
             } else if (fieldName.contains("nombre") || fieldName.contains("name")) {
@@ -909,14 +909,14 @@ void TableData::setupDataViewWithFormats(const QStringList &fieldNames, const QS
     qDebug() << "DEBUG: fieldTypes:" << fieldTypes;
     qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
     qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
-    
+
     // Guardar los formatos de moneda
     savedCurrencyFormats = currencyFormats;
     qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
-    
+
     // Llamar al método base para hacer la configuración normal
     setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
-    
+
     // Aplicar formatos específicos de moneda después de la configuración básica
     applyCurrencyFormats();
 }
@@ -924,22 +924,22 @@ void TableData::setupDataViewWithFormats(const QStringList &fieldNames, const QS
 void TableData::applyCurrencyFormats()
 {
     qDebug() << "DEBUG: Aplicando formatos de moneda específicos";
-    
+
     if (savedCurrencyFormats.isEmpty() || savedFieldTypes.isEmpty()) {
         qDebug() << "DEBUG: No hay formatos de moneda o tipos de campo guardados";
         return;
     }
-    
+
     for (int col = 0; col < savedFieldTypes.size() && col < savedCurrencyFormats.size(); ++col) {
         if (savedFieldTypes.at(col) == "moneda") {
             QString format = savedCurrencyFormats.at(col);
             qDebug() << "DEBUG: Aplicando formato de moneda" << format << "a columna" << col;
-            
+
             dataTable->blockSignals(true);
             for (int row = 0; row < dataTable->rowCount(); ++row) {
                 QTableWidgetItem *item = dataTable->item(row, col);
                 if (!item) continue;
-                
+
                 // Saltar fila de ejemplo
                 QTableWidgetItem *firstItem = dataTable->item(row, 0);
                 if (firstItem && firstItem->toolTip().contains("Ejemplo")) continue;
@@ -955,7 +955,7 @@ void TableData::applyCurrencyFormats()
             dataTable->blockSignals(false);
         }
     }
-    
+
     // Forzar actualización visual de la tabla
     qDebug() << "DEBUG: Forzando actualización visual de la tabla";
     dataTable->viewport()->update();
@@ -965,55 +965,55 @@ void TableData::applyCurrencyFormats()
 QString TableData::formatDateWithTextMonth(const QDate &date, const QString &format) const
 {
     if (!date.isValid()) return "";
-    
+
     // Arreglo con nombres de meses en español
     QStringList monthNames = {
         "", "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
         "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
     };
-    
+
     if (format == "DD/MESTEXTO/YYYY") {
         int day = date.day();
         int month = date.month();
         int year = date.year();
-        
+
         if (month >= 1 && month <= 12) {
             return QString("%1/%2/%3")
-                .arg(day, 2, 10, QChar('0'))  // DD con padding de ceros
+            .arg(day, 2, 10, QChar('0'))  // DD con padding de ceros
                 .arg(monthNames[month])        // Mes en texto
                 .arg(year);                    // YYYY
         }
     }
-    
+
     // Para otros formatos, usar el formato Qt estándar
     if (format == "DD-MM-YY") {
         return date.toString("dd-MM-yy");
     } else if (format == "DD/MM/YY") {
         return date.toString("dd/MM/yy");
     }
-    
+
     return date.toString("dd-MM-yyyy"); // Formato por defecto
 }
 
 void TableData::applyDateFormats()
 {
     qDebug() << "DEBUG: Aplicando formatos de fecha específicos";
-    
+
     if (savedDateFormats.isEmpty() || savedFieldTypes.isEmpty()) {
         qDebug() << "DEBUG: No hay formatos de fecha o tipos de campo guardados";
         return;
     }
-    
+
     for (int col = 0; col < savedFieldTypes.size() && col < savedDateFormats.size(); ++col) {
         if (savedFieldTypes.at(col) == "fecha") {
             QString format = savedDateFormats.at(col);
             qDebug() << "DEBUG: Aplicando formato de fecha" << format << "a columna" << col;
-            
+
             dataTable->blockSignals(true);
             for (int row = 0; row < dataTable->rowCount(); ++row) {
                 QTableWidgetItem *item = dataTable->item(row, col);
                 if (!item) continue;
-                
+
                 // Saltar fila de ejemplo
                 QTableWidgetItem *firstItem = dataTable->item(row, 0);
                 if (firstItem && firstItem->toolTip().contains("Ejemplo")) continue;
@@ -1031,7 +1031,7 @@ void TableData::applyDateFormats()
                     if (!date.isValid()) {
                         date = QDate::fromString(text, "dd/MM/yy");
                     }
-                    
+
                     if (date.isValid()) {
                         QString formattedDate = formatDateWithTextMonth(date, format);
                         item->setText(formattedDate);
@@ -1042,7 +1042,7 @@ void TableData::applyDateFormats()
             dataTable->blockSignals(false);
         }
     }
-    
+
     // Forzar actualización visual de la tabla
     qDebug() << "DEBUG: Forzando actualización visual de fechas";
     dataTable->viewport()->update();
@@ -1057,16 +1057,16 @@ void TableData::setupDataViewWithFormatsAndDecimals(const QStringList &fieldName
     qDebug() << "DEBUG: currencyFormats:" << currencyFormats;
     qDebug() << "DEBUG: millaresDecimals:" << millaresDecimals;
     qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
-    
+
     // Guardar los formatos de moneda y decimales
     savedCurrencyFormats = currencyFormats;
     savedMillaresDecimals = millaresDecimals;
     qDebug() << "DEBUG: Formatos guardados en savedCurrencyFormats:" << savedCurrencyFormats;
     qDebug() << "DEBUG: Decimales guardados en savedMillaresDecimals:" << savedMillaresDecimals;
-    
+
     // Llamar al método base para hacer la configuración normal
     setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
-    
+
     // Aplicar formatos específicos de moneda después de la configuración básica
     applyCurrencyFormats();
 }
@@ -1080,16 +1080,16 @@ void TableData::setupDataViewWithTextSizes(const QStringList &fieldNames, const 
     qDebug() << "DEBUG: millaresDecimals:" << millaresDecimals;
     qDebug() << "DEBUG: textSizes:" << textSizes;
     qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
-    
+
     // Guardar los formatos de moneda, decimales y tamaños de texto
     savedCurrencyFormats = currencyFormats;
     savedMillaresDecimals = millaresDecimals;
     savedTextSizes = textSizes;
     qDebug() << "DEBUG: Tamaños guardados en savedTextSizes:" << savedTextSizes;
-    
+
     // Llamar al método base para hacer la configuración normal
     setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
-    
+
     // Aplicar formatos específicos de moneda después de la configuración básica
     applyCurrencyFormats();
 }
@@ -1105,7 +1105,7 @@ void TableData::setupDataViewWithUniqueFields(const QStringList &fieldNames, con
     qDebug() << "DEBUG: numberTypes:" << numberTypes;
     qDebug() << "DEBUG: dateFormats:" << dateFormats;    qDebug() << "DEBUG: uniqueColumns:" << uniqueColumns;
     qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
-    
+
     // Guardar los formatos de moneda, decimales, tamaños de texto, formatos de fecha y campos únicos
     savedCurrencyFormats = currencyFormats;
     savedMillaresDecimals = millaresDecimals;
@@ -1116,13 +1116,13 @@ void TableData::setupDataViewWithUniqueFields(const QStringList &fieldNames, con
     qDebug() << "DEBUG: Tamaños guardados en savedTextSizes:" << savedTextSizes;
     qDebug() << "DEBUG: Formatos de fecha guardados en savedDateFormats:" << savedDateFormats;
     qDebug() << "DEBUG: Campos únicos guardados en savedUniqueColumns:" << savedUniqueColumns;
-    
+
     // Llamar al método base para hacer la configuración normal
     setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
-    
+
     // Aplicar formatos específicos de moneda después de la configuración básica
     applyCurrencyFormats();
-    
+
     // Aplicar formatos específicos de fecha después de la configuración básica
     applyDateFormats();
 }
@@ -1131,20 +1131,20 @@ void TableData::addPersonRow(const QStringList &personData)
 {
     int newRow = dataTable->rowCount();
     dataTable->setRowCount(newRow + 1);
-    
+
     // Crear todas las celdas de la nueva fila - todas editables
     for (int col = 0; col < dataTable->columnCount(); col++) {
         QTableWidgetItem *item = new QTableWidgetItem("");
-        
+
         // Configurar fuente más grande para mejor legibilidad
         QFont itemFont = item->font();
         itemFont.setPointSize(16); // Fuente más grande para consistencia con el editor
         item->setFont(itemFont);
-        
+
         // Todas las celdas son editables
         item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
         item->setBackground(QBrush(QColor(255, 255, 255))); // Fondo blanco
-        
+
         dataTable->setItem(newRow, col, item);
     }
 }
@@ -1167,7 +1167,7 @@ void TableData::removeEmptyRows()
                 break;
             }
         }
-        
+
         if (isEmpty && dataTable->rowCount() > 1) {
             dataTable->removeRow(row);
         }
@@ -1177,18 +1177,18 @@ void TableData::removeEmptyRows()
 void TableData::onPersonDataChanged(QTableWidgetItem *item)
 {
     if (!item) return;
-    
+
     // Ignorar cambios en la fila de ejemplo
     if (item->toolTip().contains("Ejemplo")) {
         qDebug() << "DEBUG: Ignoring changes to example row";
         return;
     }
-    
+
     int row = item->row();
     int col = item->column();
-    
+
     qDebug() << "DEBUG: Datos cambiados en fila:" << row << "columna:" << col;
-    
+
     // Si el usuario empieza a escribir, eliminar la fila de ejemplo
     if (!item->text().trimmed().isEmpty()) {
         // Buscar y eliminar la fila de ejemplo
@@ -1203,13 +1203,13 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
             }
         }
     }
-    
+
     // Verificar que los índices son válidos antes de acceder a savedFieldTypes
     if (col >= savedFieldTypes.size() || col >= savedFieldNames.size()) {
         qDebug() << "DEBUG: Column index" << col << "out of range. savedFieldTypes size:" << savedFieldTypes.size() << "savedFieldNames size:" << savedFieldNames.size();
         return;
     }
-    
+
     // *** VALIDACIÓN DE PRIMARY KEY ÚNICO ***
     if (primaryKeyColumnIndex >= 0 && col == primaryKeyColumnIndex) {
         QString newValue = item->text().trimmed();
@@ -1217,7 +1217,7 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
             // Buscar si ya existe este valor en otra fila de la misma columna
             for (int r = 0; r < dataTable->rowCount(); r++) {
                 if (r == row) continue; // Saltar la fila actual
-                
+
                 QTableWidgetItem *otherItem = dataTable->item(r, col);
                 if (otherItem && !otherItem->toolTip().contains("Ejemplo")) {
                     QString otherValue = otherItem->text().trimmed();
@@ -1229,9 +1229,9 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
                             msgBox.setWindowTitle("Primary Key duplicado");
                             msgBox.setIcon(QMessageBox::Warning);
                             msgBox.setText(QString("El valor '%1' ya existe en el campo Primary Key.\n"
-                                                  "Los campos Primary Key deben ser únicos y no se pueden repetir.\n\n"
-                                                  "Por favor, ingrese un valor diferente.")
-                                                  .arg(newValue));
+                                                   "Los campos Primary Key deben ser únicos y no se pueden repetir.\n\n"
+                                                   "Por favor, ingrese un valor diferente.")
+                                               .arg(newValue));
                             msgBox.setStandardButtons(QMessageBox::Ok);
                             msgBox.setStyleSheet(
                                 "QMessageBox {"
@@ -1258,15 +1258,15 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
                                 "QPushButton:hover {"
                                 "background-color: #dc2626;"
                                 "}"
-                            );
+                                );
                             msgBox.exec();
                         });
-                        
+
                         // Bloquear señales y restaurar valor anterior
                         dataTable->blockSignals(true);
                         item->setText(""); // Limpiar el campo
                         dataTable->blockSignals(false);
-                        
+
                         // Enfocar el campo para facilitar corrección usando QTimer también
                         QTimer::singleShot(100, this, [this, item]() {
                             dataTable->setCurrentItem(item);
@@ -1279,7 +1279,7 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
             qDebug() << "DEBUG: Primary Key value '" << newValue << "' is unique - OK";
         }
     }
-    
+
     // *** VALIDACIÓN DE CAMPOS ÚNICOS ***
     if (savedUniqueColumns.contains(col)) {
         QString newValue = item->text().trimmed();
@@ -1287,23 +1287,23 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
             // Buscar si ya existe este valor en otra fila de la misma columna
             for (int r = 0; r < dataTable->rowCount(); r++) {
                 if (r == row) continue; // Saltar la fila actual
-                
+
                 QTableWidgetItem *otherItem = dataTable->item(r, col);
                 if (otherItem && !otherItem->toolTip().contains("Ejemplo")) {
                     QString otherValue = otherItem->text().trimmed();
                     if (otherValue == newValue) {
                         // ¡Valor duplicado encontrado en campo único!
                         QString fieldName = (col < savedFieldNames.size()) ? savedFieldNames.at(col) : QString("Campo %1").arg(col + 1);
-                        
+
                         // Usar QTimer::singleShot para mover el mensaje al main thread
                         QTimer::singleShot(0, this, [this, newValue, fieldName, item]() {
                             QMessageBox msgBox(this);
                             msgBox.setWindowTitle("Campo Único duplicado");
                             msgBox.setIcon(QMessageBox::Warning);
                             msgBox.setText(QString("El valor '%1' ya existe en el campo '%2'.\n"
-                                                  "Los campos marcados como Únicos no pueden tener valores repetidos.\n\n"
-                                                  "Por favor, ingrese un valor diferente.")
-                                                  .arg(newValue, fieldName));
+                                                   "Los campos marcados como Únicos no pueden tener valores repetidos.\n\n"
+                                                   "Por favor, ingrese un valor diferente.")
+                                               .arg(newValue, fieldName));
                             msgBox.setStandardButtons(QMessageBox::Ok);
                             msgBox.setStyleSheet(
                                 "QMessageBox {"
@@ -1330,15 +1330,15 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
                                 "QPushButton:hover {"
                                 "background-color: #d97706;"
                                 "}"
-                            );
+                                );
                             msgBox.exec();
                         });
-                        
+
                         // Bloquear señales y restaurar valor anterior
                         dataTable->blockSignals(true);
                         item->setText(""); // Limpiar el campo
                         dataTable->blockSignals(false);
-                        
+
                         // Enfocar el campo para facilitar corrección usando QTimer también
                         QTimer::singleShot(100, this, [this, item]() {
                             dataTable->setCurrentItem(item);
@@ -1351,33 +1351,33 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
             qDebug() << "DEBUG: Unique field value '" << newValue << "' in column" << col << "is unique - OK";
         }
     }
-    
+
     // *** VALIDACIÓN DE LLAVES FORÁNEAS ***
     if (col < savedFieldNames.size()) {
         QString fieldName = savedFieldNames.at(col);
         QString newValue = item->text().trimmed();
-        
+
         qDebug() << "DEBUG: Validando campo" << fieldName << "con valor" << newValue;
-        
+
         if (isFieldForeignKey(fieldName)) {
             qDebug() << "DEBUG: Campo" << fieldName << "identificado como FK";
-            
+
             if (!newValue.isEmpty()) {
                 // Verificar si hay relación establecida
                 if (!hasEstablishedRelationship(fieldName)) {
                     qDebug() << "DEBUG: Campo FK" << fieldName << "no tiene relación establecida";
-                    
+
                     // Usar QTimer::singleShot para mostrar mensaje de "sin conexión"
                     QTimer::singleShot(0, this, [this, fieldName, newValue, item]() {
                         QMessageBox msgBox(this);
                         msgBox.setWindowTitle("Campo sin Conexión");
                         msgBox.setIcon(QMessageBox::Warning);
                         msgBox.setText(QString("El campo '%1' está marcado como llave foránea pero no tiene conexión a ninguna tabla.\n\n"
-                                              "Para establecer una relación:\n"
-                                              "1. Ve a la vista de Relaciones\n"
-                                              "2. Crea una conexión entre esta tabla y la tabla referenciada\n\n"
-                                              "O elimina la marca de llave foránea si no necesitas validación.")
-                                              .arg(fieldName));
+                                               "Para establecer una relación:\n"
+                                               "1. Ve a la vista de Relaciones\n"
+                                               "2. Crea una conexión entre esta tabla y la tabla referenciada\n\n"
+                                               "O elimina la marca de llave foránea si no necesitas validación.")
+                                           .arg(fieldName));
                         msgBox.setStandardButtons(QMessageBox::Ok);
                         msgBox.setStyleSheet(
                             "QMessageBox {"
@@ -1404,15 +1404,15 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
                             "QPushButton:hover {"
                             "background-color: #d97706;"
                             "}"
-                        );
+                            );
                         msgBox.exec();
                     });
-                    
+
                     // Bloquear señales y restaurar valor anterior
                     dataTable->blockSignals(true);
                     item->setText(""); // Limpiar el campo
                     dataTable->blockSignals(false);
-                    
+
                     // Enfocar el campo para facilitar corrección
                     QTimer::singleShot(100, this, [this, item]() {
                         dataTable->setCurrentItem(item);
@@ -1420,31 +1420,31 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
                     });
                     return; // Salir sin procesar más
                 }
-                
+
                 QString referencedTable = getReferencedTable(fieldName);
                 QString referencedField = getReferencedField(fieldName);
-                
+
                 qDebug() << "DEBUG: FK referencia" << referencedTable << "." << referencedField;
-                
+
                 if (!valueExistsInReferencedTable(referencedTable, referencedField, newValue)) {
                     qDebug() << "DEBUG: Valor" << newValue << "NO existe en" << referencedTable << "." << referencedField;
-                    
+
                     // Obtener valores válidos para mostrar al usuario
                     QStringList validValues = getTableData(referencedTable, referencedField);
-                    QString validValuesText = validValues.isEmpty() ? 
-                        "No hay datos disponibles en la tabla referenciada." :
-                        QString("Valores válidos: %1").arg(validValues.join(", "));
-                    
+                    QString validValuesText = validValues.isEmpty() ?
+                                                  "No hay datos disponibles en la tabla referenciada." :
+                                                  QString("Valores válidos: %1").arg(validValues.join(", "));
+
                     // Usar QTimer::singleShot para mover el mensaje al main thread
                     QTimer::singleShot(0, this, [this, newValue, referencedTable, referencedField, fieldName, validValuesText, item]() {
                         QMessageBox msgBox(this);
                         msgBox.setWindowTitle("Error de Llave Foránea");
                         msgBox.setIcon(QMessageBox::Critical);
                         msgBox.setText(QString("El valor '%1' no existe en %2.%3\n\n"
-                                              "El campo '%4' es una llave foránea y debe hacer referencia a un valor válido.\n\n"
-                                              "%5\n\n"
-                                              "Por favor, ingrese un valor que exista en la tabla referenciada.")
-                                              .arg(newValue, referencedTable, referencedField, fieldName, validValuesText));
+                                               "El campo '%4' es una llave foránea y debe hacer referencia a un valor válido.\n\n"
+                                               "%5\n\n"
+                                               "Por favor, ingrese un valor que exista en la tabla referenciada.")
+                                           .arg(newValue, referencedTable, referencedField, fieldName, validValuesText));
                         msgBox.setStandardButtons(QMessageBox::Ok);
                         msgBox.setStyleSheet(
                             "QMessageBox {"
@@ -1471,15 +1471,15 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
                             "QPushButton:hover {"
                             "background-color: #b91c1c;"
                             "}"
-                        );
+                            );
                         msgBox.exec();
                     });
-                    
+
                     // Bloquear señales y restaurar valor anterior
                     dataTable->blockSignals(true);
                     item->setText(""); // Limpiar el campo
                     dataTable->blockSignals(false);
-                    
+
                     // Enfocar el campo para facilitar corrección
                     QTimer::singleShot(100, this, [this, item]() {
                         dataTable->setCurrentItem(item);
@@ -1494,21 +1494,21 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
             qDebug() << "DEBUG: Campo" << fieldName << "NO es FK - sin validación";
         }
     }
-    
+
     // Aplicar formato automático para campos de moneda con formato dinámico
     if (col < savedFieldTypes.size() && col < savedFieldNames.size() && savedFieldTypes.at(col) == "moneda") {
         QString text = item->text().trimmed();
         if (!text.isEmpty()) {
             // Verificar si el texto ya tiene formato de moneda
-            bool alreadyFormatted = text.startsWith("Lps ") || 
-                                   text.startsWith("$") || 
-                                   text.startsWith("€") ||
-                                   text.contains("Lps") ||
-                                   text.contains("$") ||
-                                   text.contains("€");
-            
+            bool alreadyFormatted = text.startsWith("Lps ") ||
+                                    text.startsWith("$") ||
+                                    text.startsWith("€") ||
+                                    text.contains("Lps") ||
+                                    text.contains("$") ||
+                                    text.contains("€");
+
             qDebug() << "DEBUG: Texto a verificar:" << text << "- Ya formateado:" << alreadyFormatted;
-            
+
             // Obtener el formato correspondiente para esta columna
             QString format = "Lempiras (Lps)"; // Formato por defecto
             if (col < savedCurrencyFormats.size() && !savedCurrencyFormats.at(col).isEmpty()) {
@@ -1517,7 +1517,7 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
             } else {
                 qDebug() << "DEBUG: Usando formato por defecto:" << format;
             }
-            
+
             // Si ya está formateado, verificar si está en el formato correcto
             if (alreadyFormatted) {
                 bool correctFormat = false;
@@ -1528,33 +1528,33 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
                 } else if (format.contains("Euros") || format.contains("€")) {
                     correctFormat = text.startsWith("€");
                 }
-                
+
                 qDebug() << "DEBUG: Formato correcto aplicado:" << correctFormat;
-                
+
                 // Si no está en el formato correcto, reformatear
                 if (!correctFormat) {
                     // Extraer el número y reformatear
                     QString cleanNumber = text;
                     cleanNumber.remove(QRegularExpression("^(Lps|\\$|€)\\s*"));
                     cleanNumber.remove(QRegularExpression("[,\\s]"));
-                    
+
                     qDebug() << "DEBUG: Reformateando de" << text << "a formato" << format << "con número limpio:" << cleanNumber;
-                    
+
                     dataTable->blockSignals(true);
                     QString decimals = savedMillaresDecimals.size() > col ? savedMillaresDecimals.at(col) : "2";
                     QString formattedText = formatCurrencyWithFormatAndDecimals(cleanNumber, format, decimals);
                     item->setText(formattedText);
                     dataTable->blockSignals(false);
-                    
+
                     qDebug() << "DEBUG: Texto reformateado:" << formattedText;
-                    
+
                     // Forzar actualización visual inmediata
                     dataTable->viewport()->update();
                 }
             } else {
                 // Texto sin formato - aplicar formato por primera vez
                 qDebug() << "DEBUG: Aplicando formato por primera vez a:" << text;
-                
+
                 dataTable->blockSignals(true);
                 QString decimals = savedMillaresDecimals.size() > col ? savedMillaresDecimals.at(col) : "2";
                 QString formattedText = formatCurrencyWithFormatAndDecimals(text, format, decimals);
@@ -1563,7 +1563,7 @@ void TableData::onPersonDataChanged(QTableWidgetItem *item)
                     item->setText(formattedText);
                 }
                 dataTable->blockSignals(false);
-                
+
                 // Forzar actualización visual inmediata
                 dataTable->viewport()->update();
             }
@@ -1606,33 +1606,33 @@ void TableData::setTableEditor(TableEditor *tableEditor)
 QList<QStringList> TableData::getAllPersonData() const
 {
     QList<QStringList> allData;
-    
+
     for (int row = 0; row < dataTable->rowCount(); row++) {
         // Ignorar la fila de ejemplo
         QTableWidgetItem *firstItem = dataTable->item(row, 0);
         if (firstItem && firstItem->toolTip().contains("Ejemplo")) {
             continue;
         }
-        
+
         QStringList rowData;
         bool hasData = false;
-        
+
         for (int col = 0; col < dataTable->columnCount(); col++) {
             QTableWidgetItem *item = dataTable->item(row, col);
             QString cellText = item ? item->text().trimmed() : "";
             rowData << cellText;
-            
+
             if (!cellText.isEmpty()) {
                 hasData = true;
             }
         }
-        
+
         // Solo agregar filas que tengan al menos un dato
         if (hasData) {
             allData << rowData;
         }
     }
-    
+
     return allData;
 }
 
@@ -1640,10 +1640,10 @@ void TableData::clearAllData()
 {
     dataTable->clearContents();
     dataTable->setRowCount(0); // Empezar sin filas
-    
+
     // Mostrar fila de ejemplo cuando no hay datos
     updateExampleData();
-    
+
     // Agregar una fila vacía para empezar a escribir
     addPersonRow();
 }
@@ -1711,7 +1711,7 @@ QString TableData::generateExampleData(const QString &dataType, int column)
         if (column < savedCurrencyFormats.size() && !savedCurrencyFormats.at(column).isEmpty()) {
             format = savedCurrencyFormats.at(column);
         }
-        
+
         // Generar ejemplo con el formato correcto
         if (format.contains("Lempiras") || format.contains("Lps")) {
             return "Lps 1,500.00";
@@ -1727,7 +1727,7 @@ QString TableData::generateExampleData(const QString &dataType, int column)
     } else if (dataType == "fecha") {
         return "15-08-24";
     }
-    
+
     return "Ejemplo";
 }
 
@@ -1738,16 +1738,16 @@ void TableData::updateExampleData()
         qDebug() << "DEBUG: DataTable is null, cannot update example data";
         return;
     }
-    
+
     // Solo agregar ejemplo si hay campos definidos
     if (savedFieldNames.isEmpty() || savedFieldTypes.isEmpty()) {
         qDebug() << "DEBUG: No field names or types defined, skipping example data";
         return;
     }
-    
+
     // Bloquear señales para evitar bucles infinitos
     dataTable->blockSignals(true);
-    
+
     // Eliminar TODAS las filas de ejemplo existentes
     for (int row = dataTable->rowCount() - 1; row >= 0; row--) {
         QTableWidgetItem *firstItem = dataTable->item(row, 0);
@@ -1756,43 +1756,43 @@ void TableData::updateExampleData()
             dataTable->removeRow(row);
         }
     }
-    
+
     // Crear UNA nueva fila de ejemplo al principio (índice 0)
     dataTable->insertRow(0);
-    
+
     // Crear items para la fila de ejemplo
     for (int col = 0; col < savedFieldNames.size(); col++) {
         QString fieldName = savedFieldNames.at(col);
         QString dataType = (col < savedFieldTypes.size()) ? savedFieldTypes.at(col) : "Texto corto (hasta N caracteres)";
-        
+
         QTableWidgetItem *exampleItem = new QTableWidgetItem("");
-        
+
         // Configurar estilo para datos de ejemplo
         QFont exampleFont = exampleItem->font();
         exampleFont.setPointSize(16);
         exampleFont.setItalic(true); // Cursiva para indicar que es ejemplo
         exampleItem->setFont(exampleFont);
-        
+
         // Color gris para indicar que es ejemplo
         exampleItem->setForeground(QBrush(QColor(156, 163, 175))); // Color gris
         exampleItem->setBackground(QBrush(QColor(249, 250, 251))); // Fondo gris muy claro
-        
+
         // NO EDITABLE - solo para mostrar ejemplo
         exampleItem->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-        
+
         // Tooltip para identificar que es ejemplo
         exampleItem->setToolTip("Fila de ejemplo - muestra cómo se verán los datos");
-        
+
         // Generar el ejemplo específico para este tipo de dato
         QString example = generateExampleData(dataType, col);
         exampleItem->setText(example);
-        
+
         dataTable->setItem(0, col, exampleItem);
     }
-    
+
     // Desbloquear señales
     dataTable->blockSignals(false);
-    
+
     qDebug() << "DEBUG: Created single new example row at index 0";
 }
 
@@ -1861,7 +1861,7 @@ QString TableData::formatCurrencyWithFormat(const QString& raw, const QString& f
     // Formatea según el formato especificado
     QLocale loc(QLocale::Spanish, QLocale::Honduras);
     QString formattedNumber = loc.toString(v, 'f', 2);
-    
+
     if (format.contains("Lempiras") || format.contains("Lps")) {
         return QStringLiteral("Lps %1").arg(formattedNumber);
     } else if (format.contains("Dollar") || format.contains("$")) {
@@ -1896,14 +1896,14 @@ QString TableData::formatCurrencyWithFormatAndDecimals(const QString& raw, const
 
     // Formatea según el formato especificado
     QLocale loc(QLocale::Spanish, QLocale::Honduras);
-    
+
     // Usar el número de decimales especificado para todos los formatos
     bool decOk = false;
     int numDecimals = decimals.toInt(&decOk);
     if (!decOk || numDecimals < 0 || numDecimals > 6) {
         numDecimals = 2; // Valor por defecto
     }
-    
+
     if (format.contains("Lempiras") || format.contains("Lps")) {
         QString formattedNumber = loc.toString(v, 'f', numDecimals);
         return QStringLiteral("Lps %1").arg(formattedNumber);
@@ -1926,7 +1926,7 @@ QString TableData::formatCurrencyWithFormatAndDecimals(const QString& raw, const
 QString TableData::getCurrencyFormatForColumn(int column) const {
     qDebug() << "DEBUG: getCurrencyFormatForColumn llamado para columna:" << column;
     qDebug() << "DEBUG: savedCurrencyFormats disponibles:" << savedCurrencyFormats;
-    
+
     // Verificar que la columna existe en los formatos guardados
     if (column >= 0 && column < savedCurrencyFormats.size()) {
         QString format = savedCurrencyFormats.at(column);
@@ -1935,7 +1935,7 @@ QString TableData::getCurrencyFormatForColumn(int column) const {
             return format;
         }
     }
-    
+
     // Valor por defecto
     qDebug() << "DEBUG: Usando formato por defecto para columna:" << column;
     return "Lempiras (Lps)";
@@ -1944,7 +1944,7 @@ QString TableData::getCurrencyFormatForColumn(int column) const {
 QString TableData::getMillaresDecimalsForColumn(int column) const {
     qDebug() << "DEBUG: getMillaresDecimalsForColumn llamado para columna:" << column;
     qDebug() << "DEBUG: savedMillaresDecimals disponibles:" << savedMillaresDecimals;
-    
+
     // Verificar que la columna existe en los decimales guardados
     if (column >= 0 && column < savedMillaresDecimals.size()) {
         QString decimals = savedMillaresDecimals.at(column);
@@ -1953,7 +1953,7 @@ QString TableData::getMillaresDecimalsForColumn(int column) const {
             return decimals;
         }
     }
-    
+
     // Valor por defecto
     qDebug() << "DEBUG: Usando decimales por defecto para columna:" << column;
     return "2";
@@ -1962,7 +1962,7 @@ QString TableData::getMillaresDecimalsForColumn(int column) const {
 QString TableData::getTextSizeForColumn(int column) const {
     qDebug() << "DEBUG: getTextSizeForColumn llamado para columna:" << column;
     qDebug() << "DEBUG: savedTextSizes disponibles:" << savedTextSizes;
-    
+
     // Verificar que la columna existe en los tamaños guardados
     if (column >= 0 && column < savedTextSizes.size()) {
         QString textSize = savedTextSizes.at(column);
@@ -1971,7 +1971,7 @@ QString TableData::getTextSizeForColumn(int column) const {
             return textSize;
         }
     }
-    
+
     // Valor por defecto según el tipo de campo
     if (column >= 0 && column < savedFieldTypes.size()) {
         QString fieldType = savedFieldTypes.at(column);
@@ -1983,7 +1983,7 @@ QString TableData::getTextSizeForColumn(int column) const {
             return "Sin límite";
         }
     }
-    
+
     // Valor por defecto general
     qDebug() << "DEBUG: Usando tamaño por defecto general para columna:" << column;
     return "255";
@@ -2102,21 +2102,21 @@ void DataFieldDelegate::initStyleOption(QStyleOptionViewItem *option,
 void TableData::addNewRow()
 {
     if (!dataTable) return;
-    
+
     int newRowIndex = dataTable->rowCount();
     dataTable->insertRow(newRowIndex);
-    
+
     // Configurar la nueva fila
     for (int col = 0; col < dataTable->columnCount(); ++col) {
         QTableWidgetItem *item = new QTableWidgetItem("");
         item->setTextAlignment(Qt::AlignLeft | Qt::AlignVCenter);
         dataTable->setItem(newRowIndex, col, item);
     }
-    
+
     // Seleccionar la nueva fila y enfocar la primera celda
     dataTable->setCurrentCell(newRowIndex, 0);
     dataTable->edit(dataTable->currentIndex());
-    
+
     qDebug() << "DEBUG: Nueva fila agregada en posición" << newRowIndex;
 }
 
@@ -2338,19 +2338,19 @@ void TableData::updateTheme(bool isDark)
             "stop:0 #f8fafc, stop:1 #e2e8f0);"
             "border-bottom: 2px solid #cbd5e1;"
             "}"
-        );
-        
+            );
+
         tableNameLabel->setStyleSheet(
             "QLabel { "
-                "color: #1e293b; "
-                "padding: 2px 0px; "
-                "min-width: 150px; "
-                "font-family: 'Inter', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;"
-                "font-size: 18px;"
-                "font-weight: bold;"
+            "color: #1e293b; "
+            "padding: 2px 0px; "
+            "min-width: 150px; "
+            "font-family: 'Inter', 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;"
+            "font-size: 18px;"
+            "font-weight: bold;"
             "}"
-        );
-        
+            );
+
         // Fuerza una actualización del layout
         headerWidget->update();
     }
@@ -2361,20 +2361,20 @@ bool TableData::hasColumnDuplicates(int columnIndex) const
     if (!dataTable || columnIndex < 0 || columnIndex >= dataTable->columnCount()) {
         return false;
     }
-    
+
     QSet<QString> uniqueValues;
-    
+
     for (int row = 0; row < dataTable->rowCount(); row++) {
         // Ignorar la fila de ejemplo
         QTableWidgetItem *firstItem = dataTable->item(row, 0);
         if (firstItem && firstItem->toolTip().contains("Ejemplo")) {
             continue;
         }
-        
+
         QTableWidgetItem *item = dataTable->item(row, columnIndex);
         if (item) {
             QString value = item->text().trimmed();
-            
+
             // Ignorar valores vacíos
             if (!value.isEmpty()) {
                 if (uniqueValues.contains(value)) {
@@ -2384,7 +2384,7 @@ bool TableData::hasColumnDuplicates(int columnIndex) const
             }
         }
     }
-    
+
     return false; // No se encontraron duplicados
 }
 
@@ -2399,7 +2399,7 @@ void TableData::setupDataViewWithAllFormats(const QStringList &fieldNames, const
     qDebug() << "DEBUG: numberTypes:" << numberTypes;
     qDebug() << "DEBUG: uniqueColumns:" << uniqueColumns;
     qDebug() << "DEBUG: Primary Key en columna:" << primaryKeyColumn;
-    
+
     // Guardar todos los formatos incluyendo tipos de números
     savedCurrencyFormats = currencyFormats;
     savedMillaresDecimals = millaresDecimals;
@@ -2409,10 +2409,10 @@ void TableData::setupDataViewWithAllFormats(const QStringList &fieldNames, const
     qDebug() << "DEBUG: Tamaños guardados en savedTextSizes:" << savedTextSizes;
     qDebug() << "DEBUG: Tipos de números guardados en savedNumberTypes:" << savedNumberTypes;
     qDebug() << "DEBUG: Formatos de fecha guardados en savedDateFormats:" << savedDateFormats;    qDebug() << "DEBUG: Campos únicos guardados en savedUniqueColumns:" << savedUniqueColumns;
-    
+
     // Llamar al método base para hacer la configuración normal
     setupDataView(fieldNames, fieldTypes, primaryKeyColumn);
-    
+
     // Aplicar formatos específicos después de la configuración básica
     applyCurrencyFormats();
     applyNumberFormats(); // Nuevo: aplicar formatos de números
@@ -2422,21 +2422,21 @@ void TableData::setupDataViewWithAllFormats(const QStringList &fieldNames, const
 void TableData::applyNumberFormats()
 {
     qDebug() << "DEBUG: Aplicando formatos de números específicos";
-    
+
     if (savedNumberTypes.isEmpty() || savedFieldTypes.isEmpty()) {
         qDebug() << "DEBUG: No hay tipos de números o tipos de campo guardados";
         return;
     }
-    
+
     for (int col = 0; col < savedFieldTypes.size() && col < savedNumberTypes.size(); ++col) {
         if (savedFieldTypes.at(col) == "Entero" || savedFieldTypes.at(col) == "Byte") {
             qDebug() << "DEBUG: Aplicando formato de número a columna" << col;
-            
+
             dataTable->blockSignals(true);
             for (int row = 0; row < dataTable->rowCount(); ++row) {
                 QTableWidgetItem *item = dataTable->item(row, col);
                 if (!item) continue;
-                
+
                 // Saltar fila de ejemplo
                 QTableWidgetItem *firstItem = dataTable->item(row, 0);
                 if (firstItem && firstItem->toolTip().contains("Ejemplo")) continue;
@@ -2457,7 +2457,7 @@ void TableData::applyNumberFormats()
             dataTable->blockSignals(false);
         }
     }
-    
+
     // Forzar actualización visual de la tabla
     qDebug() << "DEBUG: Forzando actualización visual de la tabla";
     dataTable->viewport()->update();
@@ -2471,31 +2471,31 @@ bool TableData::validateForeignKeyConstraints(int row)
     if (!relationshipsView || !dataTable) {
         return true; // Si no hay RelationshipsView, no validar FK
     }
-    
+
     for (int col = 0; col < dataTable->columnCount(); ++col) {
         QString fieldName = savedFieldNames.value(col, "");
         if (fieldName.isEmpty()) continue;
-        
+
         // Verificar si es FK
         if (isFieldForeignKey(fieldName)) {
             QTableWidgetItem *item = dataTable->item(row, col);
             QString value = item ? item->text().trimmed() : "";
-            
+
             if (!value.isEmpty()) {
                 QString referencedTable = getReferencedTable(fieldName);
                 QString referencedField = getReferencedField(fieldName);
-                
+
                 if (!valueExistsInReferencedTable(referencedTable, referencedField, value)) {
                     // Mostrar error
-                    QMessageBox::warning(this, "Error de Validación", 
-                        QString("El valor '%1' no existe en %2.%3\n\nPor favor, ingrese un valor válido.")
-                        .arg(value, referencedTable, referencedField));
+                    QMessageBox::warning(this, "Error de Validación",
+                                         QString("El valor '%1' no existe en %2.%3\n\nPor favor, ingrese un valor válido.")
+                                             .arg(value, referencedTable, referencedField));
                     return false;
                 }
             }
         }
     }
-    
+
     return true;
 }
 
@@ -2505,29 +2505,29 @@ bool TableData::isFieldForeignKey(const QString &fieldName)
         qDebug() << "DEBUG: isFieldForeignKey - relationshipsView o tableEditor es null";
         return false;
     }
-    
+
     // Limpiar el nombre del campo de iconos y espacios
     QString cleanFieldName = fieldName;
     cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
-                                  .remove("🔑🔗")
-                                  .remove("🔑🔶")
-                                  .remove("🔗🔶")
-                                  .remove("🔑")
-                                  .remove("🔗")
-                                  .remove("🔶")
-                                  .trimmed();
-    
+                         .remove("🔑🔗")
+                         .remove("🔑🔶")
+                         .remove("🔗🔶")
+                         .remove("🔑")
+                         .remove("🔗")
+                         .remove("🔶")
+                         .trimmed();
+
     qDebug() << "DEBUG: Campo original:" << fieldName << "-> Campo limpio:" << cleanFieldName;
-    
+
     // Método corregido: SOLO verificar si el campo está en la lista de FK de TableEditor
     QStringList foreignKeys = tableEditor->getTableForeignKeys(currentTableName);
-    
+
     // Verificar si el campo está en la lista de foreign keys
     bool isFK = foreignKeys.contains(cleanFieldName);
-    
+
     qDebug() << "DEBUG: Campo" << cleanFieldName << "- Es FK:" << isFK << "según TableEditor";
     qDebug() << "DEBUG: Lista FK completa de TableEditor para tabla" << currentTableName << ":" << foreignKeys;
-    
+
     return isFK;
 }
 
@@ -2537,69 +2537,69 @@ bool TableData::hasEstablishedRelationship(const QString &fieldName)
     qDebug() << "DEBUG TableData::hasEstablishedRelationship para campo:" << fieldName;
     qDebug() << "DEBUG: relationshipsView es" << (relationshipsView ? "válido" : "NULL");
     qDebug() << "DEBUG: tableEditor es" << (tableEditor ? "válido" : "NULL");
-    
+
     if (!relationshipsView || !tableEditor) {
         qDebug() << "DEBUG: Falta referencia a relationshipsView o tableEditor - retornando false";
         return false;
     }
-    
+
     // Limpiar el nombre del campo de iconos y espacios
     QString cleanFieldName = fieldName;
     cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
-                                  .remove("🔑🔗")
-                                  .remove("🔑🔶")
-                                  .remove("🔗🔶")
-                                  .remove("🔑")
-                                  .remove("🔗")
-                                  .remove("🔶")
-                                  .trimmed();
-    
+                         .remove("🔑🔗")
+                         .remove("🔑🔶")
+                         .remove("🔗🔶")
+                         .remove("🔑")
+                         .remove("🔗")
+                         .remove("🔶")
+                         .trimmed();
+
     qDebug() << "DEBUG: Campo original:" << fieldName << "-> Campo limpio:" << cleanFieldName;
-    
+
     // Usar el nuevo método de RelationshipsView para verificar relaciones reales
     bool hasRelation = relationshipsView->hasRelationshipForField(currentTableName, cleanFieldName);
-    
+
     qDebug() << "DEBUG: Campo" << cleanFieldName << "en tabla" << currentTableName << "tiene relación establecida:" << hasRelation;
-    
+
     return hasRelation;
 }
 
 QString TableData::getReferencedTable(const QString &fieldName)
 {
     if (!relationshipsView || !tableEditor) return "";
-    
+
     QString cleanFieldName = fieldName;
     cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
-                                  .remove("🔑🔗")
-                                  .remove("🔑🔶")
-                                  .remove("🔗🔶")
-                                  .remove("🔑")
-                                  .remove("🔗")
-                                  .remove("🔶")
-                                  .trimmed();
-    
+                         .remove("🔑🔗")
+                         .remove("🔑🔶")
+                         .remove("🔗🔶")
+                         .remove("🔑")
+                         .remove("🔗")
+                         .remove("🔶")
+                         .trimmed();
+
     qDebug() << "DEBUG: getReferencedTable para campo" << fieldName << "-> limpio:" << cleanFieldName;
-    
+
     // NUEVO: Usar el método específico de RelationshipsView
     QString referencedTable = relationshipsView->getReferencedTableForField(currentTableName, cleanFieldName);
     if (!referencedTable.isEmpty()) {
         qDebug() << "DEBUG: Tabla referenciada encontrada vía RelationshipsView:" << referencedTable;
         return referencedTable;
     }
-    
+
     // Fallback: aproximación basada en convenciones de nomenclatura (método anterior)
     qDebug() << "DEBUG: No se encontró referencia específica, usando método de fallback";
-    
+
     if (cleanFieldName.endsWith("_id")) {
         QString tableName = cleanFieldName;
         tableName.remove("_id");
-        
+
         qDebug() << "DEBUG: Tabla inferida del campo FK:" << tableName;
-        
+
         // Verificar si la tabla existe
         QStringList availableTables = tableEditor->getCreatedTables();
         qDebug() << "DEBUG: Tablas disponibles:" << availableTables;
-        
+
         // Buscar tabla exacta primero
         for (const QString &table : availableTables) {
             if (table.toLower() == tableName.toLower()) {
@@ -2607,7 +2607,7 @@ QString TableData::getReferencedTable(const QString &fieldName)
                 return table;
             }
         }
-        
+
         // Si no se encuentra exacta, buscar coincidencias parciales
         for (const QString &table : availableTables) {
             if (table.toLower().contains(tableName.toLower()) ||
@@ -2616,64 +2616,64 @@ QString TableData::getReferencedTable(const QString &fieldName)
                 return table;
             }
         }
-        
+
         qDebug() << "DEBUG: No se encontró tabla referenciada para FK" << cleanFieldName;
-        
+
         // Si no se encuentra, retornar el nombre inferido con capitalización correcta
         tableName[0] = tableName[0].toLower(); // Primera letra minúscula para coincidir con el ejemplo
         return tableName;
     }
-    
+
     return "";
 }
 
 QString TableData::getReferencedField(const QString &fieldName)
 {
     if (!relationshipsView || !tableEditor) return "Id";
-    
+
     QString cleanFieldName = fieldName;
     cleanFieldName = cleanFieldName.remove("🔑🔗🔶")
-                                  .remove("🔑🔗")
-                                  .remove("🔑🔶")
-                                  .remove("🔗🔶")
-                                  .remove("🔑")
-                                  .remove("🔗")
-                                  .remove("🔶")
-                                  .trimmed();
-    
+                         .remove("🔑🔗")
+                         .remove("🔑🔶")
+                         .remove("🔗🔶")
+                         .remove("🔑")
+                         .remove("🔗")
+                         .remove("🔶")
+                         .trimmed();
+
     qDebug() << "DEBUG: getReferencedField para campo" << fieldName << "-> limpio:" << cleanFieldName;
-    
+
     // NUEVO: Usar el método específico de RelationshipsView
     QString referencedField = relationshipsView->getReferencedFieldForField(currentTableName, cleanFieldName);
     if (!referencedField.isEmpty()) {
         qDebug() << "DEBUG: Campo referenciado encontrado vía RelationshipsView:" << referencedField;
         return referencedField;
     }
-    
+
     // Fallback: método anterior
     qDebug() << "DEBUG: No se encontró referencia específica, usando método de fallback";
-    
+
     // Obtener la tabla referenciada
     QString referencedTable = getReferencedTable(cleanFieldName);
     if (referencedTable.isEmpty()) return "Id";
-    
+
     // Obtener los campos de la tabla referenciada
     QStringList fields = tableEditor->getTableFields(referencedTable);
-    
+
     qDebug() << "DEBUG: getReferencedField - Campos de tabla" << referencedTable << ":" << fields;
-    
+
     // Buscar el campo "Id" con diferentes variaciones de capitalización
     for (const QString &field : fields) {
         QString cleanField = field;
         cleanField = cleanField.replace("🔑", "").replace("🔗", "").trimmed();
         qDebug() << "DEBUG: Comparando campo limpio:" << cleanField;
-        
+
         if (cleanField.toLower() == "id") {
             qDebug() << "DEBUG: Campo referenciado encontrado:" << cleanField;
             return cleanField;
         }
     }
-    
+
     // Si no se encuentra "id", usar el primer campo
     if (!fields.isEmpty()) {
         QString firstField = fields.first();
@@ -2681,7 +2681,7 @@ QString TableData::getReferencedField(const QString &fieldName)
         qDebug() << "DEBUG: Usando primer campo como referencia:" << firstField;
         return firstField;
     }
-    
+
     // Por defecto retornar "Id" (con mayúscula como en tu ejemplo)
     qDebug() << "DEBUG: Usando valor por defecto: Id";
     return "Id";
@@ -2690,7 +2690,7 @@ QString TableData::getReferencedField(const QString &fieldName)
 bool TableData::valueExistsInReferencedTable(const QString &tableName, const QString &fieldName, const QString &value)
 {
     if (!relationshipsView) return true;
-    
+
     // Obtener datos de la tabla referenciada
     QStringList tableData = getTableData(tableName, fieldName);
     return tableData.contains(value);
@@ -2699,17 +2699,17 @@ bool TableData::valueExistsInReferencedTable(const QString &tableName, const QSt
 QStringList TableData::getTableData(const QString &tableName, const QString &fieldName)
 {
     QStringList result;
-    
+
     if (!tableEditor) {
         qDebug() << "DEBUG: TableEditor no disponible";
         return result;
     }
-    
+
     qDebug() << "DEBUG: Buscando datos en tabla" << tableName << "campo" << fieldName;
-    
+
     try {
         // Obtener datos reales de la tabla referenciada a través de TableEditor
-        
+
         // Primer paso: verificar si la tabla existe
         QStringList availableTables = tableEditor->getCreatedTables();
         if (!availableTables.contains(tableName)) {
@@ -2717,11 +2717,11 @@ QStringList TableData::getTableData(const QString &tableName, const QString &fie
             qDebug() << "DEBUG: Tablas disponibles:" << availableTables;
             return result;
         }
-        
+
         // Segundo paso: obtener los campos de la tabla para verificar que el campo existe
         QStringList tableFields = tableEditor->getTableFields(tableName);
         int fieldIndex = -1;
-        
+
         // Buscar el índice del campo
         for (int i = 0; i < tableFields.size(); ++i) {
             QString field = tableFields[i];
@@ -2732,18 +2732,18 @@ QStringList TableData::getTableData(const QString &tableName, const QString &fie
                 break;
             }
         }
-        
+
         if (fieldIndex == -1) {
             qDebug() << "DEBUG: Campo" << fieldName << "no encontrado en tabla" << tableName;
             qDebug() << "DEBUG: Campos disponibles:" << tableFields;
             return result;
         }
-        
+
         qDebug() << "DEBUG: Campo" << fieldName << "encontrado en índice" << fieldIndex << "de tabla" << tableName;
-        
+
         // Tercer paso: obtener los datos reales desde TableEditor
         result = tableEditor->getTableColumnData(tableName, fieldName);
-        
+
         // Si no hay datos reales, proporcionar algunos datos de ejemplo para testing
         if (result.isEmpty()) {
             qDebug() << "DEBUG: No hay datos reales, usando datos de ejemplo";
@@ -2764,11 +2764,11 @@ QStringList TableData::getTableData(const QString &tableName, const QString &fie
         } else {
             qDebug() << "DEBUG: Datos reales obtenidos de la tabla" << tableName << ":" << result;
         }
-        
+
     } catch (...) {
         qDebug() << "DEBUG: Error al acceder a datos de tabla" << tableName;
     }
-    
+
     qDebug() << "DEBUG: Valores encontrados para validación:" << result;
     return result;
 }
@@ -2776,29 +2776,29 @@ QStringList TableData::getTableData(const QString &tableName, const QString &fie
 void TableData::applyFilters()
 {
     if (!dataTable) return;
-    
+
     QString searchText = searchField ? searchField->text().trimmed().toLower() : "";
-    
+
     // Obtener configuración de filtro numérico
     QString numCondition = numberCondition ? numberCondition->currentText() : "Sin filtro";
     QString numValue1Text = numberValue1 ? numberValue1->text().trimmed() : "";
     QString numValue2Text = numberValue2 ? numberValue2->text().trimmed() : "";
-    
+
     bool hasNumberFilter = (numCondition != "Sin filtro" && !numValue1Text.isEmpty());
     double numVal1 = 0, numVal2 = 0;
     bool numVal1Ok = false, numVal2Ok = false;
-    
+
     if (hasNumberFilter) {
         numVal1 = numValue1Text.toDouble(&numVal1Ok);
         if (numCondition == "Entre" && !numValue2Text.isEmpty()) {
             numVal2 = numValue2Text.toDouble(&numVal2Ok);
         }
     }
-    
+
     // Aplicar filtros
     for (int row = 0; row < dataTable->rowCount(); ++row) {
         bool shouldShow = true;
-        
+
         // Verificar si es la fila vacía (última fila para nuevos datos)
         bool isEmptyRow = true;
         for (int col = 0; col < dataTable->columnCount(); ++col) {
@@ -2808,13 +2808,13 @@ void TableData::applyFilters()
                 break;
             }
         }
-        
+
         // Siempre mostrar la fila vacía para permitir agregar datos
         if (isEmptyRow && row == dataTable->rowCount() - 1) {
             dataTable->setRowHidden(row, false);
             continue;
         }
-        
+
         // Filtro de texto
         if (!searchText.isEmpty()) {
             shouldShow = false;
@@ -2826,20 +2826,20 @@ void TableData::applyFilters()
                 }
             }
         }
-        
+
         // Filtro numérico (aplicar solo si pasa el filtro de texto)
         if (shouldShow && hasNumberFilter && numVal1Ok) {
             bool passesNumFilter = false;
-            
+
             // Verificar cada columna para valores numéricos
             for (int col = 0; col < dataTable->columnCount(); ++col) {
                 QTableWidgetItem *item = dataTable->item(row, col);
                 if (!item || item->text().trimmed().isEmpty()) continue;
-                
+
                 bool ok = false;
                 double cellValue = item->text().toDouble(&ok);
                 if (!ok) continue; // No es un número, saltar esta celda
-                
+
                 bool matches = false;
                 if (numCondition == "Mayor que") {
                     matches = cellValue > numVal1;
@@ -2852,19 +2852,19 @@ void TableData::applyFilters()
                     double maxVal = qMax(numVal1, numVal2);
                     matches = cellValue >= minVal && cellValue <= maxVal;
                 }
-                
+
                 if (matches) {
                     passesNumFilter = true;
                     break;
                 }
             }
-            
+
             shouldShow = passesNumFilter;
         }
-        
+
         dataTable->setRowHidden(row, !shouldShow);
     }
-    
+
     // Aplicar ordenamiento si está seleccionado
     if (sortColumnCombo && sortColumnCombo->currentIndex() >= 0) {
         int column = sortColumnCombo->currentIndex();
@@ -2879,7 +2879,7 @@ void TableData::clearFilters()
     if (searchField) {
         searchField->clear();
     }
-    
+
     // Limpiar filtros numéricos
     if (numberCondition) {
         numberCondition->setCurrentIndex(0); // "Sin filtro"
@@ -2891,7 +2891,7 @@ void TableData::clearFilters()
         numberValue2->clear();
         numberValue2->setVisible(false);
     }
-    
+
     // Resetear combos de ordenamiento
     if (sortColumnCombo) {
         sortColumnCombo->setCurrentIndex(0);
@@ -2899,7 +2899,7 @@ void TableData::clearFilters()
     if (sortOrderCombo) {
         sortOrderCombo->setCurrentIndex(0);
     }
-    
+
     // Mostrar todas las filas
     if (dataTable) {
         for (int row = 0; row < dataTable->rowCount(); ++row) {
@@ -2911,22 +2911,22 @@ void TableData::clearFilters()
 void TableData::sortByColumn(int column, Qt::SortOrder order)
 {
     if (!dataTable || column < 0 || column >= dataTable->columnCount()) return;
-    
+
     // Temporalmente desconectar señales para evitar loops
     dataTable->blockSignals(true);
-    
+
     // Separar filas con datos de filas vacías
     QList<QStringList> rowsWithData;
     QList<QStringList> emptyRows;
     QList<int> rowsWithDataOriginalIndex;
     QList<int> emptyRowsOriginalIndex;
-    
+
     for (int row = 0; row < dataTable->rowCount(); ++row) {
         if (dataTable->isRowHidden(row)) continue; // Saltar filas ocultas
-        
+
         QStringList rowValues;
         bool hasData = false;
-        
+
         for (int col = 0; col < dataTable->columnCount(); ++col) {
             QTableWidgetItem *item = dataTable->item(row, col);
             QString value = item ? item->text().trimmed() : "";
@@ -2935,7 +2935,7 @@ void TableData::sortByColumn(int column, Qt::SortOrder order)
                 hasData = true;
             }
         }
-        
+
         if (hasData) {
             rowsWithData.append(rowValues);
             rowsWithDataOriginalIndex.append(row);
@@ -2944,48 +2944,48 @@ void TableData::sortByColumn(int column, Qt::SortOrder order)
             emptyRowsOriginalIndex.append(row);
         }
     }
-    
+
     // Ordenar solo las filas con datos
     std::sort(rowsWithData.begin(), rowsWithData.end(), [column, order](const QStringList &a, const QStringList &b) {
         if (column >= a.size() || column >= b.size()) return false;
-        
+
         QString valA = a[column].trimmed();
         QString valB = b[column].trimmed();
-        
+
         // Si uno está vacío y el otro no, el vacío va al final
         if (valA.isEmpty() && !valB.isEmpty()) return order == Qt::DescendingOrder;
         if (!valA.isEmpty() && valB.isEmpty()) return order == Qt::AscendingOrder;
         if (valA.isEmpty() && valB.isEmpty()) return false;
-        
+
         // Intentar ordenamiento numérico si ambos son números
         bool aIsNum, bIsNum;
         double numA = valA.toDouble(&aIsNum);
         double numB = valB.toDouble(&bIsNum);
-        
+
         if (aIsNum && bIsNum) {
             return (order == Qt::AscendingOrder) ? numA < numB : numA > numB;
         }
-        
+
         // Ordenamiento alfabético
         int comparison = valA.compare(valB, Qt::CaseInsensitive);
         return (order == Qt::AscendingOrder) ? comparison < 0 : comparison > 0;
     });
-    
+
     // Aplicar datos ordenados: primero filas con datos, luego filas vacías
     QList<QStringList> allSortedRows = rowsWithData + emptyRows;
     QList<int> allOriginalIndexes = rowsWithDataOriginalIndex + emptyRowsOriginalIndex;
-    
+
     int targetRow = 0;
     for (int i = 0; i < allSortedRows.size(); ++i) {
         // Encontrar siguiente fila visible
         while (targetRow < dataTable->rowCount() && dataTable->isRowHidden(targetRow)) {
             targetRow++;
         }
-        
+
         if (targetRow >= dataTable->rowCount()) break;
-        
+
         const QStringList &rowValues = allSortedRows[i];
-        
+
         // Aplicar valores
         for (int col = 0; col < rowValues.size() && col < dataTable->columnCount(); ++col) {
             QTableWidgetItem *item = dataTable->item(targetRow, col);
@@ -2995,7 +2995,7 @@ void TableData::sortByColumn(int column, Qt::SortOrder order)
         }
         targetRow++;
     }
-    
+
     // Reconectar señales
     dataTable->blockSignals(false);
 }
@@ -3003,22 +3003,22 @@ void TableData::sortByColumn(int column, Qt::SortOrder order)
 void TableData::sortDataRowsOnly(int column, bool ascending)
 {
     if (!dataTable || column < 0 || column >= dataTable->columnCount()) return;
-    
+
     qDebug() << "DEBUG: Ordenando solo filas con datos - Columna:" << column << "Ascendente:" << ascending;
-    
+
     // Bloquear señales durante el ordenamiento
     dataTable->blockSignals(true);
-    
+
     // Identificar filas con datos (excluyendo fila vacía al final)
     QList<QStringList> dataRows;
     QList<int> originalRowNumbers;
     int totalRows = dataTable->rowCount();
-    
+
     for (int row = 0; row < totalRows; row++) {
         // Verificar si la fila tiene datos
         bool hasData = false;
         QStringList rowData;
-        
+
         for (int col = 0; col < dataTable->columnCount(); col++) {
             QTableWidgetItem *item = dataTable->item(row, col);
             QString cellText = item ? item->text().trimmed() : "";
@@ -3027,37 +3027,37 @@ void TableData::sortDataRowsOnly(int column, bool ascending)
                 hasData = true;
             }
         }
-        
+
         // Solo incluir filas con datos Y que estén visibles
         if (hasData && !dataTable->isRowHidden(row)) {
             dataRows << rowData;
             originalRowNumbers << row;
         }
     }
-    
+
     qDebug() << "DEBUG: Encontradas" << dataRows.size() << "filas con datos para ordenar";
-    
+
     // Ordenar las filas con datos
     std::sort(dataRows.begin(), dataRows.end(), [column, ascending](const QStringList &a, const QStringList &b) {
         if (column >= a.size() || column >= b.size()) return false;
-        
+
         QString aVal = a[column];
         QString bVal = b[column];
-        
+
         // Intentar comparación numérica
         bool aIsNum, bIsNum;
         double aNum = aVal.toDouble(&aIsNum);
         double bNum = bVal.toDouble(&bIsNum);
-        
+
         if (aIsNum && bIsNum) {
             return ascending ? aNum < bNum : aNum > bNum;
         }
-        
+
         // Comparación de texto
         int result = aVal.compare(bVal, Qt::CaseInsensitive);
         return ascending ? result < 0 : result > 0;
     });
-    
+
     // Aplicar el nuevo orden solo a las filas con datos visibles
     int targetRow = 0;
     for (int i = 0; i < dataRows.size(); i++) {
@@ -3065,9 +3065,9 @@ void TableData::sortDataRowsOnly(int column, bool ascending)
         while (targetRow < totalRows && dataTable->isRowHidden(targetRow)) {
             targetRow++;
         }
-        
+
         if (targetRow >= totalRows) break;
-        
+
         // Verificar si la fila objetivo tiene datos (no es la fila vacía)
         bool targetHasData = false;
         for (int col = 0; col < dataTable->columnCount(); col++) {
@@ -3077,7 +3077,7 @@ void TableData::sortDataRowsOnly(int column, bool ascending)
                 break;
             }
         }
-        
+
         // Solo actualizar si la fila objetivo debe tener datos
         if (targetHasData || targetRow < totalRows - 1) {
             const QStringList &rowData = dataRows[i];
@@ -3090,64 +3090,64 @@ void TableData::sortDataRowsOnly(int column, bool ascending)
         }
         targetRow++;
     }
-    
+
     // Reconectar señales
     dataTable->blockSignals(false);
-    
+
     qDebug() << "DEBUG: Ordenamiento de filas con datos completado";
 }
 
 void TableData::onForeignKeyRemoved(const QString &tableName, const QString &fieldName)
 {
     qDebug() << "DEBUG TableData: Foreign Key removida - Tabla:" << tableName << "Campo:" << fieldName;
-    
+
     // Verificar si esta es nuestra tabla
     if (currentTableName != tableName) {
         qDebug() << "DEBUG: FK removida de tabla diferente, ignorando";
         return;
     }
-    
+
     qDebug() << "DEBUG: Actualizando validaciones tras remover FK de campo:" << fieldName;
-    
+
     // Verificar el estado actual de FK para este campo
     if (tableEditor) {
         QStringList currentFKs = tableEditor->getTableForeignKeys(currentTableName);
         qDebug() << "DEBUG: FKs actuales según TableEditor:" << currentFKs;
         qDebug() << "DEBUG: Campo" << fieldName << "está en lista FK:" << currentFKs.contains(fieldName);
     }
-    
+
     // Limpiar cualquier error de validación FK existente en esta columna
     if (dataTable) {
         // Encontrar la columna correspondiente al campo
         int columnIndex = -1;
         for (int col = 0; col < dataTable->columnCount(); col++) {
-            QString headerText = dataTable->horizontalHeaderItem(col) ? 
-                                dataTable->horizontalHeaderItem(col)->text() : "";
-            
+            QString headerText = dataTable->horizontalHeaderItem(col) ?
+                                     dataTable->horizontalHeaderItem(col)->text() : "";
+
             // Limpiar el header de iconos para comparar
             QString cleanHeader = headerText;
             cleanHeader = cleanHeader.remove("🔑🔗🔶")
-                                   .remove("🔑🔗")
-                                   .remove("🔑🔶")
-                                   .remove("🔗🔶")
-                                   .remove("🔑")
-                                   .remove("🔗")
-                                   .remove("🔶")
-                                   .trimmed();
-            
+                              .remove("🔑🔗")
+                              .remove("🔑🔶")
+                              .remove("🔗🔶")
+                              .remove("🔑")
+                              .remove("🔗")
+                              .remove("🔶")
+                              .trimmed();
+
             if (cleanHeader == fieldName) {
                 columnIndex = col;
                 break;
             }
         }
-        
+
         if (columnIndex >= 0) {
             qDebug() << "DEBUG: Limpiando errores FK en columna" << columnIndex;
-            
+
             // Limpiar errores de validación en todas las filas de esta columna
             for (int row = 0; row < dataTable->rowCount(); row++) {
                 clearCellError(row, columnIndex);
-                
+
                 // Resetear el fondo de la celda a normal
                 QTableWidgetItem *item = dataTable->item(row, columnIndex);
                 if (item) {
@@ -3155,13 +3155,13 @@ void TableData::onForeignKeyRemoved(const QString &tableName, const QString &fie
                     item->setToolTip(""); // Limpiar tooltip de error
                 }
             }
-            
+
             qDebug() << "DEBUG: FK eliminada - Validaciones FK deshabilitadas para campo:" << fieldName;
         } else {
             qDebug() << "DEBUG: No se encontró la columna para el campo:" << fieldName;
         }
     }
-    
+
     // Forzar actualización visual
     if (dataTable) {
         dataTable->viewport()->update();
@@ -3383,3 +3383,4 @@ void TableData::loadDataFromMad()
         }
     }
 }
+
