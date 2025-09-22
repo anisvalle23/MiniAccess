@@ -1,0 +1,2210 @@
+qt.qpa.fonts: Populating font family aliases took 65 ms. Replace uses of missing font family "Segoe UI" with one that exists to avoid this cost. 
+2025-09-21 18:14:21.246 MiniAccess[30579:1911501] +[IMKClient subclass]: chose IMKClient_Modern
+2025-09-21 18:14:21.246 MiniAccess[30579:1911501] +[IMKInputSession subclass]: chose IMKInputSession_Modern
+Unknown property transform
+Unknown property transform
+Unknown property transform
+Unknown property transform
+QPropertyAnimation: you're trying to animate a non-existing property opacity of your QObject
+DEBUG: onStartProjectClicked() iniciado
+DEBUG: Animación de botón configurada
+DEBUG: Intentando crear CreateProject window
+DEBUG: CreateProject constructor iniciado
+DEBUG: Creando themePopover
+DEBUG: themePopover creado exitosamente
+DEBUG: Llamando setupUI()
+DEBUG: CreateProject::setupUI() iniciado
+DEBUG: Configurando ventana principal
+DEBUG: Creando widget central
+DEBUG: Creando layout principal
+DEBUG: Llamando createHeader()
+Unknown property transform
+Unknown property transform
+DEBUG: createHeader() completado
+DEBUG: Llamando createMainContent()
+DEBUG: Creando área de proyectos
+DEBUG: Área de proyectos creada correctamente
+DEBUG: createMainContent() completado
+DEBUG: Agregando widgets al layout
+DEBUG: Llamando styleComponents()
+Unknown property transform
+Unknown property transform
+Unknown property transform
+Unknown property transform
+DEBUG: styleComponents() completado
+DEBUG: Cargando y mostrando proyectos...
+DEBUG: Cargando y mostrando proyectos...
+DEBUG: Filtro de búsqueda: ""
+DEBUG: Proyectos encontrados: 3
+DEBUG: Proyectos después del filtro: 3
+DEBUG: Proyectos mostrados correctamente
+DEBUG: Proyectos cargados y mostrados
+DEBUG: CreateProject::setupUI() terminado
+DEBUG: setupUI() completado
+DEBUG: Llamando centerWindow()
+DEBUG: centerWindow() completado
+DEBUG: Conectando señales de tema
+DEBUG: Señales conectadas exitosamente
+DEBUG: CreateProject constructor terminado
+DEBUG: CreateProject window creada exitosamente
+Unknown property transform
+Unknown property transform
+DEBUG: CreateProject window mostrada
+DEBUG: onStartProjectClicked() terminado
+DEBUG: Cerrando HomeScreen
+Clic en proyecto: "proyecto1"
+Proyecto seleccionado: "proyecto1"
+Navegando a la vista del proyecto: "proyecto1"
+[navigate] ProjectRoot: "/Volumes/anis/MiniAccess/proyectos/proyecto1"
+[navigate] TablesDir  : "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables" exists? true
+[navigate] CatalogMeta: "/Volumes/anis/MiniAccess/proyectos/proyecto1/catalog.meta" exists? true
+[navigate] Cargando catálogo desde: "/Volumes/anis/MiniAccess/proyectos/proyecto1/catalog.meta"
+QString::arg: 1 argument(s) missing in QWidget {background-color: %1;border-bottom: 1px solid %3;}
+FormulariosView: Constructor iniciado
+FormulariosView: Llamando loadAvailableTables() desde setupUI()
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: ""
+FormulariosView: Buscando tablas en: ""
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ()
+FormulariosView: No se encontraron tablas en ""
+FormulariosView: Constructor terminado
+MainWindow: Creando ReportesView...
+ReportesView: Constructor iniciado
+ReportesView: Llamando loadAvailableTables() desde setupUI()
+ReportesView: loadAvailableTables() iniciado
+ReportesView: Buscando tablas en: ""
+ReportesView: Directorio existe: true
+ReportesView: Archivos .meta encontrados: ()
+ReportesView: No se encontraron tablas en ""
+ReportesView: loadReports() llamado - tablas ya cargadas en setupUI()
+ReportesView: Constructor completado
+MainWindow: ReportesView creado exitosamente
+DEBUG[setTableEditor]: =============CONFIGURANDO TABLE EDITOR=============
+DEBUG[setTableEditor]: TableEditor válido, configurando conexiones
+DEBUG[setTableEditor]: Llamando loadTables()...
+DEBUG[loadTables]: ============ INICIANDO loadTables() ============
+DEBUG[loadTables]: tableEditor = válido
+DEBUG[loadTables]: Widgets limpiados, llamando refreshAvailableTablesFromStorage()
+DEBUG[RefreshTables]: =============INICIANDO CARGA DE TABLAS=============
+DEBUG[RefreshTables]: tableEditor = válido
+DEBUG[RefreshTables]: No se puede acceder al catálogo
+DEBUG[RefreshTables]: - catalog es null
+DEBUG[RelationshipsView]: ============RESULTADO FINAL============
+DEBUG[RelationshipsView]: tablas disponibles FINAL = ()
+DEBUG[RelationshipsView]: =====================================
+DEBUG[loadTables]: Después de refreshAvailableTablesFromStorage():
+DEBUG[loadTables]: availableTables.size() = 0
+DEBUG[loadTables]: availableTables contenido = ()
+DEBUG[loadTables]: NO HAY TABLAS - Mostrando mensaje 'No hay tablas creadas'
+DEBUG[setTableEditor]: Programando loadDesignerState()...
+DEBUG[setTableEditor]: =============FIN CONFIGURAR TABLE EDITOR=============
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+DEBUG[setTableEditor]: Ejecutando loadDesignerState()...
+DEBUG[getProjectRelationshipsPath]: ========== OBTENIENDO RUTA ==========
+DEBUG[getProjectRelationshipsPath]: tablesDir obtenido: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+DEBUG[getProjectRelationshipsPath]: Ruta calculada: "/Volumes/anis/MiniAccess/proyectos/proyecto1/relationships.json/relationships.json"
+DEBUG[getProjectRelationshipsPath]: ========== FIN OBTENER RUTA ==========
+DEBUG[MIGRACIÓN]: Relación antigua detectada, intentando migrar:
+  -  "maestros"  →  "alumnos"  ( "1:1" )
+DEBUG[MIGRACIÓN]: Campos inferidos:
+  - sourceField: ""
+  - targetField: ""
+DEBUG[loadDesignerState]: Relación cargada/migrada:
+  - Source: "maestros" . ""
+  - Target: "alumnos" . ""
+  - Type: "1:1"
+DEBUG: Estado del diseñador cargado desde: "/Volumes/anis/MiniAccess/proyectos/proyecto1/relationships.json/relationships.json"
+DEBUG: Cargadas 2 posiciones de tablas y 1 relaciones
+QPropertyAnimation: you're trying to animate a non-existing property opacity of your QObject
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+DEBUG[CONSTRUCTOR]: TableView inicializado - foreignKeyRows limpiado
+DEBUG[CONSTRUCTOR]: Nuevo TableView creado en memoria: 0x11e709e00
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+DEBUG[loadKeysFromMetaFileWithDir]: Cargando llaves para tabla: "alumnos" desde directorio: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+DEBUG[loadKeysFromMetaFileWithDir]: Arrays de llaves reseteados
+DEBUG[loadKeysFromMetaFileWithDir]: Procesando 2 campos
+DEBUG[loadKeysFromMetaFileWithDir]: Primary Key cargada en fila: 0
+DEBUG[loadKeysFromMetaFileWithDir]: Llaves cargadas - PK: 0 FK: () Unique: ()
+DEBUG[loadKeysFromMetaFileWithDir]: Aplicando emojis
+DEBUG[applyEmojisToInterface]: Aplicando emojis a 2 filas
+DEBUG[applyEmojisToInterface]: Estado actual - PK: 0 FK: () U: ()
+DEBUG[applyEmojisToInterface]: Estado después de validación - PK: 0 FK: () U: ()
+DEBUG[applyEmojisToInterface]: Procesando fila 0 con texto original: "Id"
+DEBUG[applyEmojisToInterface]: Campo limpio en fila 0 : "Id"
+DEBUG[applyEmojisToInterface]: Aplicando texto final: "🔑 Id" a fila 0
+DEBUG[applyEmojisToInterface]: Texto aplicado exitosamente
+DEBUG[applyEmojisToInterface]: Fila 0 : "Id" -> PK: true FK: false U: false -> Texto: "🔑 Id"
+DEBUG[applyEmojisToInterface]: Procesando fila 1 con texto original: ""
+DEBUG[applyEmojisToInterface]: Saltando campo vacío en fila 1
+DEBUG[applyEmojisToInterface]: Emojis aplicados exitosamente
+DEBUG: Campo cambiado en fila: 0 columna: 0
+DEBUG: Added field name: "id"
+DEBUG: getCurrentFieldNames() returning: ("id")
+DEBUG: getCurrentFieldTypes() returning: ()
+DEBUG[autosave]: tableDesignChanged activado para tabla: "alumnos" con campos: ("id")
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 0 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: getCurrentFieldNames() returning: ("id")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "alumnos" con campos: ("id")
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 1 columna: 0
+DEBUG: Campo cambiado en fila: 2 columna: 0
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "maestro"
+DEBUG: getCurrentFieldNames() returning: ("id", "maestro")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "alumnos" con campos: ("id", "maestro")
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 2 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "maestro"
+DEBUG: getCurrentFieldNames() returning: ("id", "maestro")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "alumnos" con campos: ("id", "maestro")
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 2 columna: 2
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "maestro"
+DEBUG: getCurrentFieldNames() returning: ("id", "maestro")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "alumnos" con campos: ("id", "maestro")
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "maestro"
+DEBUG: getCurrentFieldNames() returning: ("id", "maestro")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "alumnos" con campos: ("id", "maestro")
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 1 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "maestro"
+DEBUG: getCurrentFieldNames() returning: ("id", "maestro")
+DEBUG: Added field type: "Entero"
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero", "Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "alumnos" con campos: ("id", "maestro")
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "alumnos"
+Primary Keys: ("id")
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "maestro" (PK: false FK: false Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "alumnos"
+DEBUG: Actualizados los campos en "alumnos" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+DEBUG: Configurando vista de datos con campos: ("Id")
+DEBUG: Tipos de campos recibidos: ("Entero")
+DEBUG: Primary Key en columna: -1
+DEBUG: Created single new example row at index 0
+DEBUG: Datos cambiados en fila: 1 columna: 0
+DEBUG: Validando campo "Id" con valor ""
+DEBUG: isFieldForeignKey - relationshipsView o tableEditor es null
+DEBUG: Campo "Id" NO es FK - sin validación
+DEBUG: Vista de datos configurada con 2 filas y 1 columnas
+DEBUG: Primary Key está en la fila de diseño: 0 -> Columna de datos: 0
+DEBUG: Campos únicos en filas de diseño: ()
+DEBUG: Campos únicos como columnas de datos: ()
+DEBUG: setupDataViewWithUniqueFields llamado con:
+DEBUG: fieldNames: ("id", "maestro")
+DEBUG: fieldTypes: ("Entero", "Entero")
+DEBUG: currencyFormats: ()
+DEBUG: millaresDecimals: ()
+DEBUG: textSizes: ()
+DEBUG: numberTypes: ()
+DEBUG: dateFormats: ()
+DEBUG: uniqueColumns: ()
+DEBUG: Primary Key en columna: 0
+DEBUG: Decimales guardados en savedMillaresDecimals: ()
+DEBUG: Tamaños guardados en savedTextSizes: ()
+DEBUG: Formatos de fecha guardados en savedDateFormats: ()
+DEBUG: Campos únicos guardados en savedUniqueColumns: ()
+DEBUG: Configurando vista de datos con campos: ("id", "maestro")
+DEBUG: Tipos de campos recibidos: ("Entero", "Entero")
+DEBUG: Primary Key en columna: 0
+DEBUG: Vista de datos configurada con 3 filas y 2 columnas
+DEBUG: Aplicando formatos de moneda específicos
+DEBUG: No hay formatos de moneda o tipos de campo guardados
+DEBUG: Aplicando formatos de fecha específicos
+DEBUG: No hay formatos de fecha o tipos de campo guardados
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+DEBUG[CONSTRUCTOR]: TableView inicializado - foreignKeyRows limpiado
+DEBUG[CONSTRUCTOR]: Nuevo TableView creado en memoria: 0x10e607950
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+DEBUG[loadKeysFromMetaFileWithDir]: Cargando llaves para tabla: "estu" desde directorio: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+DEBUG[loadKeysFromMetaFileWithDir]: Arrays de llaves reseteados
+DEBUG[loadKeysFromMetaFileWithDir]: Procesando 1 campos
+DEBUG[loadKeysFromMetaFileWithDir]: Llaves cargadas - PK: -1 FK: () Unique: ()
+DEBUG[loadKeysFromMetaFileWithDir]: Aplicando emojis
+DEBUG[applyEmojisToInterface]: no hay llaves que aplicar
+DEBUG: Campo cambiado en fila: 0 columna: 0
+DEBUG: Campo cambiado en fila: 1 columna: 0
+DEBUG: Added field name: "id"
+DEBUG: getCurrentFieldNames() returning: ("id")
+DEBUG: getCurrentFieldTypes() returning: ()
+DEBUG[autosave]: tableDesignChanged activado para tabla: "estu" con campos: ("id")
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 1 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: getCurrentFieldNames() returning: ("id")
+DEBUG: getCurrentFieldTypes() returning: ()
+DEBUG[autosave]: tableDesignChanged activado para tabla: "estu" con campos: ("id")
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 1 columna: 2
+DEBUG: Added field name: "id"
+DEBUG: getCurrentFieldNames() returning: ("id")
+DEBUG: getCurrentFieldTypes() returning: ()
+DEBUG[autosave]: tableDesignChanged activado para tabla: "estu" con campos: ("id")
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Added field name: "id"
+DEBUG: getCurrentFieldNames() returning: ("id")
+DEBUG: getCurrentFieldTypes() returning: ()
+DEBUG[autosave]: tableDesignChanged activado para tabla: "estu" con campos: ("id")
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 0 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: getCurrentFieldNames() returning: ("id")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "estu" con campos: ("id")
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "estu"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "estu" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+DEBUG: Configurando vista de datos con campos: ("Id")
+DEBUG: Tipos de campos recibidos: ("Entero")
+DEBUG: Primary Key en columna: -1
+DEBUG: Created single new example row at index 0
+DEBUG: Datos cambiados en fila: 1 columna: 0
+DEBUG: Validando campo "Id" con valor ""
+DEBUG: isFieldForeignKey - relationshipsView o tableEditor es null
+DEBUG: Campo "Id" NO es FK - sin validación
+DEBUG: Vista de datos configurada con 2 filas y 1 columnas
+DEBUG: No hay Primary Key definida
+DEBUG: Campos únicos en filas de diseño: ()
+DEBUG: Campos únicos como columnas de datos: ()
+DEBUG: setupDataViewWithUniqueFields llamado con:
+DEBUG: fieldNames: ("id")
+DEBUG: fieldTypes: ("Entero")
+DEBUG: currencyFormats: ()
+DEBUG: millaresDecimals: ()
+DEBUG: textSizes: ()
+DEBUG: numberTypes: ()
+DEBUG: dateFormats: ()
+DEBUG: uniqueColumns: ()
+DEBUG: Primary Key en columna: -1
+DEBUG: Decimales guardados en savedMillaresDecimals: ()
+DEBUG: Tamaños guardados en savedTextSizes: ()
+DEBUG: Formatos de fecha guardados en savedDateFormats: ()
+DEBUG: Campos únicos guardados en savedUniqueColumns: ()
+DEBUG: Configurando vista de datos con campos: ("id")
+DEBUG: Tipos de campos recibidos: ("Entero")
+DEBUG: Primary Key en columna: -1
+DEBUG: Vista de datos configurada con 1 filas y 1 columnas
+DEBUG: Aplicando formatos de moneda específicos
+DEBUG: No hay formatos de moneda o tipos de campo guardados
+DEBUG: Aplicando formatos de fecha específicos
+DEBUG: No hay formatos de fecha o tipos de campo guardados
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+DEBUG[CONSTRUCTOR]: TableView inicializado - foreignKeyRows limpiado
+DEBUG[CONSTRUCTOR]: Nuevo TableView creado en memoria: 0x10e619740
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+DEBUG[loadKeysFromMetaFileWithDir]: Cargando llaves para tabla: "maestros" desde directorio: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+DEBUG[loadKeysFromMetaFileWithDir]: Arrays de llaves reseteados
+DEBUG[loadKeysFromMetaFileWithDir]: Procesando 2 campos
+DEBUG[loadKeysFromMetaFileWithDir]: Primary Key cargada en fila: 0
+DEBUG[loadKeysFromMetaFileWithDir]: Foreign Key cargada en fila: 1
+DEBUG[loadKeysFromMetaFileWithDir]: Llaves cargadas - PK: 0 FK: (1) Unique: ()
+DEBUG[loadKeysFromMetaFileWithDir]: Aplicando emojis
+DEBUG[applyEmojisToInterface]: Aplicando emojis a 2 filas
+DEBUG[applyEmojisToInterface]: Estado actual - PK: 0 FK: (1) U: ()
+DEBUG[applyEmojisToInterface]: Estado después de validación - PK: 0 FK: (1) U: ()
+DEBUG[applyEmojisToInterface]: Procesando fila 0 con texto original: "Id"
+DEBUG[applyEmojisToInterface]: Campo limpio en fila 0 : "Id"
+DEBUG[applyEmojisToInterface]: Aplicando texto final: "🔑 Id" a fila 0
+DEBUG[applyEmojisToInterface]: Texto aplicado exitosamente
+DEBUG[applyEmojisToInterface]: Fila 0 : "Id" -> PK: true FK: false U: false -> Texto: "🔑 Id"
+DEBUG[applyEmojisToInterface]: Procesando fila 1 con texto original: ""
+DEBUG[applyEmojisToInterface]: Saltando campo vacío en fila 1
+DEBUG[applyEmojisToInterface]: Emojis aplicados exitosamente
+DEBUG: Campo cambiado en fila: 0 columna: 0
+DEBUG: Added field name: "id"
+DEBUG: getCurrentFieldNames() returning: ("id")
+DEBUG: getCurrentFieldTypes() returning: ()
+DEBUG[autosave]: tableDesignChanged activado para tabla: "maestros" con campos: ("id")
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 0 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: getCurrentFieldNames() returning: ("id")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "maestros" con campos: ("id")
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 1 columna: 0
+DEBUG: Campo cambiado en fila: 2 columna: 0
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_alumno"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_alumno")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "maestros" con campos: ("id", "id_alumno")
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 2 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_alumno"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_alumno")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "maestros" con campos: ("id", "id_alumno")
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 2 columna: 2
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_alumno"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_alumno")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "maestros" con campos: ("id", "id_alumno")
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_alumno"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_alumno")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "maestros" con campos: ("id", "id_alumno")
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 1 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_alumno"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_alumno")
+DEBUG: Added field type: "Entero"
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero", "Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "maestros" con campos: ("id", "id_alumno")
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "maestros"
+Primary Keys: ("id")
+Foreign Keys: ("id_alumno")
+Unique Keys: ()
+Campo cargado: "🔑 id" (PK: true FK: false Unique: false )
+Campo cargado: "🔗 id_alumno" (PK: false FK: true Unique: false )
+DEBUG: Relaciones actualizadas automáticamente para tabla: "maestros"
+DEBUG: Actualizados los campos en "maestros" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+DEBUG: Configurando vista de datos con campos: ("Id")
+DEBUG: Tipos de campos recibidos: ("Entero")
+DEBUG: Primary Key en columna: -1
+DEBUG: Created single new example row at index 0
+DEBUG: Datos cambiados en fila: 1 columna: 0
+DEBUG: Validando campo "Id" con valor ""
+DEBUG: isFieldForeignKey - relationshipsView o tableEditor es null
+DEBUG: Campo "Id" NO es FK - sin validación
+DEBUG: Vista de datos configurada con 2 filas y 1 columnas
+DEBUG: Primary Key está en la fila de diseño: 0 -> Columna de datos: 0
+DEBUG: Campos únicos en filas de diseño: ()
+DEBUG: Campos únicos como columnas de datos: ()
+DEBUG: setupDataViewWithUniqueFields llamado con:
+DEBUG: fieldNames: ("id", "id_alumno")
+DEBUG: fieldTypes: ("Entero", "Entero")
+DEBUG: currencyFormats: ()
+DEBUG: millaresDecimals: ()
+DEBUG: textSizes: ()
+DEBUG: numberTypes: ()
+DEBUG: dateFormats: ()
+DEBUG: uniqueColumns: ()
+DEBUG: Primary Key en columna: 0
+DEBUG: Decimales guardados en savedMillaresDecimals: ()
+DEBUG: Tamaños guardados en savedTextSizes: ()
+DEBUG: Formatos de fecha guardados en savedDateFormats: ()
+DEBUG: Campos únicos guardados en savedUniqueColumns: ()
+DEBUG: Configurando vista de datos con campos: ("id", "id_alumno")
+DEBUG: Tipos de campos recibidos: ("Entero", "Entero")
+DEBUG: Primary Key en columna: 0
+DEBUG: Vista de datos configurada con 1 filas y 2 columnas
+DEBUG: Aplicando formatos de moneda específicos
+DEBUG: No hay formatos de moneda o tipos de campo guardados
+DEBUG: Aplicando formatos de fecha específicos
+DEBUG: No hay formatos de fecha o tipos de campo guardados
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+DEBUG[CONSTRUCTOR]: TableView inicializado - foreignKeyRows limpiado
+DEBUG[CONSTRUCTOR]: Nuevo TableView creado en memoria: 0x11e81c8a0
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+DEBUG[loadKeysFromMetaFileWithDir]: Cargando llaves para tabla: "secciones" desde directorio: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+DEBUG[loadKeysFromMetaFileWithDir]: Arrays de llaves reseteados
+DEBUG[loadKeysFromMetaFileWithDir]: Procesando 3 campos
+DEBUG[loadKeysFromMetaFileWithDir]: Llaves cargadas - PK: -1 FK: () Unique: ()
+DEBUG[loadKeysFromMetaFileWithDir]: Aplicando emojis
+DEBUG[applyEmojisToInterface]: no hay llaves que aplicar
+DEBUG: Campo cambiado en fila: 0 columna: 0
+DEBUG: Added field name: "id"
+DEBUG: getCurrentFieldNames() returning: ("id")
+DEBUG: getCurrentFieldTypes() returning: ()
+DEBUG[autosave]: tableDesignChanged activado para tabla: "secciones" con campos: ("id")
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 0 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: getCurrentFieldNames() returning: ("id")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "secciones" con campos: ("id")
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 1 columna: 0
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_maestros"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_maestros")
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "secciones" con campos: ("id", "id_maestros")
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 1 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_maestros"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_maestros")
+DEBUG: Added field type: "Entero"
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero", "Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "secciones" con campos: ("id", "id_maestros")
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 2 columna: 0
+DEBUG: Campo cambiado en fila: 3 columna: 0
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_maestros"
+DEBUG: Added field name: "id_alumnos"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_maestros", "id_alumnos")
+DEBUG: Added field type: "Entero"
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero", "Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "secciones" con campos: ("id", "id_maestros", "id_alumnos")
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 3 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_maestros"
+DEBUG: Added field name: "id_alumnos"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_maestros", "id_alumnos")
+DEBUG: Added field type: "Entero"
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero", "Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "secciones" con campos: ("id", "id_maestros", "id_alumnos")
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 3 columna: 2
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_maestros"
+DEBUG: Added field name: "id_alumnos"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_maestros", "id_alumnos")
+DEBUG: Added field type: "Entero"
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero", "Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "secciones" con campos: ("id", "id_maestros", "id_alumnos")
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_maestros"
+DEBUG: Added field name: "id_alumnos"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_maestros", "id_alumnos")
+DEBUG: Added field type: "Entero"
+DEBUG: Added field type: "Entero"
+DEBUG: getCurrentFieldTypes() returning: ("Entero", "Entero")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "secciones" con campos: ("id", "id_maestros", "id_alumnos")
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+DEBUG: Campo cambiado en fila: 2 columna: 1
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_maestros"
+DEBUG: Added field name: "id_alumnos"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_maestros", "id_alumnos")
+DEBUG: Added field type: "Entero"
+DEBUG: Added field type: "Entero"
+DEBUG: Added field type: "Texto"
+DEBUG: getCurrentFieldTypes() returning: ("Entero", "Entero", "Texto")
+DEBUG[autosave]: tableDesignChanged activado para tabla: "secciones" con campos: ("id", "id_maestros", "id_alumnos")
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+LLAVES LEIDAS DESDE META - Tabla: "secciones"
+Primary Keys: ()
+Foreign Keys: ()
+Unique Keys: ()
+Campo cargado: "id" (PK: false FK: false Unique: false )
+Campo cargado: "id_maestros" (PK: false FK: false Unique: false )
+Campo cargado: "id_alumnos" (PK: false FK: false Unique: false )
+DEBUG: Actualizados los campos en "secciones" tras cambios en campos
+FormulariosView: refreshView() llamado
+FormulariosView: loadAvailableTables() iniciado
+FormulariosView: Proyecto actual: "proyecto1"
+FormulariosView: Buscando tablas en: "/Volumes/anis/MiniAccess/proyectos/proyecto1/tables"
+FormulariosView: Directorio existe: true
+FormulariosView: Archivos .meta encontrados: ("alumnos.meta", "estu.meta", "maestros.meta", "secciones.meta")
+FormulariosView: Tabla agregada al combobox: "alumnos"
+FormulariosView: Tabla agregada al combobox: "estu"
+FormulariosView: Tabla agregada al combobox: "maestros"
+FormulariosView: Tabla agregada al combobox: "secciones"
+FormulariosView: Se encontraron 4 tablas
+FormulariosView: Items en combobox: 5
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+DEBUG: Configurando vista de datos con campos: ("Id")
+DEBUG: Tipos de campos recibidos: ("Entero")
+DEBUG: Primary Key en columna: -1
+DEBUG: Created single new example row at index 0
+DEBUG: Datos cambiados en fila: 1 columna: 0
+DEBUG: Validando campo "Id" con valor ""
+DEBUG: isFieldForeignKey - relationshipsView o tableEditor es null
+DEBUG: Campo "Id" NO es FK - sin validación
+DEBUG: Vista de datos configurada con 2 filas y 1 columnas
+DEBUG: No hay Primary Key definida
+DEBUG: Campos únicos en filas de diseño: ()
+DEBUG: Campos únicos como columnas de datos: ()
+DEBUG: setupDataViewWithUniqueFields llamado con:
+DEBUG: fieldNames: ("id", "id_maestros", "id_alumnos")
+DEBUG: fieldTypes: ("Entero", "Entero", "Texto")
+DEBUG: currencyFormats: ()
+DEBUG: millaresDecimals: ()
+DEBUG: textSizes: ()
+DEBUG: numberTypes: ()
+DEBUG: dateFormats: ()
+DEBUG: uniqueColumns: ()
+DEBUG: Primary Key en columna: -1
+DEBUG: Decimales guardados en savedMillaresDecimals: ()
+DEBUG: Tamaños guardados en savedTextSizes: ()
+DEBUG: Formatos de fecha guardados en savedDateFormats: ()
+DEBUG: Campos únicos guardados en savedUniqueColumns: ()
+DEBUG: Configurando vista de datos con campos: ("id", "id_maestros", "id_alumnos")
+DEBUG: Tipos de campos recibidos: ("Entero", "Entero", "Texto")
+DEBUG: Primary Key en columna: -1
+DEBUG: Vista de datos configurada con 1 filas y 3 columnas
+DEBUG: Aplicando formatos de moneda específicos
+DEBUG: No hay formatos de moneda o tipos de campo guardados
+DEBUG: Aplicando formatos de fecha específicos
+DEBUG: No hay formatos de fecha o tipos de campo guardados
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+DEBUG[autosave]: Iniciando autosave para tabla: "secciones"
+DEBUG[autosave]: Primary keys: ()
+DEBUG: getForeignKeyFieldNames() INICIANDO
+DEBUG: foreignKeyRows actual: ()
+DEBUG: tableWidget existe: true
+DEBUG: tableWidget->rowCount(): 4
+DEBUG: getForeignKeyFieldNames() retornando: ()
+DEBUG[autosave]: Foreign keys: ()
+DEBUG: Added field name: "id"
+DEBUG: Added field name: "id_maestros"
+DEBUG: Added field name: "id_alumnos"
+DEBUG: getCurrentFieldNames() returning: ("id", "id_maestros", "id_alumnos")
+DEBUG: Added field type: "Entero"
+DEBUG: Added field type: "Entero"
+DEBUG: Added field type: "Texto"
+DEBUG: getCurrentFieldTypes() returning: ("Entero", "Entero", "Texto")
+DEBUG: getCurrentCurrencyFormats() - Lista guardada: ()
+DEBUG: getCurrentCurrencyFormats() returning: ("", "", "")
+DEBUG: getCurrentNumberTypes() - Lista guardada: ()
+DEBUG: getCurrentNumberTypes() returning: ("", "", "")
+DEBUG: getCurrentDateFormats() - Lista guardada: ()
+DEBUG: getCurrentDateFormats() returning: ("", "", "")
+DEBUG: getCurrentMillaresDecimals() - Lista guardada: ()
+DEBUG: getCurrentMillaresDecimals() returning: ("", "", "")
+DEBUG: getCurrentTextSizes() - Lista guardada: ()
+DEBUG: getCurrentTextSizes() returning: ("", "", "")
+DEBUG: No hay Primary Key definida
+DEBUG: Campos únicos en filas de diseño: ()
+DEBUG: Campos únicos como columnas de datos: ()
+DEBUG[buildFieldsArrayJson]: Antes de llamar getForeignKeyFieldNames()
+DEBUG: getForeignKeyFieldNames() INICIANDO
+DEBUG: foreignKeyRows actual: ()
+DEBUG: tableWidget existe: true
+DEBUG: tableWidget->rowCount(): 4
+DEBUG: getForeignKeyFieldNames() retornando: ()
+DEBUG[buildFieldsArrayJson]: Después de llamar getForeignKeyFieldNames(), resultado: ()
+DEBUG[buildFieldsArrayJson]: pkIndex = -1
+DEBUG[buildFieldsArrayJson]: uniqueIdxs = ()
+DEBUG[buildFieldsArrayJson]: foreignKeyNames = ()
+DEBUG[buildFieldsArrayJson]: nombres de campos = ("id", "id_maestros", "id_alumnos")
+DEBUG[buildFieldsArrayJson]: Verificando FK para "id" -> cleanName: "id" -> isFk: false
+DEBUG[buildFieldsArrayJson]: Verificando FK para "id_maestros" -> cleanName: "id_maestros" -> isFk: false
+DEBUG[buildFieldsArrayJson]: Verificando FK para "id_alumnos" -> cleanName: "id_alumnos" -> isFk: false
+[autosave meta] actualizado para "secciones"
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform
+Unknown property transform
+Unknown property box-shadow
+Unknown property transform

@@ -1,0 +1,7 @@
+qt.qpa.fonts: Populating font family aliases took 78 ms. Replace uses of missing font family "Segoe UI" with one that exists to avoid this cost. 
+2025-09-21 20:03:05.295 MiniAccess[32072:1936374] +[IMKClient subclass]: chose IMKClient_Modern
+2025-09-21 20:03:05.295 MiniAccess[32072:1936374] +[IMKInputSession subclass]: chose IMKInputSession_Modern
+Unknown property transform
+Unknown property transform
+Unknown property transform
+Unknown property transform

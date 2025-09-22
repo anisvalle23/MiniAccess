@@ -58,7 +58,7 @@ private slots:
     void onEditRecordClicked();
     void onDeleteRecordClicked();
     void onFirstRecordClicked();
-    void onPreviousRecordClicked();
+    void onPrevRecordClicked();
     void onNextRecordClicked();
     void onLastRecordClicked();
     void onRecordNavigationChanged();
@@ -110,12 +110,19 @@ private:
     QVBoxLayout *mainLayout;
     QLabel *titleLabel;
     QComboBox *tableComboBox;
+    QLabel *recordCounterLabel; // Para mostrar "1 de 5"
     
     // Buttons
     QPushButton *newRecordBtn;
     QPushButton *editRecordBtn;
     QPushButton *deleteRecordBtn;
     QPushButton *saveRecordBtn;
+    
+    // Navigation buttons
+    QPushButton *firstRecordBtn;
+    QPushButton *prevRecordBtn;
+    QPushButton *nextRecordBtn;
+    QPushButton *lastRecordBtn;
     
     // Content Area
     QSplitter *mainSplitter;

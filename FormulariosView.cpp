@@ -99,133 +99,141 @@ void FormulariosView::setupUI()
     
     mainLayout->addWidget(selectorWidget);
     
-    // Botones simples
-    QWidget *buttonWidget = new QWidget();
-    QHBoxLayout *buttonLayout = new QHBoxLayout(buttonWidget);
-    buttonLayout->setContentsMargins(0, 0, 0, 0);
+    // Rediseño de botones: TODOS en una sola fila más compactos
+    QWidget *buttonContainer = new QWidget();
+    QHBoxLayout *buttonLayout = new QHBoxLayout(buttonContainer);
+    buttonLayout->setContentsMargins(20, 15, 20, 15);
+    buttonLayout->setSpacing(8); // Espaciado más pequeño entre botones
     
-    newRecordBtn = new QPushButton("Nuevo Registro");
-    editRecordBtn = new QPushButton("Editar");
-    deleteRecordBtn = new QPushButton("Eliminar");
-    saveRecordBtn = new QPushButton("Guardar");
+    // Crear TODOS los botones en una sola fila
+    editRecordBtn = new QPushButton("🆕 Nuevo");
+    newRecordBtn = new QPushButton("✏️ Editar");
+    deleteRecordBtn = new QPushButton("�️ Eliminar");
+    saveRecordBtn = new QPushButton("💾 Guardar");
+    firstRecordBtn = new QPushButton("⏮");
+    prevRecordBtn = new QPushButton("◀");
+    nextRecordBtn = new QPushButton("▶");
+    lastRecordBtn = new QPushButton("⏭");
     
-    // Estilo mejorado para los botones
-    QString primaryButtonStyle = 
+    // Estilo compacto para todos los botones
+    QString compactButtonStyle = 
         "QPushButton {"
-        "background-color: #007bff;"
-        "color: white;"
-        "border: none;"
+        "background-color: #f8f9fa;"
+        "color: #495057;"
+        "border: 2px solid #dee2e6;"
         "border-radius: 6px;"
-        "padding: 8px 16px;"
-        "font-size: 14px;"
-        "font-weight: 500;"
+        "padding: 8px 12px;"
+        "font-size: 13px;"
+        "font-weight: 600;"
+        "min-width: 80px;" // Más pequeños
+        "max-height: 40px;"
         "}"
         "QPushButton:hover {"
-        "background-color: #0056b3;"
+        "background-color: #e9ecef;"
+        "border-color: #007bff;"
+        "color: #007bff;"
         "}"
         "QPushButton:pressed {"
-        "background-color: #004085;"
-        "}"
-        "QPushButton:disabled {"
-        "background-color: #6c757d;"
-        "color: #fff;"
-        "}";
-    
-    QString secondaryButtonStyle = 
-        "QPushButton {"
-        "background-color: #6c757d;"
-        "color: white;"
-        "border: none;"
-        "border-radius: 6px;"
-        "padding: 8px 16px;"
-        "font-size: 14px;"
-        "font-weight: 500;"
-        "}"
-        "QPushButton:hover {"
-        "background-color: #545b62;"
-        "}"
-        "QPushButton:pressed {"
-        "background-color: #3e444a;"
+        "background-color: #dee2e6;"
         "}"
         "QPushButton:disabled {"
         "background-color: #e9ecef;"
         "color: #6c757d;"
+        "border-color: #dee2e6;"
         "}";
     
-    QString dangerButtonStyle = 
+    // Estilo especial para botones de navegación (más pequeños y cuadrados)
+    QString navButtonStyle = 
         "QPushButton {"
-        "background-color: #dc3545;"
-        "color: white;"
-        "border: none;"
+        "background-color: #f8f9fa;"
+        "color: #495057;"
+        "border: 2px solid #dee2e6;"
         "border-radius: 6px;"
-        "padding: 8px 16px;"
+        "padding: 8px;"
         "font-size: 14px;"
-        "font-weight: 500;"
+        "font-weight: 600;"
+        "min-width: 35px;"
+        "max-width: 35px;"
+        "min-height: 35px;"
+        "max-height: 35px;"
         "}"
         "QPushButton:hover {"
-        "background-color: #c82333;"
+        "background-color: #e9ecef;"
+        "border-color: #007bff;"
+        "color: #007bff;"
         "}"
         "QPushButton:pressed {"
-        "background-color: #bd2130;"
+        "background-color: #dee2e6;"
         "}"
         "QPushButton:disabled {"
         "background-color: #e9ecef;"
         "color: #6c757d;"
+        "border-color: #dee2e6;"
         "}";
     
-    newRecordBtn->setStyleSheet(primaryButtonStyle);
-    saveRecordBtn->setStyleSheet(primaryButtonStyle);
-    editRecordBtn->setStyleSheet(secondaryButtonStyle);
-    deleteRecordBtn->setStyleSheet(dangerButtonStyle);
+    // Aplicar estilos
+    editRecordBtn->setStyleSheet(compactButtonStyle);
+    newRecordBtn->setStyleSheet(compactButtonStyle);
+    deleteRecordBtn->setStyleSheet(compactButtonStyle);
+    saveRecordBtn->setStyleSheet(compactButtonStyle);
     
-    newRecordBtn->setFixedHeight(40);
-    editRecordBtn->setFixedHeight(40);
-    deleteRecordBtn->setFixedHeight(40);
-    saveRecordBtn->setFixedHeight(40);
+    firstRecordBtn->setStyleSheet(navButtonStyle);
+    prevRecordBtn->setStyleSheet(navButtonStyle);
+    nextRecordBtn->setStyleSheet(navButtonStyle);
+    lastRecordBtn->setStyleSheet(navButtonStyle);
     
-    editRecordBtn->setEnabled(false);
+    // Estado inicial de botones
+    editRecordBtn->setEnabled(true);  // "Nuevo" siempre habilitado
+    newRecordBtn->setEnabled(false);  // "Editar" se habilita cuando hay datos
     deleteRecordBtn->setEnabled(false);
     saveRecordBtn->setEnabled(false);
     
-    buttonLayout->addWidget(newRecordBtn);
-    buttonLayout->addWidget(editRecordBtn);
-    buttonLayout->addWidget(deleteRecordBtn);
-    buttonLayout->addWidget(saveRecordBtn);
-    buttonLayout->addStretch();
+    // Botones de navegación inicialmente deshabilitados
+    firstRecordBtn->setEnabled(false);
+    prevRecordBtn->setEnabled(false);
+    nextRecordBtn->setEnabled(false);
+    lastRecordBtn->setEnabled(false);
     
-    mainLayout->addWidget(buttonWidget);
+    // Agregar TODOS los botones en una sola fila
+    buttonLayout->addWidget(editRecordBtn);   // Nuevo
+    buttonLayout->addWidget(newRecordBtn);    // Editar
+    buttonLayout->addWidget(deleteRecordBtn); // Eliminar
+    buttonLayout->addWidget(saveRecordBtn);   // Guardar
     
-    // Área principal con splitter
-    mainSplitter = new QSplitter(Qt::Horizontal);
+    // Separador visual
+    QFrame* separator = new QFrame();
+    separator->setFrameShape(QFrame::VLine);
+    separator->setStyleSheet("QFrame { color: #dee2e6; margin: 5px; }");
+    buttonLayout->addWidget(separator);
     
-    // Formulario (lado izquierdo)
-    formAreaWidget = new QWidget();
-    formAreaWidget->setStyleSheet(
-        "QWidget {"
-        "background-color: white;"
-        "border: 1px solid #e0e0e0;"
-        "border-radius: 8px;"
-        "}"
+    buttonLayout->addWidget(firstRecordBtn);  // ⏮
+    buttonLayout->addWidget(prevRecordBtn);   // ◀
+    buttonLayout->addWidget(nextRecordBtn);   // ▶
+    buttonLayout->addWidget(lastRecordBtn);   // ⏭
+    
+    buttonLayout->addStretch(); // Espacio flexible al final
+    
+    mainLayout->addWidget(buttonContainer);
+    
+    // Contador de registros
+    recordCounterLabel = new QLabel("", this);
+    recordCounterLabel->setAlignment(Qt::AlignCenter);
+    recordCounterLabel->setStyleSheet(
+        "color: #6c757d; "
+        "font-size: 14px; "
+        "font-weight: 500; "
+        "padding: 8px; "
+        "background: transparent;"
     );
-    formAreaLayout = new QVBoxLayout(formAreaWidget);
-    formAreaLayout->setContentsMargins(20, 20, 20, 20);
-    formAreaLayout->setSpacing(15);
+    mainLayout->addWidget(recordCounterLabel);
     
-    QLabel *formTitle = new QLabel("Formulario de Entrada");
-    formTitle->setStyleSheet(
-        "font-size: 18px;"
-        "font-weight: bold;"
-        "color: #2c3e50;"
-        "margin-bottom: 10px;"
-        "border: none;"
-    );
-    formAreaLayout->addWidget(formTitle);
-    
+    // Crear área del formulario
     formScrollArea = new QScrollArea();
     formScrollArea->setStyleSheet(
         "QScrollArea {"
-        "border: none;"
-        "background-color: transparent;"
+        "border: 1px solid #e0e0e0;"
+        "border-radius: 8px;"
+        "background-color: white;"
         "}"
         "QScrollArea > QWidget > QWidget {"
         "background-color: transparent;"
@@ -235,109 +243,16 @@ void FormulariosView::setupUI()
     formLayout = new QFormLayout(formContentWidget);
     formLayout->setSpacing(15);
     formLayout->setLabelAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    formLayout->setContentsMargins(20, 20, 20, 20);
     formScrollArea->setWidget(formContentWidget);
     formScrollArea->setWidgetResizable(true);
-    formAreaLayout->addWidget(formScrollArea);
     
-    // Estado vacío
-    emptyStateWidget = new QWidget();
-    emptyStateWidget->setStyleSheet(
-        "QWidget {"
-        "background-color: #f8f9fa;"
-        "border: 2px dashed #dee2e6;"
-        "border-radius: 8px;"
-        "}"
-    );
-    emptyStateLayout = new QVBoxLayout(emptyStateWidget);
-    emptyStateLayout->setContentsMargins(40, 40, 40, 40);
+    // Crear dataTable oculto para compatibilidad (no se muestra en la interfaz)
+    dataTable = new QTableWidget(this);
+    dataTable->setVisible(false);
     
-    emptyStateLabel = new QLabel("Selecciona una tabla");
-    emptyStateLabel->setAlignment(Qt::AlignCenter);
-    emptyStateLabel->setStyleSheet(
-        "font-size: 18px;"
-        "color: #6c757d;"
-        "font-weight: 500;"
-        "border: none;"
-        "background: transparent;"
-    );
-    
-    QLabel *emptyStateSubtitle = new QLabel("Elige una tabla del menú desplegable para comenzar a trabajar con los formularios");
-    emptyStateSubtitle->setAlignment(Qt::AlignCenter);
-    emptyStateSubtitle->setWordWrap(true);
-    emptyStateSubtitle->setStyleSheet(
-        "font-size: 14px;"
-        "color: #8e9aaf;"
-        "border: none;"
-        "background: transparent;"
-        "margin-top: 10px;"
-    );
-    
-    emptyStateLayout->addWidget(emptyStateLabel);
-    emptyStateLayout->addWidget(emptyStateSubtitle);
-    formAreaLayout->addWidget(emptyStateWidget);
-    
-    // Tabla de datos (lado derecho)
-    dataViewerWidget = new QWidget();
-    dataViewerWidget->setStyleSheet(
-        "QWidget {"
-        "background-color: white;"
-        "border: 1px solid #e0e0e0;"
-        "border-radius: 8px;"
-        "}"
-    );
-    dataViewerLayout = new QVBoxLayout(dataViewerWidget);
-    dataViewerLayout->setContentsMargins(20, 20, 20, 20);
-    dataViewerLayout->setSpacing(15);
-    
-    QLabel *dataTitle = new QLabel("Registros Existentes");
-    dataTitle->setStyleSheet(
-        "font-size: 18px;"
-        "font-weight: bold;"
-        "color: #2c3e50;"
-        "margin-bottom: 10px;"
-        "border: none;"
-    );
-    dataViewerLayout->addWidget(dataTitle);
-    
-    dataTable = new QTableWidget();
-    dataTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    dataTable->setAlternatingRowColors(true);
-    dataTable->setStyleSheet(
-        "QTableWidget {"
-        "border: 1px solid #dee2e6;"
-        "border-radius: 6px;"
-        "background-color: white;"
-        "gridline-color: #e9ecef;"
-        "font-size: 14px;"
-        "}"
-        "QTableWidget::item {"
-        "padding: 8px;"
-        "border-bottom: 1px solid #e9ecef;"
-        "}"
-        "QTableWidget::item:selected {"
-        "background-color: #e3f2fd;"
-        "color: #1976d2;"
-        "}"
-        "QHeaderView::section {"
-        "background-color: #f8f9fa;"
-        "border: 1px solid #dee2e6;"
-        "padding: 10px 8px;"
-        "font-weight: 600;"
-        "color: #495057;"
-        "font-size: 14px;"
-        "}"
-        "QTableWidget::item:alternate {"
-        "background-color: #f8f9fa;"
-        "}"
-    );
-    dataViewerLayout->addWidget(dataTable);
-    
-    // Agregar al splitter
-    mainSplitter->addWidget(formAreaWidget);
-    mainSplitter->addWidget(dataViewerWidget);
-    mainSplitter->setSizes({400, 600});
-    
-    mainLayout->addWidget(mainSplitter, 1);
+    mainLayout->addWidget(formScrollArea);
+    mainLayout->addStretch();
     
     // Conectar señales
     connect(tableComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged), 
@@ -346,7 +261,12 @@ void FormulariosView::setupUI()
     connect(editRecordBtn, &QPushButton::clicked, this, &FormulariosView::onEditRecordClicked);
     connect(deleteRecordBtn, &QPushButton::clicked, this, &FormulariosView::onDeleteRecordClicked);
     connect(saveRecordBtn, &QPushButton::clicked, this, &FormulariosView::onSaveRecordClicked);
-    connect(dataTable, &QTableWidget::itemSelectionChanged, this, &FormulariosView::onRecordSelected);
+    
+    // Conectar señales de navegación
+    connect(firstRecordBtn, &QPushButton::clicked, this, &FormulariosView::onFirstRecordClicked);
+    connect(prevRecordBtn, &QPushButton::clicked, this, &FormulariosView::onPrevRecordClicked);
+    connect(nextRecordBtn, &QPushButton::clicked, this, &FormulariosView::onNextRecordClicked);
+    connect(lastRecordBtn, &QPushButton::clicked, this, &FormulariosView::onLastRecordClicked);
     
     // Cargar tablas
     qDebug() << "FormulariosView: Llamando loadAvailableTables() desde setupUI()";
@@ -727,8 +647,14 @@ void FormulariosView::onNewRecordClicked()
 
 void FormulariosView::onEditRecordClicked()
 {
-    // Ya no es necesario activar edición porque el formulario siempre está editable
-    // Solo asegurar que los botones estén en el estado correcto
+    // Este botón funciona como "Nuevo Registro"
+    clearFormInputs();
+    currentRecordIndex = -1; // Indicar que estamos creando un nuevo registro
+    isEditMode = true;
+    
+    // Actualizar contador para indicar "Nuevo registro"
+    recordCounterLabel->setText("Nuevo registro");
+    
     updateButtonStates();
 }
 
@@ -1001,10 +927,6 @@ bool FormulariosView::validateFormData()
 void FormulariosView::onCreateFormClicked() {}
 void FormulariosView::onClearFormClicked() { clearFormInputs(); }
 void FormulariosView::onRefreshDataClicked() { refreshView(); }
-void FormulariosView::onFirstRecordClicked() {}
-void FormulariosView::onPreviousRecordClicked() {}
-void FormulariosView::onNextRecordClicked() {}
-void FormulariosView::onLastRecordClicked() {}
 void FormulariosView::onRecordNavigationChanged() {}
 
 // Funciones auxiliares de validación
@@ -1154,9 +1076,31 @@ void FormulariosView::updateNavigationState()
     editRecordBtn->setEnabled(hasSelection);
     deleteRecordBtn->setEnabled(hasSelection);
     saveRecordBtn->setEnabled(isEditMode);
+    newRecordBtn->setEnabled(hasSelection); // Editar solo si hay registro seleccionado
     
-    // TODO: Agregar botones de navegación (primero, anterior, siguiente, último)
-    // y actualizar su estado aquí
+    // Actualizar botones de navegación
+    if (hasRecords) {
+        firstRecordBtn->setEnabled(currentRecordIndex > 0);
+        prevRecordBtn->setEnabled(currentRecordIndex > 0);
+        nextRecordBtn->setEnabled(currentRecordIndex < allRecords.size() - 1);
+        lastRecordBtn->setEnabled(currentRecordIndex < allRecords.size() - 1);
+    } else {
+        firstRecordBtn->setEnabled(false);
+        prevRecordBtn->setEnabled(false);
+        nextRecordBtn->setEnabled(false);
+        lastRecordBtn->setEnabled(false);
+    }
+    
+    // Actualizar contador de registros
+    if (hasRecords && hasSelection) {
+        recordCounterLabel->setText(QString("Registro %1 de %2")
+                                   .arg(currentRecordIndex + 1)
+                                   .arg(allRecords.size()));
+    } else if (hasRecords) {
+        recordCounterLabel->setText(QString("Total: %1 registros").arg(allRecords.size()));
+    } else {
+        recordCounterLabel->setText("Sin registros");
+    }
 }
 
 QString FormulariosView::cleanFieldNameUI(const QString& fieldName)
@@ -1354,4 +1298,34 @@ void FormulariosView::hideFieldError(QWidget* widget)
     QString baseStyle = widget->styleSheet();
     baseStyle = baseStyle.remove("border: 2px solid #dc3545; background-color: #fff5f5;");
     widget->setStyleSheet(baseStyle);
+}
+
+// Nuevos métodos de navegación
+
+void FormulariosView::onFirstRecordClicked()
+{
+    if (!allRecords.isEmpty()) {
+        goToRecord(0);
+    }
+}
+
+void FormulariosView::onPrevRecordClicked()
+{
+    if (currentRecordIndex > 0) {
+        goToRecord(currentRecordIndex - 1);
+    }
+}
+
+void FormulariosView::onNextRecordClicked()
+{
+    if (currentRecordIndex < allRecords.size() - 1) {
+        goToRecord(currentRecordIndex + 1);
+    }
+}
+
+void FormulariosView::onLastRecordClicked()
+{
+    if (!allRecords.isEmpty()) {
+        goToRecord(allRecords.size() - 1);
+    }
 }

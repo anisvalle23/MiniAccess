@@ -323,7 +323,9 @@ void MainWindow::createMainContent()
     formulariosView = new FormulariosView(this);
     
     // Create reportes view
+    qDebug() << "MainWindow: Creando ReportesView...";
     reportesView = new ReportesView(this);
+    qDebug() << "MainWindow: ReportesView creado exitosamente";
     
     // Set table editor reference in relationships view
     relationshipsView->setTableEditor(tableEditorView);
@@ -859,6 +861,8 @@ void MainWindow::switchToView(int viewIndex)
             stackedWidget->setCurrentIndex(4);
             // Update reportes view theme if needed
             reportesView->updateTheme();
+            // Refresh reportes view to load tables
+            reportesView->refreshView();
             break;
         case 5:
             // Salir - Volver a CreateProject

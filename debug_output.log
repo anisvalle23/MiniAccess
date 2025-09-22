@@ -1,1 +1,9 @@
-zsh: no such file or directory: ./MiniAccess.app/Contents/MacOS/MiniAccess
+qt.qpa.fonts: Populating font family aliases took 68 ms. Replace uses of missing font family "Segoe UI" with one that exists to avoid this cost. 
+2025-09-21 17:56:01.518 MiniAccess[29137:1898376] +[IMKClient subclass]: chose IMKClient_Modern
+2025-09-21 17:56:01.518 MiniAccess[29137:1898376] +[IMKInputSession subclass]: chose IMKInputSession_Modern
+Unknown property transform
+Unknown property transform
+Unknown property transform
+Unknown property transform
+QPropertyAnimation: you're trying to animate a non-existing property opacity of your QObject
+QPropertyAnimation: you're trying to animate a non-existing property opacity of your QObject

@@ -7,18 +7,51 @@
 #include <QFileDialog>
 #include <QDate>
 #include <QHeaderView>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QCheckBox>
+#include <QDialog>
+#include <QScrollArea>
+#include <QFile>
+#include <QDir>
+#include <QTextStream>
+#include <QFrame>
 
 ReportesView::ReportesView(MainWindow *mainWindow, QWidget *parent)
     : QWidget(parent)
     , m_mainWindow(mainWindow)
     , currentSelectedReport("")
+    , currentSelectedTable("")
     , headerShadow(nullptr)
     , toolbarShadow(nullptr)
     , fadeAnimation(nullptr)
+    , mainLayout(nullptr)
+    , scrollArea(nullptr)
+    , headerWidget(nullptr)
+    , headerLayout(nullptr)
+    , titleLabel(nullptr)
+    , descriptionLabel(nullptr)
+    , tableSelectorWidget(nullptr)
+    , tableSelectorLayout(nullptr)
+    , tableSelectorLabel(nullptr)
+    , tableComboBox(nullptr)
+    , reportContentWidget(nullptr)
+    , reportContentLayout(nullptr)
+    , reportCardWidget(nullptr)
+    , reportCardLayout(nullptr)
+    , reportTitleLabel(nullptr)
+    , reportDataWidget(nullptr)
+    , reportDataLayout(nullptr)
+    , emptyStateWidget(nullptr)
+    , emptyStateLayout(nullptr)
+    , emptyStateLabel(nullptr)
 {
+    qDebug() << "ReportesView: Constructor iniciado";
     setupUI();
     styleComponents();
     loadReports();
+    qDebug() << "ReportesView: Constructor completado";
 }
 
 ReportesView::~ReportesView()
@@ -28,620 +61,1192 @@ ReportesView::~ReportesView()
 
 void ReportesView::setupUI()
 {
-    // Layout principal
+    // Layout principal con márgenes para evitar que se vea cortado
     mainLayout = new QVBoxLayout(this);
-    mainLayout->setContentsMargins(20, 20, 20, 20);
-    mainLayout->setSpacing(20);
+    mainLayout->setContentsMargins(20, 20, 20, 20); // Márgenes para separación del borde
+    mainLayout->setSpacing(15); // Espaciado entre secciones principales
     
     createHeaderSection();
-    createToolbar();
-    createReportFilters();
+    createTableSelector();
+    createReportContent();
     
-    // Crear splitter principal
-    mainSplitter = new QSplitter(Qt::Horizontal);
+    // Crear scroll area solo para el contenido del reporte, no para todo
+    scrollArea = new QScrollArea();
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setFrameShape(QFrame::NoFrame);
     
-    createReportsList();
-    createReportViewer();
+    // Establecer el widget de contenido en el scroll area
+    scrollArea->setWidget(reportContentWidget);
     
-    // Agregar widgets al splitter
-    mainSplitter->addWidget(reportsListWidget);
-    mainSplitter->addWidget(reportViewerWidget);
-    mainSplitter->setSizes({300, 700}); // Proporción inicial
-    
-    // Agregar widgets al layout principal
+    // Agregar widgets al layout principal - header y selector fijos, solo contenido con scroll
     mainLayout->addWidget(headerWidget);
-    mainLayout->addWidget(toolbarWidget);
-    mainLayout->addWidget(filtersWidget);
-    mainLayout->addWidget(mainSplitter, 1); // El splitter toma el espacio restante
+    mainLayout->addWidget(tableSelectorWidget);
+    mainLayout->addWidget(scrollArea, 1); // El scroll area toma el espacio restante
+    
+    // Cargar tablas disponibles
+    qDebug() << "ReportesView: Llamando loadAvailableTables() desde setupUI()";
+    loadAvailableTables();
 }
 
 void ReportesView::createHeaderSection()
 {
     headerWidget = new QWidget();
+    headerWidget->setFixedHeight(160); // Altura suficiente para ver todo el contenido
     headerLayout = new QVBoxLayout(headerWidget);
-    headerLayout->setContentsMargins(0, 0, 0, 0);
-    headerLayout->setSpacing(8);
+    headerLayout->setContentsMargins(25, 30, 25, 30); // Márgenes internos generosos
+    headerLayout->setSpacing(12);
     
-    // Título principal
-    titleLabel = new QLabel("Reportes");
-    titleLabel->setFont(QFont("Inter", 28, QFont::Bold));
+    // Título principal con estilo moderno
+    titleLabel = new QLabel("📊 Reportes");
+    titleLabel->setFont(QFont("Inter", 30, QFont::Bold));
     titleLabel->setAlignment(Qt::AlignLeft);
     
-    // Descripción
-    descriptionLabel = new QLabel("Genera y visualiza reportes personalizados de tus datos");
-    descriptionLabel->setFont(QFont("Inter", 14, QFont::Normal));
+    // Descripción con mejor espaciado
+    descriptionLabel = new QLabel("Visualiza y analiza la información de tus datos");
+    descriptionLabel->setFont(QFont("Inter", 15, QFont::Normal));
     descriptionLabel->setAlignment(Qt::AlignLeft);
     
     headerLayout->addWidget(titleLabel);
     headerLayout->addWidget(descriptionLabel);
 }
 
-void ReportesView::createToolbar()
+void ReportesView::createTableSelector()
 {
-    toolbarWidget = new QWidget();
-    toolbarLayout = new QHBoxLayout(toolbarWidget);
-    toolbarLayout->setContentsMargins(0, 0, 0, 0);
-    toolbarLayout->setSpacing(12);
+    tableSelectorWidget = new QWidget();
+    tableSelectorWidget->setFixedHeight(90); // Altura ajustada
+    tableSelectorLayout = new QHBoxLayout(tableSelectorWidget);
+    tableSelectorLayout->setContentsMargins(25, 20, 25, 20); // Márgenes internos
+    tableSelectorLayout->setSpacing(20);
     
-    // Botones de acción
-    createReportBtn = new QPushButton("Crear Reporte");
-    createReportBtn->setFixedHeight(40);
-    createReportBtn->setFont(QFont("Inter", 12, QFont::Medium));
-    createReportBtn->setCursor(Qt::PointingHandCursor);
+    // Label para el selector
+    tableSelectorLabel = new QLabel("Seleccionar tabla:");
+    tableSelectorLabel->setFont(QFont("Inter", 16, QFont::Medium));
     
-    editReportBtn = new QPushButton("Editar");
-    editReportBtn->setFixedHeight(40);
-    editReportBtn->setFont(QFont("Inter", 12, QFont::Normal));
-    editReportBtn->setCursor(Qt::PointingHandCursor);
-    editReportBtn->setEnabled(false);
+    // ComboBox para seleccionar tabla
+    tableComboBox = new QComboBox();
+    tableComboBox->setMinimumWidth(250);
+    tableComboBox->setMinimumHeight(40); // Altura ajustada
+    tableComboBox->setFont(QFont("Inter", 14));
+    tableComboBox->addItem("-- Seleccionar tabla --");
     
-    deleteReportBtn = new QPushButton("Eliminar");
-    deleteReportBtn->setFixedHeight(40);
-    deleteReportBtn->setFont(QFont("Inter", 12, QFont::Normal));
-    deleteReportBtn->setCursor(Qt::PointingHandCursor);
-    deleteReportBtn->setEnabled(false);
+    // Conectar señal
+    connect(tableComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &ReportesView::onTableSelectionChanged);
     
-    generateReportBtn = new QPushButton("Generar");
-    generateReportBtn->setFixedHeight(40);
-    generateReportBtn->setFont(QFont("Inter", 12, QFont::Medium));
-    generateReportBtn->setCursor(Qt::PointingHandCursor);
-    generateReportBtn->setEnabled(false);
-    
-    exportReportBtn = new QPushButton("Exportar");
-    exportReportBtn->setFixedHeight(40);
-    exportReportBtn->setFont(QFont("Inter", 12, QFont::Normal));
-    exportReportBtn->setCursor(Qt::PointingHandCursor);
-    exportReportBtn->setEnabled(false);
-    
-    refreshBtn = new QPushButton("Actualizar");
-    refreshBtn->setFixedHeight(40);
-    refreshBtn->setFont(QFont("Inter", 12, QFont::Normal));
-    refreshBtn->setCursor(Qt::PointingHandCursor);
-    
-    // Agregar botones al toolbar
-    toolbarLayout->addWidget(createReportBtn);
-    toolbarLayout->addWidget(editReportBtn);
-    toolbarLayout->addWidget(deleteReportBtn);
-    toolbarLayout->addWidget(generateReportBtn);
-    toolbarLayout->addWidget(exportReportBtn);
-    toolbarLayout->addStretch(); // Empuja el botón refresh hacia la derecha
-    toolbarLayout->addWidget(refreshBtn);
-    
-    // Conectar señales
-    connect(createReportBtn, &QPushButton::clicked, this, &ReportesView::onCreateReportClicked);
-    connect(editReportBtn, &QPushButton::clicked, this, &ReportesView::onEditReportClicked);
-    connect(deleteReportBtn, &QPushButton::clicked, this, &ReportesView::onDeleteReportClicked);
-    connect(generateReportBtn, &QPushButton::clicked, this, &ReportesView::onGenerateReportClicked);
-    connect(exportReportBtn, &QPushButton::clicked, this, &ReportesView::onExportReportClicked);
-    connect(refreshBtn, &QPushButton::clicked, this, &ReportesView::refreshView);
+    tableSelectorLayout->addWidget(tableSelectorLabel);
+    tableSelectorLayout->addWidget(tableComboBox);
+    tableSelectorLayout->addStretch();
 }
 
-void ReportesView::createReportFilters()
+void ReportesView::createReportContent()
 {
-    filtersWidget = new QWidget();
-    filtersLayout = new QHBoxLayout(filtersWidget);
-    filtersLayout->setContentsMargins(0, 0, 0, 0);
-    filtersLayout->setSpacing(15);
+    reportContentWidget = new QWidget();
+    reportContentWidget->setMinimumHeight(500); // Altura mínima para asegurar espacio
+    reportContentLayout = new QVBoxLayout(reportContentWidget);
+    reportContentLayout->setContentsMargins(25, 25, 25, 30); // Márgenes balanceados
+    reportContentLayout->setSpacing(25); // Espaciado entre elementos
     
-    // Tipo de reporte
-    reportTypeLabel = new QLabel("Tipo:");
-    reportTypeLabel->setFont(QFont("Inter", 12, QFont::Medium));
+    // Crear estado vacío
+    createEmptyState();
     
-    reportTypeCombo = new QComboBox();
-    reportTypeCombo->setFixedHeight(35);
-    reportTypeCombo->setFont(QFont("Inter", 11, QFont::Normal));
-    reportTypeCombo->addItems({"Todos los tipos", "Resumen de Datos", "Análisis Detallado", "Estadísticas", "Personalizado"});
+    // Crear tarjeta principal del reporte
+    createReportCard();
     
-    // Filtros de fecha
-    dateFromLabel = new QLabel("Desde:");
-    dateFromLabel->setFont(QFont("Inter", 12, QFont::Medium));
+    reportContentLayout->addWidget(emptyStateWidget);
+    reportContentLayout->addWidget(reportCardWidget);
+    reportContentLayout->addStretch(); // Espacio flexible al final
     
-    dateFromEdit = new QDateEdit(QDate::currentDate().addDays(-30));
-    dateFromEdit->setFixedHeight(35);
-    dateFromEdit->setFont(QFont("Inter", 11, QFont::Normal));
-    dateFromEdit->setCalendarPopup(true);
-    
-    dateToLabel = new QLabel("Hasta:");
-    dateToLabel->setFont(QFont("Inter", 12, QFont::Medium));
-    
-    dateToEdit = new QDateEdit(QDate::currentDate());
-    dateToEdit->setFixedHeight(35);
-    dateToEdit->setFont(QFont("Inter", 11, QFont::Normal));
-    dateToEdit->setCalendarPopup(true);
-    
-    applyFiltersBtn = new QPushButton("Aplicar Filtros");
-    applyFiltersBtn->setFixedHeight(35);
-    applyFiltersBtn->setFont(QFont("Inter", 11, QFont::Medium));
-    applyFiltersBtn->setCursor(Qt::PointingHandCursor);
-    
-    // Agregar controles al layout
-    filtersLayout->addWidget(reportTypeLabel);
-    filtersLayout->addWidget(reportTypeCombo);
-    filtersLayout->addWidget(dateFromLabel);
-    filtersLayout->addWidget(dateFromEdit);
-    filtersLayout->addWidget(dateToLabel);
-    filtersLayout->addWidget(dateToEdit);
-    filtersLayout->addWidget(applyFiltersBtn);
-    filtersLayout->addStretch(); // Empuja todo hacia la izquierda
-    
-    // Conectar señales
-    connect(reportTypeCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ReportesView::onReportTypeChanged);
-    connect(applyFiltersBtn, &QPushButton::clicked, this, &ReportesView::generatePreview);
+    // Inicialmente mostrar estado vacío
+    showEmptyState();
 }
 
-void ReportesView::createReportsList()
+void ReportesView::createEmptyState()
 {
-    // Lista de reportes (lado izquierdo)
-    reportsListWidget = new QWidget();
-    reportsListWidget->setMinimumWidth(280);
-    reportsListWidget->setMaximumWidth(400);
-    reportsListLayout = new QVBoxLayout(reportsListWidget);
-    reportsListLayout->setContentsMargins(0, 0, 0, 0);
-    reportsListLayout->setSpacing(10);
-    
-    reportsListLabel = new QLabel("Reportes Disponibles");
-    reportsListLabel->setFont(QFont("Inter", 14, QFont::Medium));
-    
-    reportsList = new QListWidget();
-    reportsList->setFont(QFont("Inter", 12, QFont::Normal));
-    
-    reportsListLayout->addWidget(reportsListLabel);
-    reportsListLayout->addWidget(reportsList);
-    
-    // Conectar selección
-    connect(reportsList, &QListWidget::itemSelectionChanged, this, &ReportesView::onReportSelected);
-}
-
-void ReportesView::createReportViewer()
-{
-    // Área del visualizador de reportes (lado derecho)
-    reportViewerWidget = new QWidget();
-    reportViewerLayout = new QVBoxLayout(reportViewerWidget);
-    reportViewerLayout->setContentsMargins(0, 0, 0, 0);
-    reportViewerLayout->setSpacing(15);
-    
-    // Stacked widget para diferentes vistas
-    reportStackedWidget = new QStackedWidget();
-    
-    // Estado vacío/bienvenida
     emptyStateWidget = new QWidget();
     emptyStateLayout = new QVBoxLayout(emptyStateWidget);
-    emptyStateLayout->setAlignment(Qt::AlignCenter);
+    emptyStateLayout->setContentsMargins(50, 80, 50, 80); // Más márgenes
+    emptyStateLayout->setSpacing(30);
     
-    emptyStateLabel = new QLabel("Selecciona un reporte");
-    emptyStateLabel->setFont(QFont("Inter", 18, QFont::Medium));
+    // Ícono más grande
+    QLabel *iconLabel = new QLabel("📊");
+    iconLabel->setFont(QFont("Inter", 64));
+    iconLabel->setAlignment(Qt::AlignCenter);
+    
+    emptyStateLabel = new QLabel("Selecciona una tabla para generar un reporte");
+    emptyStateLabel->setFont(QFont("Inter", 20, QFont::Medium)); // Fuente más grande
     emptyStateLabel->setAlignment(Qt::AlignCenter);
+    emptyStateLabel->setStyleSheet("color: #666666; background: transparent;");
     
-    emptyStateDescription = new QLabel("Selecciona un reporte de la lista para visualizarlo o crear uno nuevo");
-    emptyStateDescription->setFont(QFont("Inter", 12, QFont::Normal));
-    emptyStateDescription->setAlignment(Qt::AlignCenter);
-    emptyStateDescription->setWordWrap(true);
+    // Subtítulo
+    QLabel *subtitleLabel = new QLabel("Los reportes te ayudarán a analizar y visualizar tus datos");
+    subtitleLabel->setFont(QFont("Inter", 14));
+    subtitleLabel->setAlignment(Qt::AlignCenter);
+    subtitleLabel->setStyleSheet("color: #999999; background: transparent;");
     
+    emptyStateLayout->addWidget(iconLabel);
     emptyStateLayout->addWidget(emptyStateLabel);
-    emptyStateLayout->addWidget(emptyStateDescription);
-    
-    // Vista de reporte
-    reportDisplayWidget = new QWidget();
-    reportDisplayLayout = new QVBoxLayout(reportDisplayWidget);
-    reportDisplayLayout->setContentsMargins(0, 0, 0, 0);
-    reportDisplayLayout->setSpacing(15);
+    emptyStateLayout->addWidget(subtitleLabel);
+}
+
+void ReportesView::createReportCard()
+{
+    reportCardWidget = new QWidget();
+    reportCardWidget->setMinimumHeight(450); // Altura ajustada
+    reportCardLayout = new QVBoxLayout(reportCardWidget);
+    reportCardLayout->setContentsMargins(30, 25, 30, 25); // Márgenes balanceados
+    reportCardLayout->setSpacing(20); // Espaciado ajustado
     
     // Título del reporte
-    reportTitleLabel = new QLabel();
-    reportTitleLabel->setFont(QFont("Inter", 16, QFont::Bold));
+    reportTitleLabel = new QLabel("Reporte de Datos");
+    reportTitleLabel->setFont(QFont("Inter", 24, QFont::Bold));
     reportTitleLabel->setAlignment(Qt::AlignLeft);
     
-    // Área de scroll para el contenido del reporte
-    reportScrollArea = new QScrollArea();
-    reportScrollArea->setWidgetResizable(true);
-    reportScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    reportScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    // Contenedor para los datos del reporte
+    reportDataWidget = new QWidget();
+    reportDataLayout = new QVBoxLayout(reportDataWidget);
+    reportDataLayout->setContentsMargins(0, 0, 0, 0);
+    reportDataLayout->setSpacing(18); // Espaciado entre elementos de datos
     
-    reportContentWidget = new QWidget();
-    reportContentLayout = new QVBoxLayout(reportContentWidget);
-    reportContentLayout->setContentsMargins(10, 10, 10, 10);
-    reportContentLayout->setSpacing(20);
+    // Crear elementos de datos individuales
+    createReportDataItems();
     
-    // Tabla para mostrar datos
-    reportTable = new QTableWidget();
-    reportTable->setAlternatingRowColors(true);
-    reportTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    reportTable->horizontalHeader()->setStretchLastSection(true);
-    reportTable->setMinimumHeight(300);
+    // Agregar total al final
+    createTotalSection();
     
-    // Área de resumen/texto
-    reportSummary = new QTextEdit();
-    reportSummary->setMaximumHeight(150);
-    reportSummary->setReadOnly(true);
-    reportSummary->setFont(QFont("Inter", 11, QFont::Normal));
+    reportCardLayout->addWidget(reportTitleLabel);
+    reportCardLayout->addWidget(reportDataWidget);
+    reportCardLayout->addStretch(); // Espacio flexible al final
+}
+
+void ReportesView::createReportDataItems()
+{
+    // Datos de ejemplo basados en la imagen
+    QStringList cities = {"San Pedro Sula", "Tegucigalpa"};
+    QStringList clientCounts = {"25", "15"};
     
-    reportContentLayout->addWidget(reportTable);
-    reportContentLayout->addWidget(reportSummary);
-    reportContentLayout->addStretch();
+    for (int i = 0; i < cities.size(); ++i) {
+        createDataRow(cities[i], clientCounts[i]);
+    }
+}
+
+void ReportesView::createDataRow(const QString& city, const QString& count)
+{
+    QWidget* rowWidget = new QWidget();
+    QHBoxLayout* rowLayout = new QHBoxLayout(rowWidget);
+    rowLayout->setContentsMargins(0, 8, 0, 8);
+    rowLayout->setSpacing(0);
     
-    reportScrollArea->setWidget(reportContentWidget);
+    // Nombre de la ciudad
+    QLabel* cityLabel = new QLabel(city);
+    cityLabel->setFont(QFont("Inter", 16, QFont::Medium));
     
-    reportDisplayLayout->addWidget(reportTitleLabel);
-    reportDisplayLayout->addWidget(reportScrollArea);
+    // Contador de clientes
+    QLabel* countLabel = new QLabel(count);
+    countLabel->setFont(QFont("Inter", 16, QFont::Normal));
+    countLabel->setAlignment(Qt::AlignRight);
     
-    // Agregar widgets al stacked widget
-    reportStackedWidget->addWidget(emptyStateWidget);
-    reportStackedWidget->addWidget(reportDisplayWidget);
+    rowLayout->addWidget(cityLabel);
+    rowLayout->addStretch();
+    rowLayout->addWidget(countLabel);
     
-    reportViewerLayout->addWidget(reportStackedWidget);
+    reportDataLayout->addWidget(rowWidget);
+}
+
+void ReportesView::createTotalSection()
+{
+    // Línea separadora
+    QFrame* separatorLine = new QFrame();
+    separatorLine->setFrameShape(QFrame::HLine);
+    separatorLine->setFrameShadow(QFrame::Sunken);
+    separatorLine->setFixedHeight(1);
+    
+    // Total
+    QWidget* totalWidget = new QWidget();
+    QHBoxLayout* totalLayout = new QHBoxLayout(totalWidget);
+    totalLayout->setContentsMargins(0, 15, 0, 0);
+    totalLayout->setSpacing(0);
+    
+    QLabel* totalLabel = new QLabel("Total clientes:");
+    totalLabel->setFont(QFont("Inter", 18, QFont::Bold));
+    
+    QLabel* totalCountLabel = new QLabel("40");
+    totalCountLabel->setFont(QFont("Inter", 18, QFont::Bold));
+    totalCountLabel->setAlignment(Qt::AlignRight);
+    
+    totalLayout->addWidget(totalLabel);
+    totalLayout->addStretch();
+    totalLayout->addWidget(totalCountLabel);
+    
+    reportDataLayout->addWidget(separatorLine);
+    reportDataLayout->addWidget(totalWidget);
 }
 
 void ReportesView::styleComponents()
 {
-    // El styling se aplicará en updateTheme()
     updateTheme();
+}
+
+void ReportesView::loadAvailableTables()
+{
+    qDebug() << "ReportesView: loadAvailableTables() iniciado";
+    
+    tableComboBox->clear();
+    tableComboBox->addItem("-- Seleccionar tabla --");
+    
+    if (!m_mainWindow) {
+        qDebug() << "ReportesView: MainWindow no disponible";
+        return;
+    }
+    
+    // Usar la misma lógica que FormulariosView - buscar archivos .meta
+    QString tablesPath = QString::fromStdString(m_mainWindow->tablesDir());
+    QDir tablesDir(tablesPath);
+    
+    qDebug() << "ReportesView: Buscando tablas en:" << tablesPath;
+    qDebug() << "ReportesView: Directorio existe:" << tablesDir.exists();
+    
+    if (!tablesDir.exists()) {
+        qDebug() << "ReportesView: Directorio de tablas no existe:" << tablesPath;
+        return;
+    }
+    
+    QStringList metaFiles = tablesDir.entryList(QStringList() << "*.meta", QDir::Files);
+    qDebug() << "ReportesView: Archivos .meta encontrados:" << metaFiles;
+    
+    for (const QString &metaFile : metaFiles) {
+        QString tableName = metaFile;
+        tableName.remove(".meta");
+        tableComboBox->addItem(tableName);
+        qDebug() << "ReportesView: Tabla agregada al combobox:" << tableName;
+    }
+    
+    if (metaFiles.isEmpty()) {
+        qDebug() << "ReportesView: No se encontraron tablas en" << tablesPath;
+    } else {
+        qDebug() << "ReportesView: Se encontraron" << metaFiles.size() << "tablas";
+        qDebug() << "ReportesView: Items en combobox:" << tableComboBox->count();
+    }
+}
+
+void ReportesView::showEmptyState()
+{
+    emptyStateWidget->show();
+    reportCardWidget->hide();
+}
+
+void ReportesView::generateReportForTable(const QString& tableName)
+{
+    if (tableName.isEmpty() || tableName == "-- Seleccionar tabla --") {
+        showEmptyState();
+        return;
+    }
+    
+    currentSelectedTable = tableName;
+    
+    if (!m_mainWindow || !m_mainWindow->catalog()) {
+        qDebug() << "ReportesView: MainWindow o catalog no disponible";
+        showEmptyState();
+        return;
+    }
+    
+    // Leer metadatos de la tabla
+    QJsonObject tableMeta = readTableMetadata(tableName.toStdString());
+    
+    // Usar el mismo sistema que FormulariosView para cargar datos
+    std::string err;
+    std::vector<std::string> lines = m_mainWindow->catalog()->readAllRecordsJson(
+        m_mainWindow->tablesDir(), tableName.toStdString(), &err
+    );
+    
+    QJsonArray records;
+    int totalRecords = 0;
+    
+    if (!err.empty()) {
+        qDebug() << "ReportesView: Error al cargar datos:" << QString::fromStdString(err);
+        totalRecords = 0;
+    } else {
+        // Convertir cada línea JSON a QJsonObject y añadir al array
+        for (const std::string& line : lines) {
+            QByteArray ba = QByteArray::fromStdString(line);
+            QJsonDocument doc = QJsonDocument::fromJson(ba);
+            
+            if (doc.isObject()) {
+                records.append(doc.object());
+            }
+        }
+        totalRecords = records.size();
+        qDebug() << "ReportesView: Cargados" << totalRecords << "registros de" << tableName;
+    }
+    
+    // Generar reporte avanzado y dinámico
+    generateAdvancedReport(tableName, tableMeta, records, totalRecords);
+}
+
+void ReportesView::generateAdvancedReport(const QString& tableName, const QJsonObject& tableMeta, const QJsonArray& records, int totalRecords)
+{
+    // Actualizar título del reporte
+    reportTitleLabel->setText(QString("📊 Análisis de %1").arg(tableName));
+    
+    // Limpiar datos anteriores
+    QLayoutItem* item;
+    while ((item = reportDataLayout->takeAt(0)) != nullptr) {
+        if (item->widget()) {
+            item->widget()->deleteLater();
+        }
+        delete item;
+    }
+    
+    // Mostrar tarjeta del reporte
+    emptyStateWidget->hide();
+    reportCardWidget->show();
+    
+    if (totalRecords == 0) {
+        createNoDataState();
+        return;
+    }
+    
+    // === CREAR CARDS DE ESTADÍSTICAS PRINCIPALES ===
+    createMainStatsCards(tableName, tableMeta, records, totalRecords);
+    
+    // === SEPARADOR ===
+    createSeparator();
+    
+    // === ANÁLISIS DETALLADO POR CAMPO ===
+    createDetailedFieldAnalysis(tableName, tableMeta, records);
+    
+    // === INSIGHTS Y RESUMEN ===
+    createInsightsSection(tableName, totalRecords);
+}
+
+void ReportesView::createStatsCard(const QString& title, const QString& value, const QString& description, const QString& color)
+{
+    QWidget* card = new QWidget();
+    card->setMinimumHeight(120);
+    card->setMaximumHeight(120);
+    
+    QVBoxLayout* cardLayout = new QVBoxLayout(card);
+    cardLayout->setContentsMargins(20, 15, 20, 15);
+    cardLayout->setSpacing(8);
+    
+    // Título con emoji
+    QLabel* titleLabel = new QLabel(title);
+    titleLabel->setFont(QFont("Inter", 14, QFont::Medium));
+    titleLabel->setStyleSheet("color: #6b7280;");
+    
+    // Valor principal (grande y destacado)
+    QLabel* valueLabel = new QLabel(value);
+    valueLabel->setFont(QFont("Inter", 28, QFont::Bold));
+    valueLabel->setStyleSheet(QString("color: %1;").arg(color));
+    
+    // Descripción
+    QLabel* descLabel = new QLabel(description);
+    descLabel->setFont(QFont("Inter", 12));
+    descLabel->setStyleSheet("color: #9ca3af;");
+    
+    cardLayout->addWidget(titleLabel);
+    cardLayout->addWidget(valueLabel);
+    cardLayout->addWidget(descLabel);
+    cardLayout->addStretch();
+    
+    // Estilo de la tarjeta con gradiente y sombra
+    card->setStyleSheet(
+        "QWidget {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
+        "stop:0 #ffffff, stop:1 #f8fafc);"
+        "border: 1px solid #e5e7eb;"
+        "border-radius: 12px;"
+        "}"
+        "QWidget:hover {"
+        "border: 1px solid " + color + ";"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
+        "stop:0 #ffffff, stop:1 #f0f9ff);"
+        "}"
+    );
+    
+    // Agregar la tarjeta al layout de datos del reporte
+    reportDataLayout->addWidget(card);
+}
+
+void ReportesView::createChartSection(const QString& title, const QJsonArray& records, const QJsonObject& tableMeta)
+{
+    // Separador visual
+    QFrame* separator = new QFrame();
+    separator->setFrameShape(QFrame::HLine);
+    separator->setStyleSheet("border: 1px solid #e5e7eb; margin: 20px 0;");
+    reportDataLayout->addWidget(separator);
+    
+    // Título de la sección
+    QLabel* sectionTitle = new QLabel(title);
+    sectionTitle->setFont(QFont("Inter", 20, QFont::Bold));
+    sectionTitle->setStyleSheet("color: #1f2937; margin: 20px 0 15px 0;");
+    reportDataLayout->addWidget(sectionTitle);
+    
+    // Contenedor de análisis por campos
+    QWidget* analysisContainer = new QWidget();
+    QVBoxLayout* analysisLayout = new QVBoxLayout(analysisContainer);
+    analysisLayout->setSpacing(15);
+    analysisLayout->setContentsMargins(0, 0, 0, 0);
+    
+    QJsonArray fields = tableMeta["fields"].toArray();
+    int maxFieldsToShow = qMin(5, fields.size()); // Mostrar máximo 5 campos para no sobrecargar
+    
+    for (int i = 0; i < maxFieldsToShow; ++i) {
+        QJsonObject field = fields[i].toObject();
+        QString fieldName = field.value("name").toString();
+        QString fieldType = field.value("type").toString().toLower();
+        
+        // Widget para cada campo
+        QWidget* fieldWidget = new QWidget();
+        QVBoxLayout* fieldLayout = new QVBoxLayout(fieldWidget);
+        fieldLayout->setContentsMargins(20, 15, 20, 15);
+        fieldLayout->setSpacing(10);
+        
+        // Título del campo
+        QLabel* fieldTitle = new QLabel(QString("📊 %1").arg(fieldName));
+        fieldTitle->setFont(QFont("Inter", 16, QFont::DemiBold));
+        fieldTitle->setStyleSheet("color: #374151;");
+        fieldLayout->addWidget(fieldTitle);
+        
+        if (fieldType.contains("texto") || fieldType.contains("text") || fieldType.contains("string")) {
+            // Análisis para campos de texto: valores únicos
+            QMap<QString, int> valueCount;
+            for (const auto& recordValue : records) {
+                QJsonObject record = recordValue.toObject();
+                QString value = record.value(fieldName).toString().trimmed();
+                if (!value.isEmpty()) {
+                    valueCount[value]++;
+                }
+            }
+            
+            QLabel* analysisLabel = new QLabel(QString("🏷️ %1 valores únicos encontrados").arg(valueCount.size()));
+            analysisLabel->setFont(QFont("Inter", 13));
+            analysisLabel->setStyleSheet("color: #6b7280; margin-bottom: 8px;");
+            fieldLayout->addWidget(analysisLabel);
+            
+            // Mostrar los valores más comunes (top 3)
+            auto sortedValues = valueCount.keys();
+            std::sort(sortedValues.begin(), sortedValues.end(), [&](const QString& a, const QString& b) {
+                return valueCount[a] > valueCount[b];
+            });
+            
+            for (int j = 0; j < qMin(3, sortedValues.size()); ++j) {
+                QString value = sortedValues[j];
+                int count = valueCount[value];
+                double percentage = (double(count) / records.size()) * 100;
+                
+                QWidget* barWidget = new QWidget();
+                QHBoxLayout* barLayout = new QHBoxLayout(barWidget);
+                barLayout->setContentsMargins(0, 5, 0, 5);
+                
+                QLabel* valueLabel = new QLabel(QString("• %1").arg(value));
+                valueLabel->setFont(QFont("Inter", 12));
+                valueLabel->setMinimumWidth(120);
+                
+                QLabel* countLabel = new QLabel(QString("%1 (%2%)").arg(count).arg(QString::number(percentage, 'f', 1)));
+                countLabel->setFont(QFont("Inter", 12, QFont::Medium));
+                countLabel->setStyleSheet("color: #059669;");
+                
+                barLayout->addWidget(valueLabel);
+                barLayout->addWidget(countLabel);
+                barLayout->addStretch();
+                
+                fieldLayout->addWidget(barWidget);
+            }
+            
+        } else if (fieldType.contains("entero") || fieldType.contains("number") || fieldType.contains("integer")) {
+            // Análisis para campos numéricos: promedio, min, max
+            QList<double> numbers;
+            for (const auto& recordValue : records) {
+                QJsonObject record = recordValue.toObject();
+                bool ok;
+                double value = record.value(fieldName).toString().toDouble(&ok);
+                if (ok) {
+                    numbers.append(value);
+                }
+            }
+            
+            if (!numbers.isEmpty()) {
+                std::sort(numbers.begin(), numbers.end());
+                double sum = std::accumulate(numbers.begin(), numbers.end(), 0.0);
+                double average = sum / numbers.size();
+                double min = numbers.first();
+                double max = numbers.last();
+                
+                QLabel* statsLabel = new QLabel(QString("📈 %1 valores numéricos analizados").arg(numbers.size()));
+                statsLabel->setFont(QFont("Inter", 13));
+                statsLabel->setStyleSheet("color: #6b7280; margin-bottom: 8px;");
+                fieldLayout->addWidget(statsLabel);
+                
+                // Grid de estadísticas
+                QWidget* statsGrid = new QWidget();
+                QGridLayout* gridLayout = new QGridLayout(statsGrid);
+                gridLayout->setSpacing(10);
+                
+                auto addStat = [&](int row, const QString& label, double value, const QString& color) {
+                    QLabel* labelWidget = new QLabel(label);
+                    labelWidget->setFont(QFont("Inter", 11));
+                    labelWidget->setStyleSheet("color: #6b7280;");
+                    
+                    QLabel* valueWidget = new QLabel(QString::number(value, 'f', 2));
+                    valueWidget->setFont(QFont("Inter", 13, QFont::Bold));
+                    valueWidget->setStyleSheet(QString("color: %1;").arg(color));
+                    
+                    gridLayout->addWidget(labelWidget, row, 0);
+                    gridLayout->addWidget(valueWidget, row, 1);
+                };
+                
+                addStat(0, "• Promedio:", average, "#3b82f6");
+                addStat(0, "• Mínimo:", min, "#ef4444");
+                addStat(0, "• Máximo:", max, "#10b981");
+                
+                fieldLayout->addWidget(statsGrid);
+            }
+        }
+        
+        // Estilo del widget del campo
+        fieldWidget->setStyleSheet(
+            "QWidget {"
+            "background: qlineargradient(x1:0, y1:0, x2:1, y2:0,"
+            "stop:0 #fefefe, stop:1 #f9fafb);"
+            "border: 1px solid #e5e7eb;"
+            "border-radius: 8px;"
+            "margin: 5px 0;"
+            "}"
+        );
+        
+        analysisLayout->addWidget(fieldWidget);
+    }
+    
+    reportDataLayout->addWidget(analysisContainer);
+}
+
+void ReportesView::generateBasicAnalysisFromArray(const QJsonArray& records, const QJsonObject& tableMeta)
+{
+    // Este método ahora es redundante ya que usamos generateAdvancedReport
+    qDebug() << "ReportesView: generateBasicAnalysisFromArray() - usando generateAdvancedReport en su lugar";
 }
 
 void ReportesView::loadReports()
 {
-    // TODO: Implementar carga de reportes desde el sistema de archivos
-    // Por ahora, agregar algunos elementos de ejemplo
-    reportsList->clear();
-    
-    // Reportes de ejemplo
-    reportsList->addItem("Resumen Mensual de Ventas");
-    reportsList->addItem("Inventario Actual");
-    reportsList->addItem("Análisis de Clientes");
-    reportsList->addItem("Productos Más Vendidos");
-    reportsList->addItem("Reporte de Ingresos");
-    
-    qDebug() << "ReportesView: Reportes cargados (modo ejemplo)";
+    // Este método ya no necesita hacer nada - las tablas se cargan en setupUI()
+    qDebug() << "ReportesView: loadReports() llamado - tablas ya cargadas en setupUI()";
 }
 
-void ReportesView::updateReportsList()
+// Slots
+void ReportesView::onTableSelectionChanged()
 {
-    loadReports();
-}
-
-void ReportesView::generatePreview()
-{
-    if (!currentSelectedReport.isEmpty()) {
-        qDebug() << "ReportesView: Generando preview para:" << currentSelectedReport;
-        
-        // Datos de ejemplo para la tabla
-        reportTable->setRowCount(5);
-        reportTable->setColumnCount(4);
-        reportTable->setHorizontalHeaderLabels({"ID", "Producto", "Cantidad", "Valor"});
-        
-        // Llenar con datos de ejemplo
-        for (int row = 0; row < 5; ++row) {
-            reportTable->setItem(row, 0, new QTableWidgetItem(QString::number(row + 1)));
-            reportTable->setItem(row, 1, new QTableWidgetItem(QString("Producto %1").arg(row + 1)));
-            reportTable->setItem(row, 2, new QTableWidgetItem(QString::number((row + 1) * 10)));
-            reportTable->setItem(row, 3, new QTableWidgetItem(QString("$%1").arg((row + 1) * 100)));
-        }
-        
-        // Resumen de ejemplo
-        reportSummary->setText(QString(
-            "Resumen del Reporte: %1\n\n"
-            "Este reporte muestra datos de ejemplo generados automáticamente. "
-            "En una implementación completa, aquí se mostrarían los datos reales "
-            "basados en los filtros aplicados y la configuración del reporte."
-        ).arg(currentSelectedReport));
-        
-        reportStackedWidget->setCurrentWidget(reportDisplayWidget);
+    QString selectedTable = tableComboBox->currentText();
+    
+    qDebug() << "ReportesView: onTableSelectionChanged() - tabla seleccionada:" << selectedTable;
+    
+    if (selectedTable == "-- Seleccionar tabla --" || selectedTable.isEmpty()) {
+        qDebug() << "ReportesView: Mostrando estado vacío";
+        showEmptyState();
+        return;
     }
+    
+    currentSelectedTable = selectedTable;
+    qDebug() << "ReportesView: Generando reporte para tabla:" << selectedTable;
+    generateReportForTable(selectedTable);
 }
 
 void ReportesView::updateTheme()
 {
     bool isDark = ThemeManager::instance().isDark();
     
-    // Colores base del tema
-    QString bgColor = isDark ? "#1e1e1e" : "#ffffff";
-    QString textColor = isDark ? "#ffffff" : "#000000";
+    // Colores principales del nuevo diseño
+    QString primaryColor = "#E53E3E"; // Rojo principal como en la imagen
+    QString accentColor = "#E53E3E"; // Color de acento para selecciones
+    QString bgColor = isDark ? "#1a1a1a" : "#ffffff";
+    QString cardBgColor = isDark ? "#2d2d2d" : "#ffffff";
+    QString textColor = isDark ? "#ffffff" : "#333333";
     QString secondaryTextColor = isDark ? "#b3b3b3" : "#666666";
-    QString borderColor = isDark ? "#404040" : "#e0e0e0";
-    QString hoverColor = isDark ? "#2d2d2d" : "#f5f5f5";
-    QString primaryColor = isDark ? "#007acc" : "#0078d4";
-    QString buttonBgColor = isDark ? "#0e639c" : "#0078d4";
-    QString buttonHoverColor = isDark ? "#1177bb" : "#106ebe";
+    QString borderColor = isDark ? "#404040" : "#e8e8e8";
+    QString shadowColor = isDark ? "rgba(0,0,0,0.3)" : "rgba(0,0,0,0.1)";
     
-    // Estilo del widget principal
-    setStyleSheet(QString("ReportesView { background-color: %1; }").arg(bgColor));
+    // Estilo del widget principal con gradiente sutil
+    QString mainWidgetStyle = QString(
+        "ReportesView {"
+        "    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
+        "        stop:0 %1, stop:1 %2);"
+        "}"
+    ).arg(bgColor).arg(isDark ? "#0f0f0f" : "#f8f9fa");
     
-    // Estilo del header
-    titleLabel->setStyleSheet(QString("color: %1;").arg(textColor));
-    descriptionLabel->setStyleSheet(QString("color: %1;").arg(secondaryTextColor));
+    setStyleSheet(mainWidgetStyle);
     
-    // Estilo de los botones del toolbar
-    QString buttonStyle = QString(
-        "QPushButton {"
+    // Estilo del header con fondo blanco y borde visible
+    QString headerStyle = QString(
+        "QWidget {"
         "    background-color: %1;"
-        "    color: white;"
-        "    border: none;"
-        "    border-radius: 6px;"
-        "    padding: 8px 16px;"
-        "    font-weight: 500;"
+        "    border: 2px solid %2;"
+        "    border-radius: 12px;"
+        "    margin: 0px;" // Sin márgenes externos que causen corte
         "}"
-        "QPushButton:hover {"
-        "    background-color: %2;"
-        "}"
-        "QPushButton:pressed {"
-        "    background-color: %3;"
-        "}"
-        "QPushButton:disabled {"
-        "    background-color: %4;"
-        "    color: %5;"
-        "}"
-    ).arg(buttonBgColor)
-     .arg(buttonHoverColor)
-     .arg(isDark ? "#0d5a94" : "#005a9e")
-     .arg(isDark ? "#333333" : "#cccccc")
-     .arg(isDark ? "#666666" : "#999999");
+    ).arg(cardBgColor).arg(borderColor);
     
-    createReportBtn->setStyleSheet(buttonStyle);
-    generateReportBtn->setStyleSheet(buttonStyle);
-    applyFiltersBtn->setStyleSheet(buttonStyle);
+    headerWidget->setStyleSheet(headerStyle);
     
-    QString secondaryButtonStyle = QString(
-        "QPushButton {"
-        "    background-color: transparent;"
-        "    color: %1;"
-        "    border: 1px solid %2;"
-        "    border-radius: 6px;"
-        "    padding: 8px 16px;"
+    // Estilo del título en color oscuro para contrastar con el fondo blanco
+    titleLabel->setStyleSheet(QString("color: %1; background: transparent; font-weight: 700; padding: 0px;").arg(textColor));
+    descriptionLabel->setStyleSheet(QString("color: %1; background: transparent; padding: 0px;").arg(secondaryTextColor));
+    
+    // Estilo del selector de tablas
+    tableSelectorWidget->setStyleSheet(QString(
+        "QWidget { "
+        "    background-color: %1; "
+        "    border: 1px solid %2; "
+        "    border-radius: 8px; "
+        "    margin: 0px;" // Sin márgenes externos
         "}"
-        "QPushButton:hover {"
-        "    background-color: %3;"
-        "}"
-        "QPushButton:disabled {"
-        "    color: %4;"
-        "    border-color: %4;"
-        "}"
-    ).arg(textColor)
-     .arg(borderColor)
-     .arg(hoverColor)
-     .arg(isDark ? "#666666" : "#cccccc");
+    ).arg(bgColor).arg(borderColor));
     
-    editReportBtn->setStyleSheet(secondaryButtonStyle);
-    deleteReportBtn->setStyleSheet(secondaryButtonStyle);
-    exportReportBtn->setStyleSheet(secondaryButtonStyle);
-    refreshBtn->setStyleSheet(secondaryButtonStyle);
+    tableSelectorLabel->setStyleSheet(QString(
+        "color: %1; background: transparent; font-weight: 600; padding: 0px;"
+    ).arg(textColor));
     
-    // Estilo de los filtros
-    reportTypeLabel->setStyleSheet(QString("color: %1;").arg(textColor));
-    dateFromLabel->setStyleSheet(QString("color: %1;").arg(textColor));
-    dateToLabel->setStyleSheet(QString("color: %1;").arg(textColor));
-    
-    QString comboStyle = QString(
+    tableComboBox->setStyleSheet(QString(
         "QComboBox {"
         "    background-color: %1;"
-        "    border: 1px solid %2;"
-        "    border-radius: 4px;"
-        "    padding: 5px;"
+        "    border: 2px solid %2;"
+        "    border-radius: 8px;"
+        "    padding: 10px 14px;"
         "    color: %3;"
+        "    font-size: 14px;"
+        "    font-weight: 500;"
         "}"
-        "QComboBox:hover {"
-        "    border-color: %4;"
+        "QComboBox:focus {"
+        "    border-color: #007bff;"
         "}"
         "QComboBox::drop-down {"
         "    border: none;"
+        "    width: 25px;"
         "}"
         "QComboBox::down-arrow {"
-        "    width: 12px;"
-        "    height: 12px;"
+        "    image: none;"
+        "    border-left: 5px solid transparent;"
+        "    border-right: 5px solid transparent;"
+        "    border-top: 5px solid %3;"
+        "    margin-right: 8px;"
         "}"
-    ).arg(bgColor).arg(borderColor).arg(textColor).arg(primaryColor);
-    
-    reportTypeCombo->setStyleSheet(comboStyle);
-    
-    QString dateStyle = QString(
-        "QDateEdit {"
+        "QComboBox QAbstractItemView {"
         "    background-color: %1;"
         "    border: 1px solid %2;"
-        "    border-radius: 4px;"
-        "    padding: 5px;"
+        "    selection-background-color: %4;"
         "    color: %3;"
+        "    padding: 6px;"
         "}"
-        "QDateEdit:hover {"
-        "    border-color: %4;"
-        "}"
-    ).arg(bgColor).arg(borderColor).arg(textColor).arg(primaryColor);
+    ).arg(cardBgColor).arg(borderColor).arg(textColor).arg(accentColor));
     
-    dateFromEdit->setStyleSheet(dateStyle);
-    dateToEdit->setStyleSheet(dateStyle);
-    
-    // Estilo de la lista
-    reportsListLabel->setStyleSheet(QString("color: %1;").arg(textColor));
-    
-    QString listStyle = QString(
-        "QListWidget {"
+    // Estilo de la tarjeta principal con sombra moderna
+    QString cardStyle = QString(
+        "QWidget {"
         "    background-color: %1;"
         "    border: 1px solid %2;"
-        "    border-radius: 8px;"
-        "    color: %3;"
-        "    padding: 5px;"
+        "    border-radius: 16px;"
+        "    padding: 0px;"
         "}"
-        "QListWidget::item {"
-        "    padding: 8px;"
-        "    border-radius: 4px;"
-        "    margin: 1px;"
-        "}"
-        "QListWidget::item:selected {"
-        "    background-color: %4;"
-        "    color: white;"
-        "}"
-        "QListWidget::item:hover {"
-        "    background-color: %5;"
-        "}"
-    ).arg(bgColor)
-     .arg(borderColor)
-     .arg(textColor)
-     .arg(primaryColor)
-     .arg(hoverColor);
+    ).arg(cardBgColor).arg(borderColor);
     
-    reportsList->setStyleSheet(listStyle);
+    reportCardWidget->setStyleSheet(cardStyle);
     
-    // Estilo del estado vacío
-    emptyStateLabel->setStyleSheet(QString("color: %1;").arg(textColor));
-    emptyStateDescription->setStyleSheet(QString("color: %1;").arg(secondaryTextColor));
+    // Aplicar sombra a la tarjeta
+    QGraphicsDropShadowEffect *cardShadow = new QGraphicsDropShadowEffect();
+    cardShadow->setBlurRadius(20);
+    cardShadow->setXOffset(0);
+    cardShadow->setYOffset(4);
+    cardShadow->setColor(QColor(shadowColor));
+    reportCardWidget->setGraphicsEffect(cardShadow);
     
     // Estilo del título del reporte
-    reportTitleLabel->setStyleSheet(QString("color: %1;").arg(textColor));
+    reportTitleLabel->setStyleSheet(QString(
+        "color: %1; background: transparent; padding: 0px;"
+    ).arg(textColor));
     
-    // Estilo de la tabla
-    QString tableStyle = QString(
-        "QTableWidget {"
-        "    background-color: %1;"
-        "    border: 1px solid %2;"
-        "    border-radius: 8px;"
-        "    color: %3;"
-        "    gridline-color: %2;"
-        "}"
-        "QTableWidget::item {"
-        "    padding: 5px;"
-        "    border-bottom: 1px solid %2;"
-        "}"
-        "QTableWidget::item:selected {"
-        "    background-color: %4;"
-        "    color: white;"
-        "}"
-        "QHeaderView::section {"
-        "    background-color: %5;"
-        "    color: %3;"
-        "    padding: 8px;"
-        "    border: 1px solid %2;"
-        "    font-weight: bold;"
-        "}"
-    ).arg(bgColor)
-     .arg(borderColor)
-     .arg(textColor)
-     .arg(primaryColor)
-     .arg(isDark ? "#2d2d2d" : "#f8f9fa");
+    // Estilo para las filas de datos
+    QString dataRowStyle = QString(
+        "QLabel { color: %1; background: transparent; }"
+    ).arg(textColor);
     
-    reportTable->setStyleSheet(tableStyle);
+    // Aplicar estilo a todos los labels de datos
+    QList<QLabel*> dataLabels = reportDataWidget->findChildren<QLabel*>();
+    for (QLabel* label : dataLabels) {
+        label->setStyleSheet(dataRowStyle);
+    }
     
-    // Estilo del resumen de texto
-    QString textEditStyle = QString(
-        "QTextEdit {"
-        "    background-color: %1;"
-        "    border: 1px solid %2;"
-        "    border-radius: 8px;"
-        "    color: %3;"
-        "    padding: 10px;"
-        "}"
-    ).arg(bgColor).arg(borderColor).arg(textColor);
+    // Estilo para la línea separadora
+    QList<QFrame*> separators = reportDataWidget->findChildren<QFrame*>();
+    for (QFrame* separator : separators) {
+        separator->setStyleSheet(QString(
+            "QFrame { background-color: %1; border: none; }"
+        ).arg(borderColor));
+    }
     
-    reportSummary->setStyleSheet(textEditStyle);
+    // Estilo del scroll area
+    if (scrollArea) {
+        scrollArea->setStyleSheet(QString(
+            "QScrollArea {"
+            "    background-color: %1;"
+            "    border: none;"
+            "}"
+            "QScrollBar:vertical {"
+            "    background-color: %2;"
+            "    width: 12px;"
+            "    border-radius: 6px;"
+            "    margin: 0px;"
+            "}"
+            "QScrollBar::handle:vertical {"
+            "    background-color: %3;"
+            "    border-radius: 6px;"
+            "    min-height: 20px;"
+            "}"
+            "QScrollBar::handle:vertical:hover {"
+            "    background-color: %4;"
+            "}"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {"
+            "    height: 0px;"
+            "}"
+            "QScrollBar:horizontal {"
+            "    background-color: %2;"
+            "    height: 12px;"
+            "    border-radius: 6px;"
+            "    margin: 0px;"
+            "}"
+            "QScrollBar::handle:horizontal {"
+            "    background-color: %3;"
+            "    border-radius: 6px;"
+            "    min-width: 20px;"
+            "}"
+            "QScrollBar::handle:horizontal:hover {"
+            "    background-color: %4;"
+            "}"
+            "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {"
+            "    width: 0px;"
+            "}"
+        ).arg(bgColor).arg(borderColor).arg(secondaryTextColor).arg(textColor));
+    }
 }
 
 void ReportesView::refreshView()
 {
-    qDebug() << "ReportesView: Actualizando vista...";
-    loadReports();
+    qDebug() << "ReportesView: refreshView() llamado";
+    loadAvailableTables();
+    if (!currentSelectedTable.isEmpty()) {
+        generateReportForTable(currentSelectedTable);
+    }
 }
 
-// Slots para los botones
+// Slots simplificados para el nuevo diseño
 void ReportesView::onCreateReportClicked()
 {
-    qDebug() << "ReportesView: Crear reporte clickeado";
-    // TODO: Implementar creación de reportes
-    QMessageBox::information(this, "Reportes", "Función de crear reporte será implementada próximamente.");
+    QMessageBox::information(this, "Crear Reporte", "Funcionalidad de crear reporte en desarrollo");
 }
 
 void ReportesView::onReportSelected()
 {
-    auto selectedItems = reportsList->selectedItems();
-    if (!selectedItems.isEmpty()) {
-        currentSelectedReport = selectedItems.first()->text();
-        editReportBtn->setEnabled(true);
-        deleteReportBtn->setEnabled(true);
-        generateReportBtn->setEnabled(true);
-        exportReportBtn->setEnabled(true);
-        
-        reportTitleLabel->setText(currentSelectedReport);
-        
-        qDebug() << "ReportesView: Reporte seleccionado:" << currentSelectedReport;
-        
-        // Generar preview automáticamente
-        generatePreview();
-    } else {
-        currentSelectedReport = "";
-        editReportBtn->setEnabled(false);
-        deleteReportBtn->setEnabled(false);
-        generateReportBtn->setEnabled(false);
-        exportReportBtn->setEnabled(false);
-        reportStackedWidget->setCurrentWidget(emptyStateWidget);
-    }
+    // No utilizado en el nuevo diseño
 }
 
 void ReportesView::onEditReportClicked()
 {
-    if (!currentSelectedReport.isEmpty()) {
-        qDebug() << "ReportesView: Editando reporte:" << currentSelectedReport;
-        // TODO: Implementar edición de reportes
-        QMessageBox::information(this, "Reportes", QString("Editar reporte '%1' será implementado próximamente.").arg(currentSelectedReport));
-    }
+    QMessageBox::information(this, "Editar Reporte", "Funcionalidad de editar reporte en desarrollo");
 }
 
 void ReportesView::onDeleteReportClicked()
 {
-    if (!currentSelectedReport.isEmpty()) {
-        int ret = QMessageBox::question(this, "Eliminar Reporte", 
-                                       QString("¿Estás seguro de que quieres eliminar el reporte '%1'?").arg(currentSelectedReport),
-                                       QMessageBox::Yes | QMessageBox::No);
-        
-        if (ret == QMessageBox::Yes) {
-            qDebug() << "ReportesView: Eliminando reporte:" << currentSelectedReport;
-            // TODO: Implementar eliminación de reportes
-            QMessageBox::information(this, "Reportes", "Función de eliminar reporte será implementada próximamente.");
-        }
-    }
+    QMessageBox::information(this, "Eliminar Reporte", "Funcionalidad de eliminar reporte en desarrollo");
 }
 
 void ReportesView::onGenerateReportClicked()
 {
-    if (!currentSelectedReport.isEmpty()) {
-        qDebug() << "ReportesView: Generando reporte:" << currentSelectedReport;
-        generatePreview();
-        QMessageBox::information(this, "Reportes", QString("Reporte '%1' generado exitosamente.").arg(currentSelectedReport));
-    }
+    loadReports();
+    QMessageBox::information(this, "Generar Reporte", "Reporte actualizado exitosamente");
 }
 
 void ReportesView::onExportReportClicked()
 {
-    if (!currentSelectedReport.isEmpty()) {
-        QString fileName = QFileDialog::getSaveFileName(this, 
-                                                       "Exportar Reporte", 
-                                                       currentSelectedReport + ".pdf",
-                                                       "PDF files (*.pdf);;CSV files (*.csv)");
-        
-        if (!fileName.isEmpty()) {
-            qDebug() << "ReportesView: Exportando reporte a:" << fileName;
-            // TODO: Implementar exportación de reportes
-            QMessageBox::information(this, "Reportes", "Función de exportar reporte será implementada próximamente.");
-        }
-    }
+    QMessageBox::information(this, "Exportar Reporte", "Funcionalidad de exportar reporte en desarrollo");
 }
 
 void ReportesView::onReportTypeChanged()
 {
-    qDebug() << "ReportesView: Tipo de reporte cambiado a:" << reportTypeCombo->currentText();
-    // TODO: Filtrar reportes por tipo
+    qDebug() << "ReportesView: Tipo de reporte cambiado";
+}
+
+QJsonObject ReportesView::readTableMetadata(const std::string& tableName)
+{
+    if (!m_mainWindow) {
+        return QJsonObject();
+    }
+    
+    QString metaPath = QString::fromStdString(m_mainWindow->tablesDir()) + "/" +
+                       QString::fromStdString(tableName) + ".meta";
+    QFile metaFile(metaPath);
+    
+    if (!metaFile.open(QIODevice::ReadOnly)) {
+        qDebug() << "ReportesView: No se pudo abrir archivo meta:" << metaPath;
+        return QJsonObject();
+    }
+    
+    QByteArray metaData = metaFile.readAll();
+    metaFile.close();
+    
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(metaData, &parseError);
+    
+    if (parseError.error != QJsonParseError::NoError) {
+        qDebug() << "ReportesView: Error al parsear JSON meta:" << parseError.errorString();
+        return QJsonObject();
+    }
+    
+    return doc.object();
+}
+
+// Métodos vacíos para compatibilidad
+void ReportesView::updateReportsList() {}
+void ReportesView::generatePreview() {}
+void ReportesView::generateSingleTableReport(const std::string& tableName) {}
+void ReportesView::generateSummaryReport() {}
+void ReportesView::generateCompleteReport() {}
+void ReportesView::generatePreviewWithSelectedFields(const std::string& tableName, 
+                                                    const QList<QCheckBox*>& checkboxes, 
+                                                    const QJsonObject& tableMeta) {}
+void ReportesView::exportToCSV(const QString& fileName) {}
+void ReportesView::exportToHTML(const QString& fileName) {}
+void ReportesView::exportToText(const QString& fileName) {}
+
+// === NUEVOS MÉTODOS PARA DISEÑO MODERNO ===
+
+void ReportesView::createNoDataState()
+{
+    QWidget* noDataWidget = new QWidget();
+    QVBoxLayout* noDataLayout = new QVBoxLayout(noDataWidget);
+    noDataLayout->setAlignment(Qt::AlignCenter);
+    noDataLayout->setSpacing(25);
+    noDataLayout->setContentsMargins(40, 60, 40, 60);
+    
+    QLabel* iconLabel = new QLabel("📭");
+    iconLabel->setFont(QFont("Inter", 64));
+    iconLabel->setAlignment(Qt::AlignCenter);
+    
+    QLabel* messageLabel = new QLabel("No hay datos disponibles");
+    messageLabel->setFont(QFont("Inter", 20, QFont::Bold));
+    messageLabel->setAlignment(Qt::AlignCenter);
+    messageLabel->setStyleSheet("color: #374151;");
+    
+    QLabel* subLabel = new QLabel("Agrega algunos registros para ver estadísticas increíbles");
+    subLabel->setFont(QFont("Inter", 14));
+    subLabel->setAlignment(Qt::AlignCenter);
+    subLabel->setStyleSheet("color: #6b7280;");
+    
+    noDataLayout->addWidget(iconLabel);
+    noDataLayout->addWidget(messageLabel);
+    noDataLayout->addWidget(subLabel);
+    
+    noDataWidget->setStyleSheet(
+        "QWidget {"
+        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1,"
+        "stop:0 #f9fafb, stop:1 #f3f4f6);"
+        "border-radius: 16px;"
+        "border: 2px dashed #d1d5db;"
+        "}"
+    );
+    
+    reportDataLayout->addWidget(noDataWidget);
+}
+
+void ReportesView::createMainStatsCards(const QString& tableName, const QJsonObject& tableMeta, const QJsonArray& records, int totalRecords)
+{
+    // Título de la sección
+    QLabel* sectionTitle = new QLabel("📈 Estadísticas Generales");
+    sectionTitle->setFont(QFont("Inter", 20, QFont::Bold));
+    sectionTitle->setStyleSheet("color: #1f2937; margin: 20px 0px 15px 0px;");
+    reportDataLayout->addWidget(sectionTitle);
+    
+    // Container para las cards en grid
+    QWidget* statsContainer = new QWidget();
+    QGridLayout* statsGrid = new QGridLayout(statsContainer);
+    statsGrid->setSpacing(20);
+    statsGrid->setContentsMargins(0, 0, 0, 0);
+    
+    // Analizar campos
+    QJsonArray fields = tableMeta["fields"].toArray();
+    int numericFields = 0;
+    int textFields = 0;
+    
+    for (const auto& fieldValue : fields) {
+        QJsonObject field = fieldValue.toObject();
+        QString fieldType = field.value("type").toString().toLower();
+        
+        if (fieldType.contains("number") || fieldType.contains("integer") || fieldType.contains("entero")) {
+            numericFields++;
+        } else if (fieldType.contains("text") || fieldType.contains("string") || fieldType.contains("texto")) {
+            textFields++;
+        }
+    }
+    
+    // Calcular completitud de datos
+    int completeRecords = 0;
+    for (const auto& recordValue : records) {
+        QJsonObject record = recordValue.toObject();
+        bool isComplete = true;
+        for (const auto& fieldValue : fields) {
+            QJsonObject field = fieldValue.toObject();
+            QString fieldName = field.value("name").toString();
+            if (!record.contains(fieldName) || record.value(fieldName).toString().isEmpty()) {
+                isComplete = false;
+                break;
+            }
+        }
+        if (isComplete) completeRecords++;
+    }
+    
+    int completenessPercentage = totalRecords > 0 ? (completeRecords * 100) / totalRecords : 0;
+    
+    // Cards modernas
+    QWidget* totalCard = createModernStatsCard("📋", "Total de Registros", QString::number(totalRecords), 
+                                              "Registros almacenados", "#3b82f6");
+    QWidget* numericCard = createModernStatsCard("🔢", "Campos Numéricos", QString::number(numericFields), 
+                                                "Para análisis matemático", "#10b981");
+    QWidget* textCard = createModernStatsCard("📝", "Campos de Texto", QString::number(textFields), 
+                                             "Para análisis categórico", "#f59e0b");
+    QWidget* completenessCard = createModernStatsCard("✅", "Datos Completos", QString("%1%").arg(completenessPercentage), 
+                                                     QString("%1 de %2 registros").arg(completeRecords).arg(totalRecords), "#8b5cf6");
+    
+    // Agregar cards al grid (2x2)
+    statsGrid->addWidget(totalCard, 0, 0);
+    statsGrid->addWidget(numericCard, 0, 1);
+    statsGrid->addWidget(textCard, 1, 0);
+    statsGrid->addWidget(completenessCard, 1, 1);
+    
+    reportDataLayout->addWidget(statsContainer);
+}
+
+void ReportesView::createDetailedFieldAnalysis(const QString& tableName, const QJsonObject& tableMeta, const QJsonArray& records)
+{
+    // Título de la sección
+    QLabel* sectionTitle = new QLabel("🔍 Análisis Detallado por Campo");
+    sectionTitle->setFont(QFont("Inter", 20, QFont::Bold));
+    sectionTitle->setStyleSheet("color: #1f2937; margin: 30px 0px 15px 0px;");
+    reportDataLayout->addWidget(sectionTitle);
+    
+    // Container para análisis de campos
+    QWidget* fieldsContainer = new QWidget();
+    QVBoxLayout* fieldsLayout = new QVBoxLayout(fieldsContainer);
+    fieldsLayout->setSpacing(15);
+    fieldsLayout->setContentsMargins(0, 0, 0, 0);
+    
+    QJsonArray fields = tableMeta["fields"].toArray();
+    
+    for (const auto& fieldValue : fields) {
+        QJsonObject field = fieldValue.toObject();
+        QString fieldName = field.value("name").toString();
+        QString fieldType = field.value("type").toString();
+        
+        QWidget* fieldCard = createFieldAnalysisCard(fieldName, fieldType, records);
+        fieldsLayout->addWidget(fieldCard);
+    }
+    
+    reportDataLayout->addWidget(fieldsContainer);
+}
+
+void ReportesView::createInsightsSection(const QString& tableName, int totalRecords)
+{
+    // Título de la sección
+    QLabel* sectionTitle = new QLabel("💡 Insights y Resumen");
+    sectionTitle->setFont(QFont("Inter", 20, QFont::Bold));
+    sectionTitle->setStyleSheet("color: #1f2937; margin: 30px 0px 15px 0px;");
+    reportDataLayout->addWidget(sectionTitle);
+    
+    // Card de insights
+    QWidget* insightCard = new QWidget();
+    QVBoxLayout* insightLayout = new QVBoxLayout(insightCard);
+    insightLayout->setContentsMargins(25, 20, 25, 20);
+    insightLayout->setSpacing(15);
+    
+    QLabel* insightTitle = new QLabel("📊 Resumen del Análisis");
+    insightTitle->setFont(QFont("Inter", 16, QFont::Bold));
+    insightTitle->setStyleSheet("color: #374151;");
+    
+    QString insightText;
+    if (totalRecords == 0) {
+        insightText = "Esta tabla no contiene datos. Considera agregar registros para obtener insights valiosos.";
+    } else if (totalRecords < 10) {
+        insightText = QString("Con %1 registros, tienes una muestra pequeña pero manejable. "
+                             "Considera expandir los datos para obtener análisis más robustos.").arg(totalRecords);
+    } else if (totalRecords < 100) {
+        insightText = QString("Excelente! Con %1 registros tienes una buena base de datos para análisis. "
+                             "Los patrones en estos datos pueden ser muy reveladores.").arg(totalRecords);
+    } else {
+        insightText = QString("¡Impresionante! Con %1 registros tienes una base de datos robusta. "
+                             "Esta cantidad permite análisis estadísticos confiables y detección de patrones complejos.").arg(totalRecords);
+    }
+    
+    QLabel* insightContent = new QLabel(insightText);
+    insightContent->setFont(QFont("Inter", 14));
+    insightContent->setWordWrap(true);
+    insightContent->setStyleSheet("color: #6b7280; line-height: 1.5;");
+    
+    insightLayout->addWidget(insightTitle);
+    insightLayout->addWidget(insightContent);
+    
+    insightCard->setStyleSheet(
+        "QWidget {"
+        "background: qlineargradient(x1:0, y1:0, x2:1, y2:0,"
+        "stop:0 #fef3c7, stop:1 #fde68a);"
+        "border-radius: 12px;"
+        "border: 1px solid #f59e0b;"
+        "}"
+    );
+    
+    reportDataLayout->addWidget(insightCard);
+}
+
+void ReportesView::createSeparator()
+{
+    QFrame* separator = new QFrame();
+    separator->setFrameShape(QFrame::HLine);
+    separator->setFixedHeight(1);
+    separator->setStyleSheet("QFrame { background-color: #e5e7eb; border: none; margin: 20px 0px; }");
+    reportDataLayout->addWidget(separator);
+}
+
+QWidget* ReportesView::createModernStatsCard(const QString& icon, const QString& title, const QString& value, const QString& subtitle, const QString& color)
+{
+    QWidget* card = new QWidget();
+    card->setFixedHeight(140);
+    QVBoxLayout* layout = new QVBoxLayout(card);
+    layout->setContentsMargins(20, 15, 20, 15);
+    layout->setSpacing(8);
+    
+    // Header con ícono
+    QWidget* header = new QWidget();
+    QHBoxLayout* headerLayout = new QHBoxLayout(header);
+    headerLayout->setContentsMargins(0, 0, 0, 0);
+    
+    QLabel* iconLabel = new QLabel(icon);
+    iconLabel->setFont(QFont("Inter", 24));
+    
+    QLabel* titleLabel = new QLabel(title);
+    titleLabel->setFont(QFont("Inter", 12, QFont::Medium));
+    titleLabel->setStyleSheet("color: #6b7280;");
+    
+    headerLayout->addWidget(iconLabel);
+    headerLayout->addStretch();
+    headerLayout->addWidget(titleLabel);
+    
+    // Valor principal
+    QLabel* valueLabel = new QLabel(value);
+    valueLabel->setFont(QFont("Inter", 28, QFont::Bold));
+    valueLabel->setStyleSheet(QString("color: %1;").arg(color));
+    valueLabel->setAlignment(Qt::AlignCenter);
+    
+    // Subtítulo
+    QLabel* subtitleLabel = new QLabel(subtitle);
+    subtitleLabel->setFont(QFont("Inter", 11));
+    subtitleLabel->setStyleSheet("color: #9ca3af;");
+    subtitleLabel->setAlignment(Qt::AlignCenter);
+    subtitleLabel->setWordWrap(true);
+    
+    layout->addWidget(header);
+    layout->addWidget(valueLabel);
+    layout->addWidget(subtitleLabel);
+    layout->addStretch();
+    
+    card->setStyleSheet(
+        "QWidget {"
+        "background-color: white;"
+        "border-radius: 12px;"
+        "border: 1px solid #e5e7eb;"
+        "}"
+        "QWidget:hover {"
+        "border-color: " + color + ";"
+        "}"
+    );
+    
+    // Efecto de sombra
+    QGraphicsDropShadowEffect* shadow = new QGraphicsDropShadowEffect();
+    shadow->setBlurRadius(10);
+    shadow->setXOffset(0);
+    shadow->setYOffset(2);
+    shadow->setColor(QColor(0, 0, 0, 20));
+    card->setGraphicsEffect(shadow);
+    
+    return card;
+}
+
+QWidget* ReportesView::createFieldAnalysisCard(const QString& fieldName, const QString& fieldType, const QJsonArray& records)
+{
+    QWidget* card = new QWidget();
+    QHBoxLayout* layout = new QHBoxLayout(card);
+    layout->setContentsMargins(20, 15, 20, 15);
+    layout->setSpacing(15);
+    
+    // Información del campo
+    QWidget* fieldInfo = new QWidget();
+    QVBoxLayout* infoLayout = new QVBoxLayout(fieldInfo);
+    infoLayout->setContentsMargins(0, 0, 0, 0);
+    infoLayout->setSpacing(5);
+    
+    QLabel* nameLabel = new QLabel(fieldName);
+    nameLabel->setFont(QFont("Inter", 14, QFont::Bold));
+    nameLabel->setStyleSheet("color: #1f2937;");
+    
+    QLabel* typeLabel = new QLabel(fieldType);
+    typeLabel->setFont(QFont("Inter", 12));
+    typeLabel->setStyleSheet("color: #6b7280;");
+    
+    infoLayout->addWidget(nameLabel);
+    infoLayout->addWidget(typeLabel);
+    
+    // Estadísticas del campo
+    QWidget* stats = new QWidget();
+    QHBoxLayout* statsLayout = new QHBoxLayout(stats);
+    statsLayout->setContentsMargins(0, 0, 0, 0);
+    statsLayout->setSpacing(20);
+    
+    // Contar valores únicos y no vacíos
+    QSet<QString> uniqueValues;
+    int nonEmptyValues = 0;
+    
+    for (const auto& recordValue : records) {
+        QJsonObject record = recordValue.toObject();
+        QString value = record.value(fieldName).toString();
+        if (!value.isEmpty()) {
+            uniqueValues.insert(value);
+            nonEmptyValues++;
+        }
+    }
+    
+    // Estadística: Valores únicos
+    QLabel* uniqueLabel = new QLabel(QString("🔗 %1 únicos").arg(uniqueValues.size()));
+    uniqueLabel->setFont(QFont("Inter", 11));
+    uniqueLabel->setStyleSheet("color: #059669; background-color: #d1fae5; padding: 4px 8px; border-radius: 4px;");
+    
+    // Estadística: Completitud
+    int completeness = records.size() > 0 ? (nonEmptyValues * 100) / records.size() : 0;
+    QLabel* completenessLabel = new QLabel(QString("✅ %1% completo").arg(completeness));
+    completenessLabel->setFont(QFont("Inter", 11));
+    QString completenessColor = completeness >= 80 ? "#059669" : (completeness >= 50 ? "#d97706" : "#dc2626");
+    QString completenessBackground = completeness >= 80 ? "#d1fae5" : (completeness >= 50 ? "#fef3c7" : "#fee2e2");
+    completenessLabel->setStyleSheet(QString("color: %1; background-color: %2; padding: 4px 8px; border-radius: 4px;").arg(completenessColor).arg(completenessBackground));
+    
+    statsLayout->addWidget(uniqueLabel);
+    statsLayout->addWidget(completenessLabel);
+    statsLayout->addStretch();
+    
+    layout->addWidget(fieldInfo);
+    layout->addStretch();
+    layout->addWidget(stats);
+    
+    card->setStyleSheet(
+        "QWidget {"
+        "background-color: #f9fafb;"
+        "border-radius: 8px;"
+        "border: 1px solid #e5e7eb;"
+        "}"
+    );
+    
+    return card;
 }
