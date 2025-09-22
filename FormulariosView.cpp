@@ -5,6 +5,8 @@
 #include <QHeaderView>
 #include <QFile>
 #include <QDir>
+#include <QGraphicsDropShadowEffect>
+
 
 FormulariosView::FormulariosView(MainWindow *mainWindow, QWidget *parent)
     : QWidget(parent)
@@ -100,14 +102,14 @@ void FormulariosView::setupUI()
     mainLayout->addWidget(selectorWidget);
     
     // Rediseño de botones: TODOS en una sola fila más compactos
-    QWidget *buttonContainer = new QWidget();
+    QWidget *buttonContainer = new QWidget(this);
     QHBoxLayout *buttonLayout = new QHBoxLayout(buttonContainer);
     buttonLayout->setContentsMargins(20, 15, 20, 15);
     buttonLayout->setSpacing(8); // Espaciado más pequeño entre botones
     
     // Crear TODOS los botones en una sola fila
-    editRecordBtn = new QPushButton("🆕 Nuevo");
-    newRecordBtn = new QPushButton("🖊️ Editar");
+    newRecordBtn = new QPushButton("🆕 Nuevo");
+    editRecordBtn = new QPushButton("🖊️ Editar");
     deleteRecordBtn = new QPushButton("🗑️ Eliminar");
     saveRecordBtn = new QPushButton("💾 Guardar");
     firstRecordBtn = new QPushButton("|<");
@@ -189,8 +191,8 @@ void FormulariosView::setupUI()
     lastRecordBtn->setStyleSheet(navButtonStyle);
     
     // Estado inicial de botones
-    editRecordBtn->setEnabled(true);  // "Nuevo" siempre habilitado
-    newRecordBtn->setEnabled(false);  // "Editar" se habilita cuando hay datos
+    newRecordBtn->setEnabled(true);  // "Nuevo" siempre habilitado
+    editRecordBtn->setEnabled(false);  // "Editar" se habilita cuando hay datos
     deleteRecordBtn->setEnabled(false);
     saveRecordBtn->setEnabled(false);
     
@@ -201,8 +203,8 @@ void FormulariosView::setupUI()
     lastRecordBtn->setEnabled(false);
     
     // Agregar TODOS los botones en una sola fila
-    buttonLayout->addWidget(editRecordBtn);   // Nuevo
-    buttonLayout->addWidget(newRecordBtn);    // Editar
+    buttonLayout->addWidget(newRecordBtn);   // Nuevo
+    buttonLayout->addWidget(editRecordBtn);    // Editar
     buttonLayout->addWidget(deleteRecordBtn); // Eliminar
     buttonLayout->addWidget(saveRecordBtn);   // Guardar
     
@@ -544,7 +546,7 @@ void FormulariosView::generateFormForTable(const QString& tableName)
         QWidget* inputWidget = createFieldWidget(field);
         if (inputWidget) {
             // Crear contenedor para input + mensaje de error
-            QWidget* fieldContainer = new QWidget();
+            QWidget* fieldContainer = new QWidget(formContentWidget);
             QVBoxLayout* fieldLayout = new QVBoxLayout(fieldContainer);
             fieldLayout->setContentsMargins(0, 0, 0, 0);
             fieldLayout->setSpacing(5);
@@ -553,7 +555,7 @@ void FormulariosView::generateFormForTable(const QString& tableName)
             fieldLayout->addWidget(inputWidget);
             
             // Crear etiqueta de error
-            QLabel* errorLabel = new QLabel();
+            QLabel* errorLabel = new QLabel(fieldContainer);
             errorLabel->setStyleSheet(
                 "QLabel {"
                 "color: #dc3545;"
@@ -583,125 +585,209 @@ void FormulariosView::generateFormForTable(const QString& tableName)
     }
     
     saveRecordBtn->setEnabled(true);
+    applyFormTheme();
+    rebuildResponsiveGrid();
+    enterViewMode();
+    if (!allRecords.isEmpty()) {
+        loadRecordIntoForm(0, /*viewOnly=*/true);
+        showTopBadge("Los mínimos campos necesarios", QColor("#43A047"), Qt::white);
+    } else {
+        setFormEnabled(false);
+        if (saveRecordBtn) saveRecordBtn->setEnabled(false);
+        if (editRecordBtn) editRecordBtn->setEnabled(false);
+    }
 }
-
-
-
 
 QWidget* FormulariosView::createFieldWidget(const QJsonObject& fieldMeta)
 {
-    QString fieldType = fieldMeta.value("type").toString().toLower();
-    QString fieldName = fieldMeta.value("name").toString();
-    bool isPrimaryKey = fieldMeta.value("isPrimaryKey").toBool(false);
-    bool allowNull = fieldMeta.value("allowNull").toBool(true);
-    
-    // Estilo ESPECTACULAR para inputs del formulario - TEMA BURGUNDY - SUPER REDONDOS
-    QString inputStyle = 
-        "QLineEdit, QSpinBox, QDoubleSpinBox, QDateEdit {"
-        "border: 3px solid transparent;"
-        "border-radius: 20px;"
-        "padding: 15px 20px;"
-        "font-size: 16px;"
-        "font-weight: 500;"
-        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "stop:0 rgba(255, 250, 250, 0.95), "
-        "stop:1 rgba(248, 240, 240, 0.9));"
-        "color: #8B0000;"
-        "selection-background-color: #B22222;"
-        "min-height: 20px;"
+    const QString type = fieldMeta.value("type").toString().toLower();
+
+    auto make = [&](QWidget* w) -> QWidget* {
+        w->setParent(formContentWidget);           // ✅ parent
+        w->setWindowFlag(Qt::Widget, true);        // ✅ no es toplevel
+        return w;
+    };
+
+    if (type == "text")        return make(new QLineEdit);
+    if (type == "number") {
+        const QString kind = fieldMeta.value("numberKind").toString().toLower();
+        return kind == "integer" ? make(new QSpinBox) : make(new QDoubleSpinBox);
+    }
+    if (type == "date")        return make(new QDateEdit);
+    if (type == "boolean")     return make(new QCheckBox(QStringLiteral("Activado")));
+
+    return make(new QLineEdit); // default
+}
+
+void FormulariosView::applyFormTheme()
+{
+    // Card principal (ya tienes formContentWidget)
+    attachCardShadow(formContentWidget, 28, QColor(0,0,0,55));
+
+    // Etiquetas del form (QFormLayout usa QLabel como "label")
+    // Nota: ya seteaste un stylesheet grande; lo compactamos aquí:
+    formContentWidget->setStyleSheet(
+        "QLabel {"
+        "font-size: 13px;"
+        "font-weight: 600;"
+        "color: #374151;"
         "}"
-        "QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QDateEdit:focus {"
-        "border: 3px solid #B22222;"
-        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "stop:0 rgba(255, 245, 245, 1.0), "
-        "stop:1 rgba(255, 235, 235, 1.0));"
-        "color: #8B0000;"
+        "QLineEdit, QSpinBox, QDoubleSpinBox, QDateEdit, QComboBox, QTextEdit {"
+        "border: 1.5px solid #E5E7EB;"
+        "border-radius: 8px;"
+        "padding: 6px 10px;"
+        "font-size: 13px;"
+        "background-color: #FFFFFF;"
+        "color: #111827;"
+        "min-height: 32px;"
         "}"
-        "QLineEdit:hover, QSpinBox:hover, QDoubleSpinBox:hover, QDateEdit:hover {"
-        "border: 3px solid #CD5C5C;"
-        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "stop:0 rgba(255, 248, 248, 0.98), "
-        "stop:1 rgba(250, 235, 235, 0.95));"
+        "QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QDateEdit:focus, QComboBox:focus, QTextEdit:focus {"
+        "border-color: #3B82F6;"
+        "outline: none;"
+        "background: #FAFBFF;"
         "}"
-        "QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QDateEdit:disabled {"
-        "background: rgba(245, 245, 245, 0.7);"
-        "color: #9e9e9e;"
-        "border: 3px solid #e0e0e0;"
+        "QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QDateEdit:disabled, QComboBox:disabled, QTextEdit:disabled {"
+        "background: #F9FAFB;"
+        "color: #9CA3AF;"
         "}"
         "QCheckBox {"
-        "font-size: 16px;"
-        "font-weight: 500;"
-        "color: #8B0000;"
+        "font-size: 13px;"
+        "color: #374151;"
         "}"
-        "QCheckBox::indicator {"
-        "width: 24px;"
-        "height: 24px;"
-        "border: 3px solid #CD5C5C;"
-        "border-radius: 6px;"
-        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "stop:0 rgba(255, 250, 250, 0.9), "
-        "stop:1 rgba(248, 240, 240, 0.9));"
-        "}"
-        "QCheckBox::indicator:checked {"
-        "border: 3px solid #B22222;"
-        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "stop:0 rgba(178, 34, 34, 0.2), "
-        "stop:1 rgba(139, 0, 0, 0.3));"
-        "image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTMuNSA4LjVMNi41IDExLjVMMTIuNSA0LjUiIHN0cm9rZT0iI0IyMjIyMiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+Cg==);"
-        "}"
-        "QCheckBox::indicator:hover {"
-        "border: 3px solid #DC143C;"
-        "background: qlineargradient(x1:0, y1:0, x2:0, y2:1, "
-        "stop:0 rgba(255, 245, 245, 1.0), "
-        "stop:1 rgba(255, 235, 235, 1.0));"
-        "}";
-    
-    if (fieldType == "text") {
-        QLineEdit* lineEdit = new QLineEdit();
-        lineEdit->setFixedHeight(40);
-        lineEdit->setStyleSheet(inputStyle);
-        lineEdit->setPlaceholderText(QString("Ingresa %1").arg(fieldName));
-        return lineEdit;
+        );
+
+    // Botones (ya tienes estilos; compactamos el alto)
+    for (QPushButton* b : {newRecordBtn, editRecordBtn, deleteRecordBtn, saveRecordBtn,
+                           firstRecordBtn, prevRecordBtn, nextRecordBtn, lastRecordBtn}) {
+        if (!b) continue;
+        b->setMinimumHeight(34);
+        b->setMaximumHeight(36);
     }
-    else if (fieldType == "number") {
-        QString numberKind = fieldMeta.value("numberKind").toString().toLower();
-        
-        if (numberKind == "integer") {
-            QSpinBox* spinBox = new QSpinBox();
-            spinBox->setRange(0, 999999999);  // Rango normal para todos los campos
-            spinBox->setFixedHeight(40);
-            spinBox->setStyleSheet(inputStyle);
-            return spinBox;
-        } else {
-            QDoubleSpinBox* doubleSpinBox = new QDoubleSpinBox();
-            doubleSpinBox->setRange(0.0, 999999999.99);
-            doubleSpinBox->setDecimals(2);
-            doubleSpinBox->setFixedHeight(40);
-            doubleSpinBox->setStyleSheet(inputStyle);
-            return doubleSpinBox;
+}
+
+void FormulariosView::rebuildResponsiveGrid()
+{
+    // A) Desacopla inputs (sin que “parpadeen” como toplevel)
+    for (QWidget* input : formWidgets) {
+        if (!input) continue;
+        input->hide();                 // evita que se vean sueltos
+        input->setParent(nullptr);     // los soltamos antes de borrar filas viejas
+    }
+
+    // B) Borra TODO lo que hubiera dentro del QFormLayout (labels/containers/grid anterior)
+    while (formLayout->count() > 0) {
+        QLayoutItem* it = formLayout->takeAt(0);
+        if (QWidget* w = it->widget()) {
+            w->hide();
+            w->deleteLater();          // elimina contenedores/labels antiguos
         }
+        delete it;
     }
-    else if (fieldType == "date") {
-        QDateEdit* dateEdit = new QDateEdit();
-        dateEdit->setDate(QDate::currentDate());
-        dateEdit->setCalendarPopup(true);
-        dateEdit->setFixedHeight(40);
-        dateEdit->setStyleSheet(inputStyle);
-        dateEdit->setDisplayFormat("dd/MM/yyyy");
-        return dateEdit;
+
+    // C) Crea contenedor de grilla y re-adopta inputs
+    QWidget* gridHost = new QWidget(formContentWidget);
+    QGridLayout* grid = new QGridLayout(gridHost);
+    grid->setContentsMargins(12, 12, 12, 12);
+    grid->setHorizontalSpacing(16);
+    grid->setVerticalSpacing(12);
+
+    formLayout->addRow(gridHost);
+
+    const int cols = computeColumnCount();
+    int r = 0, c = 0;
+
+    for (int i = 0; i < formWidgets.size() && i < fieldNames.size(); ++i) {
+        QWidget* input = formWidgets[i];
+
+        QWidget* cell = makeFieldCell(input, cleanFieldNameUI(fieldNames[i]));
+        grid->addWidget(cell, r, c);
+
+        // el makeFieldCell() ya mete el input como hijo de 'cell'
+        input->show();
+
+        if (++c >= cols) { c = 0; ++r; }
     }
-    else if (fieldType == "boolean") {
-        QCheckBox* checkBox = new QCheckBox("Activado");
-        checkBox->setStyleSheet(inputStyle);
-        return checkBox;
+}
+
+int FormulariosView::computeColumnCount() const
+{
+    // Heurística: si hay más de 6 campos y ancho >= 720, 2 columnas
+    const int count = formWidgets.size();
+    const int w = formContentWidget ? formContentWidget->width() : width();
+    if (count >= 7 && w >= 720) return 2;
+    return 1;
+}
+
+QWidget* FormulariosView::makeFieldCell(QWidget* input, const QString& labelText)
+{
+    QWidget* cell = new QWidget(formContentWidget);
+    QVBoxLayout* v = new QVBoxLayout(cell);
+    v->setContentsMargins(0,0,0,0);
+    v->setSpacing(6);
+
+    QLabel* lbl = new QLabel(labelText, cell);
+    lbl->setStyleSheet("font-size: 12px; font-weight: 600; color: #6B7280;"); // gris medio
+    v->addWidget(lbl);
+
+    input->setMinimumHeight(32);
+    v->addWidget(input);
+
+    // error label (ya la guardas en property "errorLabel"; si no, la creamos)
+    QLabel* err = input->property("errorLabel").value<QLabel*>();
+    if (!err) {
+        err = new QLabel(cell);
+        err->hide();
+        input->setProperty("errorLabel", QVariant::fromValue(err));
     }
-    
-    // Default: text field
-    QLineEdit* lineEdit = new QLineEdit();
-    lineEdit->setFixedHeight(40);
-    lineEdit->setStyleSheet(inputStyle);
-    lineEdit->setPlaceholderText(QString("Ingresa %1").arg(fieldName));
-    return lineEdit;
+    err->setStyleSheet(
+        "color:#B91C1C; font-size:11px; background:#FEF2F2; "
+        "border:1px solid #FCA5A5; border-radius:6px; padding:4px 8px;"
+        );
+    err->setWordWrap(true);
+    v->addWidget(err);
+
+    return cell;
+}
+
+void FormulariosView::resetFieldVisualState()
+{
+    for (QWidget* w : formWidgets) {
+        if (!w) continue;
+        // Ocultar error si existe
+        if (QLabel* err = w->property("errorLabel").value<QLabel*>()) {
+            err->hide();
+        }
+        // Reset estilo base (deja que applyFormTheme mande el stylesheet general)
+        w->setStyleSheet("");
+    }
+    // Reaplica tema base
+    applyFormTheme();
+}
+
+void FormulariosView::showTopBadge(const QString& text, const QColor& bg, const QColor& fg)
+{
+    // Reutiliza recordCounterLabel como “badge”
+    if (!recordCounterLabel) return;
+    recordCounterLabel->setText(text);
+    recordCounterLabel->setStyleSheet(QString(
+                                          "QLabel {"
+                                          "border-radius: 12px;"
+                                          "padding: 6px 12px;"
+                                          "font-weight:700;"
+                                          "font-size:13px;"
+                                          "background:%1;"
+                                          "color:%2;"
+                                          "}"
+                                          ).arg(bg.name()).arg(fg.name()));
+}
+
+void FormulariosView::attachCardShadow(QWidget* w, int blur, const QColor& c)
+{
+    auto *fx = new QGraphicsDropShadowEffect(w);
+    fx->setBlurRadius(blur);
+    fx->setOffset(0, 8);
+    fx->setColor(c);
+    w->setGraphicsEffect(fx);
 }
 
 void FormulariosView::loadDataFromJson()
@@ -746,16 +832,15 @@ void FormulariosView::loadDataFromJson()
     
     // Si hay registros, mostrar el primero
     if (!allRecords.isEmpty()) {
-        goToRecord(0);
+        goToRecord(0);              // ahora ya bloquea por el cambio del paso 2
         formScrollArea->show();
         emptyStateWidget->hide();
     } else {
-        // No hay registros - mostrar formulario vacío pero habilitado para crear nuevo
         formScrollArea->show();
         emptyStateWidget->hide();
         clearFormInputs();
         currentRecordIndex = -1;
-        isEditMode = true;
+        isEditMode = true;          // crear nuevo
         setFormEnabled(true);
     }
     
@@ -801,12 +886,12 @@ void FormulariosView::clearForm()
 {
     while (formLayout->count() > 0) {
         QLayoutItem* item = formLayout->takeAt(0);
-        if (item->widget()) {
-            item->widget()->deleteLater();
+        if (QWidget* w = item->widget()) {
+            w->hide();    // << evita toplevel fantasma
+            w->deleteLater();
         }
         delete item;
     }
-    
     formWidgets.clear();
     fieldNames.clear();
     currentTableFields = QJsonArray();
@@ -820,29 +905,25 @@ void FormulariosView::onNewRecordClicked()
     setFormEnabled(true);
     updateButtonStates();
     
-    // Deseleccionar fila en tabla
-    // TEMPORALMENTE COMENTADO: dataTable->blockSignals(true);
-    // TEMPORALMENTE COMENTADO: dataTable->clearSelection();
-    // TEMPORALMENTE COMENTADO: dataTable->blockSignals(false);
+    cloneCurrentRecordToForm();
+    hasUnsavedChanges = true;
+
+    enterEditMode();
+    resetFieldVisualState();
+    showTopBadge("🆕 Nuevo registro", QColor("#DBEAFE"), QColor("#1E3A8A")); // azul suave
+
 }
 
 void FormulariosView::onEditRecordClicked()
 {
-    // Este botón funciona como "Nuevo Registro"
-    clearFormInputs();
-    currentRecordIndex = -1; // Indicar que estamos creando un nuevo registro
-    isEditMode = true;
-    
-    // Calcular el siguiente número de registro
-    int nextRecordNumber = allRecords.size() + 1;
-    
-    // Actualizar contador para mostrar el próximo registro a crear
-    recordCounterLabel->setText(QString("🆕 Creando registro %1").arg(nextRecordNumber));
-    
-    // Si hay un campo 'id' en el formulario, pre-llenarlo con el siguiente número
-    autoFillNextId();
-    
-    updateButtonStates();
+    if (currentRecordIndex < 0 || currentRecordIndex >= allRecords.size()) {
+        // Usa tu messagebox estilizado si lo tienes:
+        // showStyledMessageBox("Editar", "Selecciona un registro primero.", QMessageBox::Information);
+        return;
+    }
+    enterEditMode();
+    if (recordCounterLabel)
+        recordCounterLabel->setText(QString("✏️ Editando registro %1").arg(currentRecordIndex + 1));
 }
 
 void FormulariosView::onDeleteRecordClicked()
@@ -876,62 +957,77 @@ void FormulariosView::onDeleteRecordClicked()
 
 void FormulariosView::onSaveRecordClicked()
 {
-    // Validar campos antes de guardar
-    if (!validateFormData()) {
-        return;
-    }
-    
-    QJsonObject recordData = getCurrentRecordData();
-    
+    // 1) Validar
+    if (!validateFormData()) return;
+
+    // 2) Recolectar
+    const QJsonObject recordData = getCurrentRecordData();
     if (recordData.isEmpty()) {
         QMessageBox::information(this, "Información", "No hay datos para guardar");
         return;
     }
-    
+
+    // 3) Guardar (update o append)
     if (isEditMode && currentRecordIndex >= 0 && currentRecordIndex < allRecords.size()) {
-        // Edit mode - update existing record
+        // Actualización
         allRecords[currentRecordIndex] = recordData;
         saveDataToJson();
+
         QMessageBox::information(this, "Éxito", "Registro actualizado exitosamente");
-        
-        // Permanecer en el mismo registro pero en modo lectura
+
+        // Modo lectura + bloqueado
         isEditMode = false;
         setFormEnabled(false);
-        populateFormWithRecord(currentRecordIndex);
+        populateFormWithRecord(currentRecordIndex); // recarga “limpia” del mismo registro
+
     } else {
-        // New record mode - append new record
+        // Nuevo (posible copia)
         allRecords.append(recordData);
         saveDataToJson();
+
         QMessageBox::information(this, "Éxito", "Registro guardado exitosamente");
-        
-        // Ir al nuevo registro recién creado
-        int newIndex = allRecords.size() - 1;
-        goToRecord(newIndex);
+
+        // Posicionarse en el recién creado y bloquear
+        currentRecordIndex = allRecords.size() - 1;
+        goToRecord(currentRecordIndex); // tu método ya debe refrescar la UI
         isEditMode = false;
         setFormEnabled(false);
     }
-    
-    // Actualizar tabla y botones
-    // TEMPORALMENTE COMENTADO: updateDataTable();
-    updateNavigationState();
+
+    // 4) Estado UI
     hasUnsavedChanges = false;
+    updateNavigationState();
+    resetFieldVisualState();
+    rebuildResponsiveGrid();
+    showTopBadge("✅ Guardado", QColor("#DCFCE7"), QColor("#065F46"));
 }
 
 void FormulariosView::onRecordSelected()
 {
-    // TEMPORALMENTE COMENTADO: int row = dataTable->currentRow();
+    // TEMP: si usas QTableWidget, recupera la fila real:
+    // int row = dataTable ? dataTable->currentRow() : -1;
     int row = -1; // Temporal
-    
+
     if (row < 0 || row >= allRecords.size()) {
         currentRecordIndex = -1;
         updateNavigationState();
         return;
     }
-    
-    // Solo cambiar si no estamos en modo edición
-    if (!isEditMode) {
-        goToRecord(row);
+
+    // No moverse si estás editando (así obligas a usar el botón “Guardar” o “Cancelar”)
+    if (isEditMode) {
+        // Opcional: muestra aviso suave sin bloquear
+        // QMessageBox::information(this, "Edición en curso", "Termina o cancela antes de cambiar de registro.");
+        return;
     }
+
+    // Navega y bloquea (modo lectura)
+    goToRecord(row);      // debería actualizar currentRecordIndex y pintar el form
+    setFormEnabled(false);
+    isEditMode = false;
+    updateNavigationState();
+    resetFieldVisualState();
+    rebuildResponsiveGrid();
 }
 
 void FormulariosView::clearFormInputs()
@@ -1210,18 +1306,25 @@ void FormulariosView::goToRecord(int index)
     if (index < 0 || index >= allRecords.size()) {
         currentRecordIndex = -1;
         clearFormInputs();
+        isEditMode = false;
+        setFormEnabled(false);
+        updateNavigationState();            // <-- asegúrate de refrescar aquí
         return;
     }
-    
+
     currentRecordIndex = index;
-    populateFormWithRecord(index);
-    
-    // Sincronizar selección en tabla
-    // TEMPORALMENTE COMENTADO: dataTable->blockSignals(true);
-    // TEMPORALMENTE COMENTADO: dataTable->selectRow(index);
-    // TEMPORALMENTE COMENTADO: dataTable->blockSignals(false);
-    
-    updateNavigationState();
+    populateFormWithRecord(index);          // pinta datos
+
+    // Siempre en modo lectura al navegar
+    isEditMode = false;
+    setFormEnabled(false);
+
+    resetFieldVisualState();
+    rebuildResponsiveGrid();
+    showTopBadge(QString("Registro %1 de %2").arg(currentRecordIndex+1).arg(allRecords.size()),
+                 QColor("#E5E7EB"), QColor("#374151"));
+
+    updateNavigationState();                // <-- REFRESCO CLAVE DESPUÉS DE MOVERTE
 }
 
 void FormulariosView::populateFormWithRecord(int recordIndex)
@@ -1251,44 +1354,43 @@ void FormulariosView::populateFormWithRecord(int recordIndex)
     }
     
     // Mantener formulario editable para permitir modificaciones directas
-    isEditMode = true;
-    setFormEnabled(true);
     updateButtonStates();
 }
 
 void FormulariosView::updateNavigationState()
 {
-    bool hasRecords = !allRecords.isEmpty();
-    bool hasSelection = currentRecordIndex >= 0 && currentRecordIndex < allRecords.size();
-    
-    editRecordBtn->setEnabled(hasSelection);
-    deleteRecordBtn->setEnabled(hasSelection);
+    const bool hasTable     = !currentTableName.isEmpty();
+    const bool hasRecords   = !allRecords.isEmpty();
+    const bool hasSelection = currentRecordIndex >= 0 && currentRecordIndex < allRecords.size();
+
+    // --- Navegación ---
+    firstRecordBtn->setEnabled(hasRecords && currentRecordIndex > 0);
+    prevRecordBtn->setEnabled(hasRecords && currentRecordIndex > 0);
+    nextRecordBtn->setEnabled(hasRecords && currentRecordIndex < allRecords.size() - 1);
+    lastRecordBtn->setEnabled(hasRecords && currentRecordIndex < allRecords.size() - 1);
+
+    // --- CRUD ---
+    newRecordBtn->setEnabled(hasTable);                 // crear nuevo siempre que haya tabla
+    editRecordBtn->setEnabled(hasSelection && !isEditMode);
+    deleteRecordBtn->setEnabled(hasSelection && !isEditMode);
     saveRecordBtn->setEnabled(isEditMode);
-    newRecordBtn->setEnabled(hasSelection); // Editar solo si hay registro seleccionado
-    
-    // Actualizar botones de navegación
-    if (hasRecords) {
-        firstRecordBtn->setEnabled(currentRecordIndex > 0);
-        prevRecordBtn->setEnabled(currentRecordIndex > 0);
-        nextRecordBtn->setEnabled(currentRecordIndex < allRecords.size() - 1);
-        lastRecordBtn->setEnabled(currentRecordIndex < allRecords.size() - 1);
-    } else {
-        firstRecordBtn->setEnabled(false);
-        prevRecordBtn->setEnabled(false);
-        nextRecordBtn->setEnabled(false);
-        lastRecordBtn->setEnabled(false);
-    }
-    
-    // Actualizar contador de registros
+
+    // --- Contador / badge ---
     if (hasRecords && hasSelection) {
         recordCounterLabel->setText(QString("Registro %1 de %2")
-                                   .arg(currentRecordIndex + 1)
-                                   .arg(allRecords.size()));
+                                        .arg(currentRecordIndex + 1)
+                                        .arg(allRecords.size()));
     } else if (hasRecords) {
         recordCounterLabel->setText(QString("Total: %1 registros").arg(allRecords.size()));
     } else {
         recordCounterLabel->setText("Sin registros");
     }
+
+    // (Opcional) debug rápido
+    // qDebug() << "nav state idx=" << currentRecordIndex
+    //          << "size=" << allRecords.size()
+    //          << "nextEnabled=" << nextRecordBtn->isEnabled()
+    //          << "prevEnabled=" << prevRecordBtn->isEnabled();
 }
 
 QString FormulariosView::cleanFieldNameUI(const QString& fieldName)
@@ -1556,5 +1658,120 @@ void FormulariosView::onLastRecordClicked()
 {
     if (!allRecords.isEmpty()) {
         goToRecord(allRecords.size() - 1);
+    }
+}
+
+void FormulariosView::enterViewMode()
+{
+    isEditMode = false;
+    isNewCloned = false;
+    setFormEnabled(false);
+    if (saveRecordBtn) saveRecordBtn->setEnabled(false);
+    updateButtonStates();
+}
+
+void FormulariosView::enterEditMode()
+{
+    isEditMode = true;
+    setFormEnabled(true);
+    if (saveRecordBtn) saveRecordBtn->setEnabled(true);
+    updateButtonStates();
+}
+
+QJsonObject FormulariosView::readFormValues() const
+{
+    QJsonObject obj;
+    for (int i = 0; i < formWidgets.size() && i < fieldNames.size(); ++i) {
+        QWidget* w = formWidgets[i];
+        const QString name = fieldNames[i];
+
+        if (auto le = qobject_cast<QLineEdit*>(w)) {
+            obj[name] = le->text();
+        } else if (auto sb = qobject_cast<QSpinBox*>(w)) {
+            obj[name] = sb->value();
+        } else if (auto dsb = qobject_cast<QDoubleSpinBox*>(w)) {
+            obj[name] = dsb->value();
+        } else if (auto de = qobject_cast<QDateEdit*>(w)) {
+            obj[name] = de->date().toString("dd/MM/yyyy"); // guardar fecha como string
+        } else if (auto cb = qobject_cast<QCheckBox*>(w)) {
+            obj[name] = cb->isChecked();
+        } else {
+            obj[name] = w->property("text").toString();
+        }
+    }
+    return obj;
+}
+
+void FormulariosView::writeFormValues(const QJsonObject &obj)
+{
+    for (int i = 0; i < formWidgets.size() && i < fieldNames.size(); ++i) {
+        QWidget* w = formWidgets[i];
+        const QString name = fieldNames[i];
+        const QJsonValue v = obj.value(name);
+
+        if (auto le = qobject_cast<QLineEdit*>(w)) {
+            le->setText(v.isString() ? v.toString() : QString());
+        } else if (auto sb = qobject_cast<QSpinBox*>(w)) {
+            sb->setValue(v.isDouble() ? v.toInt() : v.toString().toInt());
+        } else if (auto dsb = qobject_cast<QDoubleSpinBox*>(w)) {
+            dsb->setValue(v.isDouble() ? v.toDouble() : v.toString().toDouble());
+        } else if (auto de = qobject_cast<QDateEdit*>(w)) {
+            if (v.isString()) {
+                const QDate d = QDate::fromString(v.toString(), "dd/MM/yyyy");
+                de->setDate(d.isValid() ? d : QDate::currentDate());
+            } else {
+                de->setDate(QDate::currentDate());
+            }
+        } else if (auto cb = qobject_cast<QCheckBox*>(w)) {
+            if (v.isBool()) cb->setChecked(v.toBool());
+            else if (v.isDouble()) cb->setChecked(v.toInt() != 0);
+            else cb->setChecked(false);
+        } else {
+            w->setProperty("text", v.isString() ? v.toString() : QString());
+        }
+    }
+}
+
+void FormulariosView::loadRecordIntoForm(int index, bool viewOnly)
+{
+    if (index < 0 || index >= allRecords.size()) return;
+    currentRecordIndex = index;
+
+    writeFormValues(allRecords[index]);
+
+    if (recordCounterLabel)
+        recordCounterLabel->setText(QString("📄 Registro %1 de %2")
+                                        .arg(index + 1).arg(allRecords.size()));
+
+    viewOnly ? enterViewMode() : enterEditMode();
+}
+
+void FormulariosView::cloneCurrentRecordToForm()
+{
+    QJsonObject base;
+    if (currentRecordIndex >= 0 && currentRecordIndex < allRecords.size()) {
+        base = allRecords[currentRecordIndex];
+    } else {
+        base = readFormValues(); // copia lo que esté en pantalla
+    }
+
+    // Si usas 'id' autoincremental, límpialo aquí
+    if (base.contains("id")) base.remove("id");
+
+    writeFormValues(base);
+
+    if (recordCounterLabel) {
+        recordCounterLabel->setText(QString("🆕 Nuevo (copia de %1)")
+                                        .arg(currentRecordIndex >= 0 ? QString::number(currentRecordIndex + 1) : "actual"));
+    }
+
+    isNewCloned = true;
+}
+
+void FormulariosView::lockFormAfterSave()
+{
+    enterViewMode();
+    if (currentRecordIndex >= 0 && currentRecordIndex < allRecords.size() && recordCounterLabel) {
+        recordCounterLabel->setText(QString("✅ Guardado. Registro %1 bloqueado").arg(currentRecordIndex + 1));
     }
 }

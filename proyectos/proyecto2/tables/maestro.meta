@@ -11,10 +11,10 @@
             "type": "number"
         },
         {
-            "allowNull": false,
+            "allowNull": true,
             "desc": "",
             "isForeignKey": false,
-            "isPrimaryKey": true,
+            "isPrimaryKey": false,
             "isUnique": false,
             "name": "id_alumno",
             "textMax": 255,

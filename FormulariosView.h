@@ -152,8 +152,8 @@ private:
     QString currentTableName;
     QJsonArray currentTableFields;
     QJsonArray tableData;
-    int currentRecordIndex;
-    bool isEditMode;
+    int currentRecordIndex = -1;
+    bool isEditMode = false;
     QList<QWidget*> formWidgets;
     QStringList fieldNames;
     
@@ -163,6 +163,36 @@ private:
     QStringList savedFieldNames;   // Nombres de campos como están en el JSON
     QStringList savedFieldTypes;   // Tipos de campos
     QTimer *dataDebounceTimer;     // Para guardar cambios automáticamente
+
+    bool isNewCloned = false;
+
+    void enterViewMode();
+    void enterEditMode();
+
+    // IO de formulario
+    QJsonObject readFormValues() const;
+    void writeFormValues(const QJsonObject &obj);
+
+    // Cargar / clonar
+    void loadRecordIntoForm(int index, bool viewOnly = true);
+    void cloneCurrentRecordToForm();
+
+    // Post-guardado
+    void lockFormAfterSave();
+
+    // Layout & estilo
+    void applyFormTheme();                 // Estilos globales
+    void rebuildResponsiveGrid();          // Reconstruye grid 1-2 columnas
+    int  computeColumnCount() const;       // 1 o 2 columnas
+    QWidget* makeFieldCell(QWidget* input, const QString& labelText); // label + input + error
+    void resetFieldVisualState();          // limpia estilos tras guardar/navegar
+
+    // Banner superior (opcional)
+    void showTopBadge(const QString& text, const QColor& bg, const QColor& fg);
+
+    // Sombra de “card”
+    void attachCardShadow(QWidget* w, int blur = 32, const QColor& c = QColor(0,0,0,60));
+
 };
 
 #endif // FORMULARIOSVIEW_H

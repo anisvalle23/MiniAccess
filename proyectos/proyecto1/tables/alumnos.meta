@@ -26,7 +26,7 @@
             "isForeignKey": false,
             "isPrimaryKey": false,
             "isUnique": false,
-            "name": "nombte",
+            "name": "nombre",
             "textMax": 255,
             "type": "text"
         }
